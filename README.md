@@ -5,7 +5,7 @@
 Local-first competitive Pokemon team builder and battle simulator built for fast testing, clean reports, and polished desktop workflows.
 
 ![Focus](https://img.shields.io/badge/Focus-Competitive%20Team%20Building-18181B?style=flat-square&labelColor=27272A&color=A3E635)
-![Status](https://img.shields.io/badge/Status-Early%20Planning-18181B?style=flat-square&labelColor=27272A&color=A3E635)
+![Status](https://img.shields.io/badge/Status-Frontend%20Checkpoint-18181B?style=flat-square&labelColor=27272A&color=A3E635)
 ![Platform](https://img.shields.io/badge/Platform-Windows-18181B?style=flat-square&logo=windows&logoColor=A3E635&labelColor=27272A)
 ![Local First](https://img.shields.io/badge/Mode-Local%20First-18181B?style=flat-square&labelColor=27272A&color=A3E635)
 
@@ -21,7 +21,7 @@ BattleLab is a standalone desktop app concept for building competitive Pokemon t
 
 ## Current Focus
 
-The first milestone is a frontend-only rough draft using mock data.
+The first milestone is a frontend-only rough draft using mock data. The current checkpoint includes the core UI shell and fake-data workflows; Reports still need matching detail fixtures for every history card before the milestone is considered accepted.
 
 | Area | Goal |
 | --- | --- |
@@ -30,6 +30,13 @@ The first milestone is a frontend-only rough draft using mock data.
 | Editor Panel | Add the right-side Pokemon editing panel with moves, ability, item, nature, and stats. |
 | Reports | Show saved simulation history with filters and report detail navigation. |
 | Overview Report | Recreate the Champion-style overview with win rate, archetype bars, weaknesses, and strategy tips. |
+
+## Current Checkpoint
+
+- Frontend app scaffolded under `app/` with React, TypeScript, and Vite.
+- Desktop-style shell, sidebar navigation, header actions, shared panel host, scrim, and blur behavior are in place.
+- Team Builder, Pokemon editor panel, guided simulation settings panel, Reports list, and Report Detail Overview render from local fake data.
+- Simulation, persistence, Electron packaging, PDF export, and catalog sync are intentionally not wired yet.
 
 ## Planned Features
 
@@ -66,8 +73,8 @@ The first milestone is a frontend-only rough draft using mock data.
 
 | Phase | Goal | Status |
 | --- | --- | --- |
-| Phase 0 | Project structure and planning | In progress |
-| Phase 1 | Frontend rough draft | Planned |
+| Phase 0 | Project structure and planning | Complete |
+| Phase 1 | Frontend rough draft | In progress |
 | Phase 2 | TypeScript data contracts | Planned |
 | Phase 3 | Local simulation proof | Planned |
 | Phase 4 | Desktop wrapper | Planned |

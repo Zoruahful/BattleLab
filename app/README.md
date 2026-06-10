@@ -1,73 +1,81 @@
-# React + TypeScript + Vite
+# BattleLab Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+BattleLab's frontend is a Vite, React, and TypeScript application for the local-first desktop product experience.
 
-Currently, two official plugins are available:
+This package currently implements the first fake-data UI checkpoint: the desktop shell, Team Builder, Pokemon editor panel, guided simulation settings panel, Reports list, and Report Detail Overview.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Status
 
-## React Compiler
+This is a frontend rough draft. The app uses local mock data only.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Not implemented yet:
 
-## Expanding the ESLint configuration
+- Electron desktop wrapper
+- Pokemon Showdown simulation runtime
+- Durable local persistence
+- PDF export
+- Real catalog sync
+- Real sprite or icon source
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Install dependencies from this folder:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Start the development server:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+Run lint checks:
+
+```bash
+npm run lint
+```
+
+## Project Structure
+
+```text
+src/
+  components/   Shared UI components
+  data/         Local fake data used by the current UI checkpoint
+  panels/       Right-side shell panels
+  screens/      Main shell screens
+  styles/       Feature-level CSS files
+  types/        TypeScript UI and catalog contracts
+```
+
+## Current UI Flow
+
+```text
+Team Builder -> Pokemon Editor Panel
+Team Builder -> Guided Simulation Settings Panel
+Reports -> Report Detail Overview -> Back to Reports
+```
+
+The guided simulation settings panel confirms settings in local UI state only. It does not run a backend simulation.
+
+## Validation
+
+Before merging frontend changes, run:
+
+```bash
+npm run build
+npm run lint
+```
+
+## Product Notes
+
+BattleLab is designed as a local-first competitive Pokemon team-building and battle-simulation tool. Pokemon Showdown is planned as the future battle simulation and legality source of truth. Catalog or enrichment APIs, if added later, should not be treated as battle legality authorities.
+
+BattleLab is an unofficial fan-made tool and is not affiliated with, endorsed by, sponsored by, or approved by Nintendo, Game Freak, The Pokemon Company, or Pokemon Showdown.
