@@ -2,11 +2,11 @@
 
 BattleLab's frontend is a Vite, React, and TypeScript application for the local-first desktop product experience.
 
-This package currently implements the first fake-data UI checkpoint: the desktop shell, Team Builder, Pokemon editor panel, guided simulation settings panel, Reports list, and Report Detail Overview.
+This package implements the first accepted fake-data UI milestone: the desktop shell, Team Builder, Pokemon editor panel, guided simulation settings panel, Reports list, and Report Detail Overview.
 
 ## Status
 
-This is a frontend rough draft. The app uses local mock data only.
+This is an accepted frontend rough draft milestone. The app uses local mock data only.
 
 Not implemented yet:
 
