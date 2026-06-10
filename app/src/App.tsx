@@ -72,6 +72,7 @@ function App() {
   const [battleLabSettings, setBattleLabSettings] =
     useState<BattleLabSettings>(localBattleLabSettings)
   const [activeTeam, setActiveTeam] = useState<SubmittedTeam>(initialSubmittedTeam)
+  const [teamSaved, setTeamSaved] = useState(false)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
 
   const { activeView, activePanel, editingSlot } = shellState
@@ -111,6 +112,11 @@ function App() {
     openPanel(item.target as NonNullable<ActivePanelId>)
   }
 
+  const handleSaveTeam = () => {
+    setTeamSaved(true)
+    window.setTimeout(() => setTeamSaved(false), 1600)
+  }
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && panelOpen) {
@@ -140,16 +146,18 @@ function App() {
                 </div>
 
                 <div className="main-actions">
-                  <button className="secondary-action" type="button">
-                    Load team
-                  </button>
-                  <button className="secondary-action" type="button" onClick={() => openPanel('settings')}>
-                    Settings
-                  </button>
                   {activeView === 'team' ? (
-                    <button className="primary-action" type="button" onClick={() => openPanel('simulate')}>
-                      Run simulation
-                    </button>
+                    <>
+                      <button className="secondary-action" type="button" onClick={handleSaveTeam}>
+                        {teamSaved ? 'Team saved' : 'Save team'}
+                      </button>
+                      <button className="secondary-action" type="button">
+                        Load team
+                      </button>
+                      <button className="primary-action" type="button" onClick={() => openPanel('simulate')}>
+                        Run simulation
+                      </button>
+                    </>
                   ) : null}
                 </div>
               </header>
@@ -358,6 +366,7 @@ function renderMainView(
         onSlotSelect={(slotIndex) => openPanel('editor', slotIndex)}
         onClearTeam={() => onTeamChange(clearSubmittedTeam(team))}
         onSlotClear={(slotIndex) => onTeamChange(clearSubmittedTeamSlot(team, slotIndex))}
+        onImportTeam={onTeamChange}
       />
     )
   }

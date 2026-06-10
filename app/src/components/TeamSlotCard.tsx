@@ -1,4 +1,4 @@
-import type { PokemonBuild } from '../types'
+import type { PokemonBuild, PokemonType } from '../types'
 
 export type TeamSlotPokemon = PokemonBuild
 
@@ -8,6 +8,28 @@ type TeamSlotCardProps = {
   onSelect?: (slotIndex: number) => void
   onClear?: (slotIndex: number) => void
 }
+
+// Display-only typing lookup. Types are catalog/display data (per BL-008),
+// kept out of the user build model. Unknown species render no type pills.
+const speciesTypes: Record<string, PokemonType[]> = {
+  tyranitar: ['Rock', 'Dark'],
+  excadrill: ['Ground', 'Steel'],
+  talonflame: ['Fire', 'Flying'],
+  amoonguss: ['Grass', 'Poison'],
+  garchomp: ['Dragon', 'Ground'],
+  'rotom-wash': ['Electric', 'Water'],
+  charizard: ['Fire', 'Flying'],
+  heatran: ['Fire', 'Steel'],
+  gardevoir: ['Psychic', 'Fairy'],
+  dragonite: ['Dragon', 'Flying'],
+  greninja: ['Water', 'Dark'],
+  ferrothorn: ['Grass', 'Steel'],
+  metagross: ['Steel', 'Psychic'],
+  incineroar: ['Fire', 'Dark'],
+}
+
+const getSpeciesTypes = (species: string): PokemonType[] =>
+  speciesTypes[species.toLowerCase()] ?? []
 
 const typeClassName = (typeName: string) =>
   `bl-type-pill bl-type-${typeName.toLowerCase().replace(/\s+/g, '-')}`
@@ -42,6 +64,7 @@ export function TeamSlotCard({ slotNumber, pokemon, onSelect, onClear }: TeamSlo
     ? `Edit slot ${slotNumber}, ${pokemon?.species}`
     : `Add Pokemon to slot ${slotNumber}`
   const visualMetadata = pokemon ? getVisualMetadata(pokemon) : null
+  const types = pokemon ? getSpeciesTypes(pokemon.species) : []
   const evTotal = pokemon ? getEvTotal(pokemon) : 0
   const evPercent = Math.min(100, Math.round((evTotal / 510) * 100))
 
@@ -78,8 +101,12 @@ export function TeamSlotCard({ slotNumber, pokemon, onSelect, onClear }: TeamSlo
             {pokemon.nickname ? <span className="bl-slot-nickname">{pokemon.nickname}</span> : null}
           </span>
 
-          <span className="bl-slot-types" aria-label={`${pokemon.species} battle tags`}>
-            <span className={typeClassName(pokemon.teraType)}>Tera {pokemon.teraType}</span>
+          <span className="bl-slot-types" aria-label={`${pokemon.species} typing`}>
+            {types.map((typeName) => (
+              <span className={typeClassName(typeName)} key={typeName}>
+                {typeName}
+              </span>
+            ))}
             <span className="bl-type-pill">Lv. {pokemon.level}</span>
             {pokemon.gender ? <span className="bl-type-pill">{pokemon.gender}</span> : null}
           </span>
@@ -107,6 +134,10 @@ export function TeamSlotCard({ slotNumber, pokemon, onSelect, onClear }: TeamSlo
               <strong>Nature</strong>
               <em>{pokemon.nature}</em>
             </span>
+            <span className="bl-slot-meta-row">
+              <strong>Tera</strong>
+              <em>{pokemon.teraType}</em>
+            </span>
           </span>
 
           <span className="bl-move-list" aria-label={`${pokemon.species} moves`}>
@@ -114,8 +145,6 @@ export function TeamSlotCard({ slotNumber, pokemon, onSelect, onClear }: TeamSlo
               <span key={move}>{move}</span>
             ))}
           </span>
-
-          <span className="bl-slot-role">{pokemon.notes ?? 'Ready for matchup testing'}</span>
         </>
       ) : (
         <>

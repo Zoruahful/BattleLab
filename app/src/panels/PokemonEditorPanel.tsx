@@ -76,23 +76,27 @@ const createPokemonBuildFromOption = (
   option: CatalogPickerOption,
   slot: PokemonBuild['slot'],
   current?: PokemonBuild | null,
-): PokemonBuild => ({
-  id: current?.id ?? `draft-${option.catalogKey}-slot-${slot}`,
-  slot,
-  species: option.displayName,
-  iconKey: option.asset?.iconKey,
-  spriteKey: option.asset?.spriteKey,
-  level: current?.level ?? 50,
-  gender: current?.gender,
-  teraType: option.primaryType ?? current?.teraType ?? 'Normal',
-  item: current?.item ?? getOptionLabel(fakeItemCatalogOptions, 'Sitrus Berry'),
-  ability: current?.ability ?? getOptionLabel(fakeAbilityCatalogOptions, 'Levitate'),
-  nature: current?.nature ?? getOptionLabel(fakeNatureCatalogOptions, 'Jolly'),
-  moves: current?.moves ?? (['Protect', 'Tera Blast', 'Helping Hand', 'Substitute'] as PokemonBuild['moves']),
-  evs: current?.evs ?? { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },
-  ivs: current?.ivs ?? { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
-  notes: current?.notes ?? option.description,
-})
+): PokemonBuild => {
+  const speciesChanged = current ? current.species !== option.displayName : true
+
+  return {
+    id: speciesChanged ? `draft-${option.catalogKey}-slot-${slot}` : current?.id ?? `draft-${option.catalogKey}-slot-${slot}`,
+    slot,
+    species: option.displayName,
+    iconKey: option.asset?.iconKey,
+    spriteKey: option.asset?.spriteKey,
+    level: current?.level ?? 50,
+    gender: current?.gender,
+    teraType: option.primaryType ?? current?.teraType ?? 'Normal',
+    item: current?.item ?? getOptionLabel(fakeItemCatalogOptions, 'Sitrus Berry'),
+    ability: current?.ability ?? getOptionLabel(fakeAbilityCatalogOptions, 'Levitate'),
+    nature: current?.nature ?? getOptionLabel(fakeNatureCatalogOptions, 'Jolly'),
+    moves: current?.moves ?? (['Protect', 'Tera Blast', 'Helping Hand', 'Substitute'] as PokemonBuild['moves']),
+    evs: current?.evs ?? { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },
+    ivs: current?.ivs ?? { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
+    notes: speciesChanged ? option.description : current?.notes ?? option.description,
+  }
+}
 
 const findPokemonOptionKey = (pokemon: PokemonBuild | null) =>
   pokemon

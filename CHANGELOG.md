@@ -6,6 +6,9 @@
 - Added Settings and Catalog Update panels using the shared shell-owned panel host.
 - Added local fake settings, catalog status, and editor catalog data for frontend workflows.
 - Improved Team Builder editor handoff and clear-slot affordances without adding persistence.
+- Added Pokemon Showdown-style team import/export, local round-trip import, and copy fallback behavior.
+- Refined Team Builder slot cards with display-only type badges and compact build metadata.
+- Expanded the Theater shell with a sample replay library, local search, and static preview states.
 - Updated sidebar active-state behavior so Settings and Catalog Update own the active highlight only while their panels are open.
 
 ## Frontend Milestone 1 - 2026-06-10
