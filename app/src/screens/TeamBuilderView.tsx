@@ -7,6 +7,8 @@ export type TeamBuilderViewProps = {
   team?: SubmittedTeam
   report?: SimulationReport
   onSlotSelect?: (slotIndex: number) => void
+  onClearTeam?: () => void
+  onSlotClear?: (slotIndex: number) => void
 }
 
 const formatLabels: Record<BattleFormat, string> = {
@@ -31,6 +33,8 @@ export function TeamBuilderView({
   team = submittedTeam,
   report = detailedSimulationReport,
   onSlotSelect,
+  onClearTeam,
+  onSlotClear,
 }: TeamBuilderViewProps) {
   const stableSlots = Array.from(
     { length: 6 },
@@ -58,7 +62,12 @@ export function TeamBuilderView({
           <strong>Gen 9</strong>
         </span>
         <span className="bl-team-meta-spacer" aria-hidden="true" />
-        <button className="secondary-action bl-clear-team-button" type="button">
+        <button
+          className="secondary-action bl-clear-team-button"
+          type="button"
+          disabled={filledCount === 0}
+          onClick={onClearTeam}
+        >
           Clear team
         </button>
       </div>
@@ -70,6 +79,7 @@ export function TeamBuilderView({
             slotNumber={index + 1}
             pokemon={pokemon}
             onSelect={onSlotSelect}
+            onClear={onSlotClear}
           />
         ))}
       </div>
@@ -89,9 +99,9 @@ export function TeamBuilderView({
           ))}
         </div>
 
-        <button className="secondary-action" type="button">
+        <span className="bl-winrate-preview" aria-label="Win rate preview">
           {report.summary.winRate.toFixed(1)}% WR preview
-        </button>
+        </span>
       </section>
     </section>
   )

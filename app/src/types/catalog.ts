@@ -47,10 +47,31 @@ export type CatalogMoveTarget =
   | "side"
   | "unknown";
 
+export type CatalogPickerKind =
+  | "pokemon"
+  | "move"
+  | "ability"
+  | "item"
+  | "type"
+  | "nature";
+
+export type CatalogPickerAvailability =
+  | "selectable"
+  | "disabled"
+  | "warning"
+  | "hidden";
+
 export interface CatalogNamedReference {
   catalogKey: CatalogKey;
   showdownId?: ShowdownId;
   displayName: string;
+}
+
+export interface CatalogAssetReference {
+  iconKey?: CatalogKey;
+  spriteKey?: CatalogKey;
+  artworkKey?: CatalogKey;
+  fallbackText?: string;
 }
 
 export interface CatalogSourceMetadata {
@@ -178,6 +199,59 @@ export interface CatalogBuildValueValidation {
   message?: string;
 }
 
+export interface CatalogSearchToken {
+  value: string;
+  weight: number;
+  source: "displayName" | "alias" | "type" | "description" | "showdownId";
+}
+
+export interface CatalogSearchIndexEntry {
+  catalogKey: CatalogKey;
+  kind: CatalogPickerKind;
+  displayName: string;
+  aliases: string[];
+  tokens: CatalogSearchToken[];
+  asset?: CatalogAssetReference;
+}
+
+export interface CatalogPickerOption {
+  catalogKey: CatalogKey;
+  kind: CatalogPickerKind;
+  displayName: string;
+  showdownId?: ShowdownId;
+  aliases: string[];
+  description?: string;
+  tags: string[];
+  asset?: CatalogAssetReference;
+  primaryType?: PokemonType;
+  secondaryType?: PokemonType;
+  availability: CatalogPickerAvailability;
+  validationStatus?: CatalogValidationStatus;
+  disabledReason?: string;
+}
+
+export interface CatalogPickerGroup {
+  label: string;
+  options: CatalogPickerOption[];
+}
+
+export interface CatalogPickerQuery {
+  kind: CatalogPickerKind;
+  searchText: string;
+  format?: BattleFormat;
+  selectedPokemonKey?: CatalogKey;
+  includeUnavailable: boolean;
+  limit: number;
+}
+
+export interface CatalogPickerResult {
+  query: CatalogPickerQuery;
+  options: CatalogPickerOption[];
+  groups?: CatalogPickerGroup[];
+  totalCount: number;
+  truncated: boolean;
+}
+
 export interface CatalogManifestRecordCounts {
   pokemon: number;
   moves: number;
@@ -186,6 +260,7 @@ export interface CatalogManifestRecordCounts {
   types: number;
   natures: number;
   assets: number;
+  searchIndexEntries?: number;
 }
 
 export interface CatalogManifest {
@@ -211,4 +286,5 @@ export interface BattleLabCatalog {
   types: CatalogType[];
   natures: CatalogNature[];
   assets: CatalogAssetMetadata[];
+  searchIndex?: CatalogSearchIndexEntry[];
 }

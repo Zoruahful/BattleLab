@@ -1,27 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  localBattleLabSettings,
   localSimulationSettings,
   opponentPools,
   performanceProfiles,
   reportHistoryEntries,
   simulationReportsById,
-  submittedTeam,
+  submittedTeam as initialSubmittedTeam,
 } from './data'
-import PokemonEditorPanel from './panels/PokemonEditorPanel'
+import CatalogUpdatePanel from './panels/CatalogUpdatePanel'
+import PokemonEditorPanel, { type PokemonEditorDraft } from './panels/PokemonEditorPanel'
+import SettingsPanel from './panels/SettingsPanel'
 import SimulationSettingsPanel from './panels/SimulationSettingsPanel'
 import ReportDetailOverviewView from './screens/ReportDetailOverviewView'
 import ReportsListView from './screens/ReportsListView'
 import TeamBuilderView from './screens/TeamBuilderView'
-import type { ReportHistoryEntry, SimulationSettings } from './types'
+import TheaterView from './screens/TheaterView'
+import type { BattleLabSettings, ReportHistoryEntry, SimulationSettings, SubmittedTeam } from './types'
 import './App.css'
 
-type MainViewId = 'team' | 'reports'
+type MainViewId = 'team' | 'reports' | 'theater'
 type ActivePanelId = 'editor' | 'simulate' | 'sync' | 'settings' | 'filter' | null
+
+type NavIconName = 'team' | 'reports' | 'theater' | 'catalog' | 'settings'
 
 type NavItem = {
   id: string
   label: string
-  detail: string
+  icon: NavIconName
   kind: 'view' | 'panel'
   target: MainViewId | NonNullable<ActivePanelId>
 }
@@ -33,9 +39,11 @@ type ShellPanelState = {
 }
 
 const navItems: NavItem[] = [
-  { id: 'team', label: 'Team Builder', detail: 'Six-slot roster', kind: 'view', target: 'team' },
-  { id: 'reports', label: 'Reports', detail: 'History and detail', kind: 'view', target: 'reports' },
-  { id: 'sync', label: 'Data Sync', detail: 'Offline catalog', kind: 'panel', target: 'sync' },
+  { id: 'team', label: 'Team Builder', icon: 'team', kind: 'view', target: 'team' },
+  { id: 'reports', label: 'Reports', icon: 'reports', kind: 'view', target: 'reports' },
+  { id: 'theater', label: 'Theater', icon: 'theater', kind: 'view', target: 'theater' },
+  { id: 'sync', label: 'Catalog Update', icon: 'catalog', kind: 'panel', target: 'sync' },
+  { id: 'settings', label: 'Settings', icon: 'settings', kind: 'panel', target: 'settings' },
 ]
 
 const viewCopy: Record<MainViewId, { title: string; subtitle: string }> = {
@@ -47,6 +55,10 @@ const viewCopy: Record<MainViewId, { title: string; subtitle: string }> = {
     title: 'Reports',
     subtitle: 'Unified simulation history and report overview placeholder.',
   },
+  theater: {
+    title: 'Theater',
+    subtitle: 'Local replay library and future export-code workspace.',
+  },
 }
 
 function App() {
@@ -57,6 +69,9 @@ function App() {
   })
   const [simulationSettings, setSimulationSettings] =
     useState<SimulationSettings>(localSimulationSettings)
+  const [battleLabSettings, setBattleLabSettings] =
+    useState<BattleLabSettings>(localBattleLabSettings)
+  const [activeTeam, setActiveTeam] = useState<SubmittedTeam>(initialSubmittedTeam)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
 
   const { activeView, activePanel, editingSlot } = shellState
@@ -140,10 +155,14 @@ function App() {
               </header>
 
               <section className="main-body">
-                {renderMainView(activeView, openPanel, selectedReportId, (entry) =>
-                  setSelectedReportId(entry.reportId),
-                () =>
-                  setSelectedReportId(null),
+                {renderMainView(
+                  activeView,
+                  openPanel,
+                  selectedReportId,
+                  (entry) => setSelectedReportId(entry.reportId),
+                  () => setSelectedReportId(null),
+                  activeTeam,
+                  setActiveTeam,
                 )}
               </section>
             </main>
@@ -158,8 +177,12 @@ function App() {
             <ActivePanelHost
               activePanel={activePanel}
               editingSlot={editingSlot}
+              battleLabSettings={battleLabSettings}
+              team={activeTeam}
               simulationSettings={simulationSettings}
               onClose={closePanel}
+              onBattleLabSettingsChange={setBattleLabSettings}
+              onTeamChange={setActiveTeam}
               onSimulationSettingsChange={setSimulationSettings}
             />
           </div>
@@ -195,6 +218,10 @@ function Sidebar({
   activePanel: ActivePanelId
   onNavigate: (item: NavItem) => void
 }) {
+  const activePanelHasNavItem = navItems.some(
+    (item) => item.kind === 'panel' && item.target === activePanel,
+  )
+
   return (
     <aside className="sidebar" aria-label="BattleLab navigation">
       <div className="brand-block">
@@ -210,8 +237,9 @@ function Sidebar({
       <nav className="nav-stack">
         <p className="nav-section">The Lab</p>
         {navItems.map((item) => {
-          const isActive =
-            item.kind === 'view' ? activeView === item.target : activePanel === item.target
+          const isActive = activePanelHasNavItem
+            ? item.kind === 'panel' && item.target === activePanel
+            : item.kind === 'view' && item.target === activeView
 
           return (
             <button
@@ -220,11 +248,8 @@ function Sidebar({
               onClick={() => onNavigate(item)}
               type="button"
             >
-              <span className="nav-dot" aria-hidden="true" />
-              <span>
-                <span className="nav-label">{item.label}</span>
-                <span className="nav-detail">{item.detail}</span>
-              </span>
+              <NavIcon name={item.icon} />
+              <span className="nav-label">{item.label}</span>
             </button>
           )
         })}
@@ -241,26 +266,80 @@ function Sidebar({
       </div>
 
       <div className="sidebar-footer">
-        <button className="settings-link" type="button" onClick={() => onNavigate(navPanel('settings'))}>
-          Settings
-        </button>
-        <div className="sidebar-status">
-          <span>Local status</span>
-          <strong>Ready</strong>
+        <div className="local-status" role="group" aria-label="Local system status">
+          <div className="ls-row">
+            <span className="ls-dot ok" aria-hidden="true" />
+            <span className="ls-label">System Check</span>
+            <span className="ls-value">OK</span>
+          </div>
+          <div className="ls-row">
+            <span className="ls-dot ok" aria-hidden="true" />
+            <span className="ls-label">Local Cache</span>
+            <span className="ls-value">Ready</span>
+          </div>
+          <div className="ls-row">
+            <span className="ls-dot ok" aria-hidden="true" />
+            <span className="ls-label">Performance</span>
+            <span className="ls-value">Balanced</span>
+          </div>
         </div>
       </div>
     </aside>
   )
 }
 
-function navPanel(panel: NonNullable<ActivePanelId>): NavItem {
-  return {
-    id: panel,
-    label: panel,
-    detail: 'Panel',
-    kind: 'panel',
-    target: panel,
-  }
+function NavIcon({ name }: { name: NavIconName }) {
+  return (
+    <span className="nav-ico" aria-hidden="true">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {name === 'team' ? (
+          <>
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+          </>
+        ) : null}
+        {name === 'reports' ? (
+          <>
+            <path d="M4 4v16h16" />
+            <path d="M8 14l3-3 3 2 4-5" />
+          </>
+        ) : null}
+        {name === 'theater' ? (
+          <>
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+          </>
+        ) : null}
+        {name === 'catalog' ? (
+          <>
+            <path d="M20 11a8 8 0 1 0-2.3 6" />
+            <path d="M20 4v5h-5" />
+          </>
+        ) : null}
+        {name === 'settings' ? (
+          <>
+            <path d="M4 6h16" />
+            <path d="M4 12h16" />
+            <path d="M4 18h16" />
+            <circle cx="9" cy="6" r="2" />
+            <circle cx="15" cy="12" r="2" />
+            <circle cx="9" cy="18" r="2" />
+          </>
+        ) : null}
+      </svg>
+    </span>
+  )
 }
 
 function renderMainView(
@@ -269,13 +348,22 @@ function renderMainView(
   selectedReportId: string | null,
   onSelectReport: (entry: ReportHistoryEntry) => void,
   onBackToReports: () => void,
+  team: SubmittedTeam,
+  onTeamChange: (team: SubmittedTeam) => void,
 ) {
   if (activeView === 'team') {
     return (
       <TeamBuilderView
+        team={team}
         onSlotSelect={(slotIndex) => openPanel('editor', slotIndex)}
+        onClearTeam={() => onTeamChange(clearSubmittedTeam(team))}
+        onSlotClear={(slotIndex) => onTeamChange(clearSubmittedTeamSlot(team, slotIndex))}
       />
     )
+  }
+
+  if (activeView === 'theater') {
+    return <TheaterView />
   }
 
   const selectedReport = selectedReportId ? simulationReportsById[selectedReportId] : null
@@ -297,19 +385,32 @@ function renderMainView(
 function ActivePanelHost({
   activePanel,
   editingSlot,
+  battleLabSettings,
+  team,
   simulationSettings,
   onClose,
+  onBattleLabSettingsChange,
+  onTeamChange,
   onSimulationSettingsChange,
 }: {
   activePanel: ActivePanelId
   editingSlot: number | null
+  battleLabSettings: BattleLabSettings
+  team: SubmittedTeam
   simulationSettings: SimulationSettings
   onClose: () => void
+  onBattleLabSettingsChange: (settings: BattleLabSettings) => void
+  onTeamChange: (team: SubmittedTeam) => void
   onSimulationSettingsChange: (settings: SimulationSettings) => void
 }) {
   if (activePanel === 'editor') {
     const slotNumber = (editingSlot ?? 0) + 1
-    const pokemon = submittedTeam.slots.find((slot) => slot.slot === slotNumber)?.pokemon ?? null
+    const pokemon = team.slots.find((slot) => slot.slot === slotNumber)?.pokemon ?? null
+
+    const handleSavePokemon = (draft: PokemonEditorDraft) => {
+      onTeamChange(upsertSubmittedTeamPokemon(team, slotNumber, draft.pokemon))
+      onClose()
+    }
 
     return (
       <PokemonEditorPanel
@@ -318,7 +419,22 @@ function ActivePanelHost({
         slotNumber={slotNumber}
         pokemon={pokemon}
         onClose={onClose}
-        onSave={onClose}
+        onSave={handleSavePokemon}
+      />
+    )
+  }
+
+  if (activePanel === 'settings') {
+    return (
+      <SettingsPanel
+        open
+        settings={battleLabSettings}
+        profiles={performanceProfiles}
+        onClose={onClose}
+        onSave={(settings) => {
+          onBattleLabSettingsChange(settings)
+          onClose()
+        }}
       />
     )
   }
@@ -338,6 +454,10 @@ function ActivePanelHost({
         }}
       />
     )
+  }
+
+  if (activePanel === 'sync') {
+    return <CatalogUpdatePanel open onClose={onClose} />
   }
 
   const panel = getPanelContent(activePanel)
@@ -374,27 +494,49 @@ function ActivePanelHost({
   )
 }
 
+function clearSubmittedTeam(team: SubmittedTeam): SubmittedTeam {
+  return {
+    ...team,
+    slots: team.slots.map((slot) => ({ ...slot, pokemon: null })) as SubmittedTeam['slots'],
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+function clearSubmittedTeamSlot(team: SubmittedTeam, slotIndex: number): SubmittedTeam {
+  const slotNumber = slotIndex + 1
+
+  return {
+    ...team,
+    slots: team.slots.map((slot) =>
+      slot.slot === slotNumber ? { ...slot, pokemon: null } : slot,
+    ) as SubmittedTeam['slots'],
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+function upsertSubmittedTeamPokemon(
+  team: SubmittedTeam,
+  slotNumber: number,
+  pokemon: PokemonEditorDraft['pokemon'],
+): SubmittedTeam {
+  return {
+    ...team,
+    slots: team.slots.map((slot) =>
+      slot.slot === slotNumber
+        ? {
+            ...slot,
+            pokemon: {
+              ...pokemon,
+              slot: slot.slot,
+            },
+          }
+        : slot,
+    ) as SubmittedTeam['slots'],
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 function getPanelContent(activePanel: ActivePanelId) {
-  if (activePanel === 'sync') {
-    return {
-      eyebrow: 'Data Sync',
-      title: 'Catalog sync',
-      description: 'Offline-first catalog import and update controls will use this panel host later.',
-      placeholderTitle: 'No production sync',
-      placeholderDetail: 'Catalog source selection, caching, and API calls are intentionally not implemented.',
-    }
-  }
-
-  if (activePanel === 'settings') {
-    return {
-      eyebrow: 'Settings',
-      title: 'Local preferences',
-      description: 'Performance profile and desktop preferences can be mounted here after contracts settle.',
-      placeholderTitle: 'Shell-owned settings panel',
-      placeholderDetail: 'This checkpoint only prepares the right-side panel behavior.',
-    }
-  }
-
   if (activePanel === 'filter') {
     return {
       eyebrow: 'Reports',

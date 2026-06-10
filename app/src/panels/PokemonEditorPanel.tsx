@@ -1,5 +1,11 @@
-import { useMemo, useState } from 'react'
-import { submittedTeam } from '../data'
+import { useMemo, useState, type FormEvent } from 'react'
+import {
+  fakeAbilityCatalogOptions,
+  fakeItemCatalogOptions,
+  fakeNatureCatalogOptions,
+  fakePokemonCatalogOptions,
+} from '../data'
+import type { CatalogPickerOption } from '../types/catalog'
 import type { PokemonBuild, PokemonType, StatSpread } from '../types'
 import '../styles/pokemon-editor-panel.css'
 
@@ -60,10 +66,40 @@ const getInitials = (species: string) =>
     .slice(0, 2)
     .toUpperCase()
 
-const getSelectablePokemon = () =>
-  submittedTeam.slots
-    .map((slot) => slot.pokemon)
-    .filter((candidate): candidate is PokemonBuild => Boolean(candidate))
+const toSlotNumber = (slot: number): PokemonBuild['slot'] =>
+  Math.min(Math.max(slot, 1), 6) as PokemonBuild['slot']
+
+const getOptionLabel = (options: CatalogPickerOption[], fallback: string) =>
+  options[0]?.displayName ?? fallback
+
+const createPokemonBuildFromOption = (
+  option: CatalogPickerOption,
+  slot: PokemonBuild['slot'],
+  current?: PokemonBuild | null,
+): PokemonBuild => ({
+  id: current?.id ?? `draft-${option.catalogKey}-slot-${slot}`,
+  slot,
+  species: option.displayName,
+  iconKey: option.asset?.iconKey,
+  spriteKey: option.asset?.spriteKey,
+  level: current?.level ?? 50,
+  gender: current?.gender,
+  teraType: option.primaryType ?? current?.teraType ?? 'Normal',
+  item: current?.item ?? getOptionLabel(fakeItemCatalogOptions, 'Sitrus Berry'),
+  ability: current?.ability ?? getOptionLabel(fakeAbilityCatalogOptions, 'Levitate'),
+  nature: current?.nature ?? getOptionLabel(fakeNatureCatalogOptions, 'Jolly'),
+  moves: current?.moves ?? (['Protect', 'Tera Blast', 'Helping Hand', 'Substitute'] as PokemonBuild['moves']),
+  evs: current?.evs ?? { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },
+  ivs: current?.ivs ?? { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
+  notes: current?.notes ?? option.description,
+})
+
+const findPokemonOptionKey = (pokemon: PokemonBuild | null) =>
+  pokemon
+    ? fakePokemonCatalogOptions.find(
+        (option) => option.displayName === pokemon.species || option.showdownId === pokemon.species.toLowerCase(),
+      )?.catalogKey ?? ''
+    : ''
 
 function getVisualTitle(pokemon: PokemonBuild) {
   const visualKey = pokemon.iconKey ?? pokemon.spriteKey
@@ -82,14 +118,23 @@ export function PokemonEditorPanel({
   onClose,
   onSave,
 }: PokemonEditorPanelProps) {
-  const selectablePokemon = useMemo(() => getSelectablePokemon(), [])
-  const initialPokemon = pokemon ?? selectablePokemon[0] ?? null
+  const selectedSlot = toSlotNumber(
+    slotNumber ?? (slotIndex !== null && slotIndex !== undefined ? slotIndex + 1 : undefined) ?? pokemon?.slot ?? 1,
+  )
+  const initialPokemon = useMemo(
+    () =>
+      pokemon ??
+      (fakePokemonCatalogOptions[0]
+        ? createPokemonBuildFromOption(fakePokemonCatalogOptions[0], selectedSlot)
+        : null),
+    [pokemon, selectedSlot],
+  )
   const [draftPokemon, setDraftPokemon] = useState<PokemonBuild | null>(initialPokemon)
   const [mode, setMode] = useState<EditorMode>('standard-evs')
 
   const panelOpen = open ?? isOpen ?? true
-  const selectedSlot = slotNumber ?? (slotIndex !== null && slotIndex !== undefined ? slotIndex + 1 : undefined) ?? draftPokemon?.slot
   const visualKey = draftPokemon?.iconKey ?? draftPokemon?.spriteKey
+  const selectedPokemonOptionKey = findPokemonOptionKey(draftPokemon)
 
   const updateDraft = (updates: Partial<PokemonBuild>) => {
     setDraftPokemon((current) => (current ? { ...current, ...updates } : current))
@@ -120,15 +165,15 @@ export function PokemonEditorPanel({
     )
   }
 
-  const handleSelectPokemon = (pokemonId: string) => {
-    const selectedPokemon = selectablePokemon.find((candidate) => candidate.id === pokemonId)
+  const handleSelectPokemon = (catalogKey: string) => {
+    const selectedPokemon = fakePokemonCatalogOptions.find((candidate) => candidate.catalogKey === catalogKey)
 
     if (selectedPokemon) {
-      setDraftPokemon(selectedPokemon)
+      setDraftPokemon((current) => createPokemonBuildFromOption(selectedPokemon, selectedSlot, current))
     }
   }
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (draftPokemon) {
@@ -180,12 +225,12 @@ export function PokemonEditorPanel({
                 <label className="bl-editor-field">
                   <span>Pokemon</span>
                   <select
-                    value={draftPokemon.id}
+                    value={selectedPokemonOptionKey}
                     onChange={(event) => handleSelectPokemon(event.target.value)}
                   >
-                    {selectablePokemon.map((candidate) => (
-                      <option value={candidate.id} key={candidate.id}>
-                        {candidate.species}
+                    {fakePokemonCatalogOptions.map((candidate) => (
+                      <option value={candidate.catalogKey} key={candidate.catalogKey}>
+                        {candidate.displayName}
                       </option>
                     ))}
                   </select>
@@ -194,24 +239,42 @@ export function PokemonEditorPanel({
                 <div className="bl-editor-grid-2">
                   <label className="bl-editor-field">
                     <span>Item</span>
-                    <input
+                    <select
                       value={draftPokemon.item}
                       onChange={(event) => updateDraft({ item: event.target.value })}
-                    />
+                    >
+                      {fakeItemCatalogOptions.map((option) => (
+                        <option value={option.displayName} key={option.catalogKey}>
+                          {option.displayName}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="bl-editor-field">
                     <span>Ability</span>
-                    <input
+                    <select
                       value={draftPokemon.ability}
                       onChange={(event) => updateDraft({ ability: event.target.value })}
-                    />
+                    >
+                      {fakeAbilityCatalogOptions.map((option) => (
+                        <option value={option.displayName} key={option.catalogKey}>
+                          {option.displayName}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="bl-editor-field">
                     <span>Nature</span>
-                    <input
+                    <select
                       value={draftPokemon.nature}
                       onChange={(event) => updateDraft({ nature: event.target.value })}
-                    />
+                    >
+                      {fakeNatureCatalogOptions.map((option) => (
+                        <option value={option.displayName} key={option.catalogKey}>
+                          {option.displayName}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="bl-editor-field">
                     <span>Tera type</span>

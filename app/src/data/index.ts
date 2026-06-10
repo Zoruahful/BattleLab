@@ -10,3 +10,15 @@ export {
   simulationReportsById,
   submittedTeam,
 } from "./mockBattleLab";
+
+export {
+  fakeAbilityCatalogOptions,
+  fakeItemCatalogOptions,
+  fakeNatureCatalogOptions,
+  fakePokemonCatalogOptions,
+} from "./mockEditorCatalog";
+
+export {
+  fakeCatalogUpdateSnapshot,
+  localBattleLabSettings,
+} from "./mockSettingsCatalog";

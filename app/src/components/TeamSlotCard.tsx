@@ -6,6 +6,7 @@ type TeamSlotCardProps = {
   slotNumber: number
   pokemon?: TeamSlotPokemon | null
   onSelect?: (slotIndex: number) => void
+  onClear?: (slotIndex: number) => void
 }
 
 const typeClassName = (typeName: string) =>
@@ -34,7 +35,7 @@ const getVisualMetadata = (pokemon: PokemonBuild) => {
 const getEvTotal = (pokemon: PokemonBuild) =>
   Object.values(pokemon.evs).reduce((total, value) => total + value, 0)
 
-export function TeamSlotCard({ slotNumber, pokemon, onSelect }: TeamSlotCardProps) {
+export function TeamSlotCard({ slotNumber, pokemon, onSelect, onClear }: TeamSlotCardProps) {
   const slotIndex = slotNumber - 1
   const isFilled = Boolean(pokemon)
   const accessibleName = isFilled
@@ -45,20 +46,20 @@ export function TeamSlotCard({ slotNumber, pokemon, onSelect }: TeamSlotCardProp
   const evPercent = Math.min(100, Math.round((evTotal / 510) * 100))
 
   return (
-    <button
+    <article
       className={`bl-team-slot ${isFilled ? 'is-filled' : 'is-empty'}`}
-      type="button"
+    >
+      <button
+        className="bl-slot-main-action"
+        type="button"
       aria-label={accessibleName}
       onClick={() => onSelect?.(slotIndex)}
-    >
+      >
       <span className="bl-slot-kicker">Slot {slotNumber}</span>
 
       {pokemon ? (
         <>
           <span className="bl-slot-mode-tag">STD</span>
-          <span className="bl-slot-clear-hint" aria-hidden="true">
-            Clear
-          </span>
 
           <span className="bl-slot-art-wrap">
             <span
@@ -125,6 +126,17 @@ export function TeamSlotCard({ slotNumber, pokemon, onSelect }: TeamSlotCardProp
           <span className="bl-empty-detail">Click to choose a build for this team slot.</span>
         </>
       )}
-    </button>
+      </button>
+      {pokemon ? (
+        <button
+          className="bl-slot-clear-button"
+          type="button"
+          aria-label={`Clear slot ${slotNumber}, ${pokemon.species}`}
+          onClick={() => onClear?.(slotIndex)}
+        >
+          Clear
+        </button>
+      ) : null}
+    </article>
   )
 }

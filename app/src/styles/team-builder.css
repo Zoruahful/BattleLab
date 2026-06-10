@@ -54,6 +54,11 @@
   font-size: 12px;
 }
 
+.bl-clear-team-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .bl-team-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(124px, 1fr));
@@ -74,11 +79,24 @@
   color: var(--text);
   padding: 12px 10px 10px;
   text-align: center;
-  cursor: pointer;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease;
+}
+
+.bl-slot-main-action {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: inherit;
+  cursor: pointer;
 }
 
 .bl-team-slot:hover {
@@ -102,11 +120,10 @@
 }
 
 .bl-slot-mode-tag,
-.bl-slot-clear-hint {
+.bl-slot-clear-button {
   position: absolute;
   top: 10px;
   border-radius: 999px;
-  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -116,21 +133,33 @@
   right: 10px;
   background: var(--accent-wash);
   color: var(--accent);
+  font-size: 9px;
   padding: 3px 6px;
 }
 
-.bl-slot-clear-hint {
+.bl-slot-clear-button {
   right: 46px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-faint);
+  cursor: pointer;
+  font-size: 9px;
   opacity: 0;
   padding: 2px 6px;
-  transition: opacity 160ms ease;
+  transition:
+    color 160ms ease,
+    opacity 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.bl-team-slot:hover .bl-slot-clear-hint {
+.bl-team-slot:hover .bl-slot-clear-button,
+.bl-slot-clear-button:focus-visible {
   opacity: 1;
+}
+
+.bl-slot-clear-button:hover {
+  color: var(--text-strong);
+  box-shadow: var(--shadow-soft);
 }
 
 .bl-slot-art-wrap {
@@ -393,10 +422,13 @@
 }
 
 .bl-team-slot.is-empty {
-  align-items: center;
-  justify-content: center;
   border-style: dashed;
   background: rgba(255, 255, 255, 0.52);
+}
+
+.bl-team-slot.is-empty .bl-slot-main-action {
+  align-items: center;
+  justify-content: center;
 }
 
 .bl-team-slot.is-empty .bl-slot-kicker {
@@ -482,6 +514,16 @@
 
 .bl-coverage-chip.is-danger {
   background: #f4e1dc;
+}
+
+.bl-winrate-preview {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 750;
 }
 
 @media (max-width: 1180px) {

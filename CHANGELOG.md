@@ -1,5 +1,13 @@
 # Changelog
 
+## Phase 1.5 Frontend Shell Checkpoint - 2026-06-10
+
+- Added the Theater shell as a frontend-only replay workspace placeholder.
+- Added Settings and Catalog Update panels using the shared shell-owned panel host.
+- Added local fake settings, catalog status, and editor catalog data for frontend workflows.
+- Improved Team Builder editor handoff and clear-slot affordances without adding persistence.
+- Updated sidebar active-state behavior so Settings and Catalog Update own the active highlight only while their panels are open.
+
 ## Frontend Milestone 1 - 2026-06-10
 
 - Added the initial Vite, React, and TypeScript frontend app under `app/`.

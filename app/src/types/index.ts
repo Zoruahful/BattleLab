@@ -202,3 +202,4 @@ export interface SimulationReport {
 }
 
 export type * from "./catalog";
+export type * from "./settingsCatalog";
