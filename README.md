@@ -1,79 +1,90 @@
 # BattleLab
 
-> Local-first competitive Pokemon team builder and battle simulator.
+![BattleLab banner](assets/readme-banner.svg)
 
-![Status](https://img.shields.io/badge/status-planning-4A7C7E?style=for-the-badge)
-![React](https://img.shields.io/badge/react-planned-61DAFB?style=for-the-badge&logo=react&logoColor=111)
-![TypeScript](https://img.shields.io/badge/typescript-planned-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/vite-planned-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Windows](https://img.shields.io/badge/windows-target-0078D4?style=for-the-badge&logo=windows&logoColor=white)
+Local-first competitive Pokemon team builder and battle simulator built for fast testing, clean reports, and polished desktop workflows.
+
+![Focus](https://img.shields.io/badge/Focus-Competitive%20Team%20Building-18181B?style=flat-square&labelColor=27272A&color=A3E635)
+![Status](https://img.shields.io/badge/Status-Early%20Planning-18181B?style=flat-square&labelColor=27272A&color=A3E635)
+![Platform](https://img.shields.io/badge/Platform-Windows-18181B?style=flat-square&logo=windows&logoColor=A3E635&labelColor=27272A)
+![Local First](https://img.shields.io/badge/Mode-Local%20First-18181B?style=flat-square&labelColor=27272A&color=A3E635)
 
 ## About
 
-BattleLab is being designed as a standalone Windows app for building competitive Pokemon teams, running local battle simulations, and reviewing polished reports without needing a hosted account or VPS.
+BattleLab is a standalone desktop app concept for building competitive Pokemon teams, running local battle simulations, and reviewing readable matchup reports without a hosted account or VPS.
 
-The first version is focused on the Battle Simulator experience:
-
-- Build and edit a six-Pokemon team.
-- Run local simulations.
-- Review report history.
-- Open detailed ChampionLab-style reports.
-- Export clean paper reports in a future milestone.
+- Designed around responsive, interactive, and polished UI.
+- Focused first on the Battle Simulator and report experience.
+- Built to keep team testing local to the user's machine.
+- Planned around clear data contracts before backend simulation wiring.
+- Inspired by clean report UX, visual feedback, and practical competitive analysis.
 
 ## Current Focus
 
-The project is currently in the rough-draft stage.
+The first milestone is a frontend-only rough draft using mock data.
 
-The first milestone is a frontend-only mock app using fake data:
-
-- Main app shell
-- Team Builder
-- Pokemon editor side panel
-- Reports history
-- Report detail overview
-
-Simulation backend wiring comes after the UI and data contracts are stable.
+| Area | Goal |
+| --- | --- |
+| App Shell | Create the main desktop-style layout, sidebar, and status footer. |
+| Team Builder | Build six editable Pokemon slots with filled and empty states. |
+| Editor Panel | Add the right-side Pokemon editing panel with moves, ability, item, nature, and stats. |
+| Reports | Show saved simulation history with filters and report detail navigation. |
+| Overview Report | Recreate the Champion-style overview with win rate, archetype bars, weaknesses, and strategy tips. |
 
 ## Planned Features
 
-- Local team builder
-- Pokemon Showdown-style export support
+- Six-Pokemon team builder
+- Pokemon Showdown-style team import/export
 - Champion-format simulation reports
-- Report history stored locally
-- Animated report graphs and matchup breakdowns
+- Local report history
+- Animated matchup graphs
+- Threat, lead, core, and coverage views
 - Defensive coverage matrix
 - Local PDF report export
-- Performance profiles for different PCs
+- PC performance profiles
 - Future EV optimizer mode
 
 ## Tech Stack
 
-Planned stack:
+**Core App**  
+![React](https://img.shields.io/badge/React-18181B?style=flat-square&logo=react&logoColor=A3E635&labelColor=27272A)
+![TypeScript](https://img.shields.io/badge/TypeScript-18181B?style=flat-square&logo=typescript&logoColor=A3E635&labelColor=27272A)
+![Vite](https://img.shields.io/badge/Vite-18181B?style=flat-square&logo=vite&logoColor=A3E635&labelColor=27272A)
+![Electron](https://img.shields.io/badge/Electron-18181B?style=flat-square&logo=electron&logoColor=A3E635&labelColor=27272A)
 
-| Area | Tool |
-| --- | --- |
-| Frontend | React |
-| Language | TypeScript |
-| Build Tool | Vite |
-| Desktop App | Electron |
-| Local Data | SQLite |
-| Simulation Source | Pokemon Showdown |
-| Reports | Playwright / Chromium PDF |
+**Local Data & Runtime**  
+![SQLite](https://img.shields.io/badge/SQLite-18181B?style=flat-square&logo=sqlite&logoColor=A3E635&labelColor=27272A)
+![Node.js](https://img.shields.io/badge/Node.js-18181B?style=flat-square&logo=nodedotjs&logoColor=A3E635&labelColor=27272A)
+![Python](https://img.shields.io/badge/Python-18181B?style=flat-square&logo=python&logoColor=A3E635&labelColor=27272A)
+
+**Tools**  
+![Git](https://img.shields.io/badge/Git-18181B?style=flat-square&logo=git&logoColor=A3E635&labelColor=27272A)
+![GitHub](https://img.shields.io/badge/GitHub-18181B?style=flat-square&logo=github&logoColor=A3E635&labelColor=27272A)
+![Playwright](https://img.shields.io/badge/Playwright-18181B?style=flat-square&logo=playwright&logoColor=A3E635&labelColor=27272A)
 
 ## Roadmap
 
 | Phase | Goal | Status |
 | --- | --- | --- |
 | Phase 0 | Project structure and planning | In progress |
-| Phase 1 | Frontend rough draft | Pending |
-| Phase 2 | TypeScript data contracts | Pending |
-| Phase 3 | Local simulation proof | Pending |
-| Phase 4 | Desktop wrapper | Pending |
-| Phase 5 | Report export | Pending |
+| Phase 1 | Frontend rough draft | Planned |
+| Phase 2 | TypeScript data contracts | Planned |
+| Phase 3 | Local simulation proof | Planned |
+| Phase 4 | Desktop wrapper | Planned |
+| Phase 5 | Report export | Planned |
+
+## Project Direction
+
+BattleLab starts with the interface first, then moves into simulation wiring after the report shape and local app workflow are stable.
+
+The intended long-term flow:
+
+```text
+Build team -> choose settings -> run simulation -> review report -> export paper report
+```
 
 ## Disclaimer
 
 BattleLab is an unofficial fan-made tool. This project is not affiliated with, endorsed by, sponsored by, or approved by Nintendo, Game Freak, The Pokemon Company, or Pokemon Showdown.
 
 Pokemon names, move names, item names, and related intellectual property belong to their respective owners.
-

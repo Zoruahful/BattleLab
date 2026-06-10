@@ -1,0 +1,68 @@
+<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101114"/>
+      <stop offset="0.55" stop-color="#181A20"/>
+      <stop offset="1" stop-color="#0D1117"/>
+    </linearGradient>
+    <linearGradient id="lime" x1="223" y1="69" x2="1052" y2="348" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E7FF7A"/>
+      <stop offset="0.48" stop-color="#A3E635"/>
+      <stop offset="1" stop-color="#3DDC97"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="255" y1="343" x2="1030" y2="92" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2DD4BF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#2DD4BF" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#A3E635" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.64 0 0 0 0 0.90 0 0 0 0 0.21 0 0 0 0.9 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse">
+      <path d="M56 0H0V56" stroke="#A3E635" stroke-opacity="0.08" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="420" rx="28" fill="url(#bg)"/>
+  <rect width="1280" height="420" rx="28" fill="url(#grid)"/>
+  <path d="M0 315C190 253 329 263 500 302C684 343 805 349 983 290C1105 250 1196 243 1280 257V420H0V315Z" fill="#A3E635" fill-opacity="0.05"/>
+  <path d="M160 305L315 151H515L630 260H810L963 108H1120" stroke="url(#teal)" stroke-width="4"/>
+
+  <g opacity="0.92">
+    <ellipse cx="640" cy="258" rx="380" ry="54" stroke="#A3E635" stroke-opacity="0.25" stroke-width="2"/>
+    <ellipse cx="640" cy="258" rx="250" ry="35" stroke="#A3E635" stroke-opacity="0.16" stroke-width="2"/>
+    <line x1="260" y1="258" x2="1020" y2="258" stroke="#A3E635" stroke-opacity="0.16" stroke-width="2"/>
+    <circle cx="640" cy="258" r="26" stroke="#A3E635" stroke-opacity="0.28" stroke-width="2"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <path d="M225 94H327L360 127V229L327 262H225L192 229V127L225 94Z" fill="#151922" stroke="url(#lime)" stroke-width="4"/>
+    <path d="M247 139H296C315 139 327 150 327 168C327 179 322 187 313 191C326 195 334 205 334 219C334 238 321 249 300 249H247V139ZM292 183C301 183 306 178 306 170C306 162 301 157 292 157H270V183H292ZM298 231C307 231 312 226 312 217C312 208 307 203 298 203H270V231H298Z" fill="url(#lime)"/>
+    <path d="M386 139H410V228H463V249H386V139Z" fill="url(#lime)"/>
+  </g>
+
+  <text x="515" y="153" fill="#F8FAFC" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="78" font-weight="800" letter-spacing="1">
+    BattleLab
+  </text>
+  <text x="518" y="199" fill="#A3E635" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="4">
+    TEAM BUILDER // BATTLE SIMULATOR
+  </text>
+  <text x="520" y="242" fill="#CBD5E1" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="24" font-weight="500">
+    Build teams. Test matchups. Read the report.
+  </text>
+
+  <g transform="translate(520 284)">
+    <rect width="154" height="38" rx="8" fill="#A3E635" fill-opacity="0.12" stroke="#A3E635" stroke-opacity="0.45"/>
+    <text x="77" y="25" text-anchor="middle" fill="#E7FF7A" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="1">LOCAL FIRST</text>
+  </g>
+  <g transform="translate(690 284)">
+    <rect width="170" height="38" rx="8" fill="#2DD4BF" fill-opacity="0.10" stroke="#2DD4BF" stroke-opacity="0.38"/>
+    <text x="85" y="25" text-anchor="middle" fill="#99F6E4" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="1">WINDOWS APP</text>
+  </g>
+  <g transform="translate(878 284)">
+    <rect width="176" height="38" rx="8" fill="#A3E635" fill-opacity="0.12" stroke="#A3E635" stroke-opacity="0.45"/>
+    <text x="88" y="25" text-anchor="middle" fill="#E7FF7A" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="1">REPORT ENGINE</text>
+  </g>
+</svg>
