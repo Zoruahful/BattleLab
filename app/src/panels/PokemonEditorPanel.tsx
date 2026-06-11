@@ -18,6 +18,7 @@ import {
   editorMoves,
   editorMovesById,
   evSpreadToSp,
+  getStatTier,
   getBaseStats,
   getLearnsetMoves,
   getNatureMods,
@@ -25,6 +26,7 @@ import {
   spSpreadToEv,
   spToEv,
   type MoveCategory,
+  STAT_TIER_LABELS,
 } from '../data/pokemonEditorData'
 import { Combobox, type ComboOption } from '../components/Combobox'
 import { Tooltip, TooltipCard } from '../components/Tooltip'
@@ -526,14 +528,24 @@ export function PokemonEditorPanel({
                 <div className="bl-stat-readout" aria-label="Computed stats">
                   {statKeys.map((stat) => {
                     const value = computed[stat]
+                    const tier = getStatTier(stat, value)
                     return (
                       <div className="bl-statline" key={stat}>
                         <span className="bl-statline-label">{STAT_LABELS[stat]}</span>
                         <span className="bl-statline-bar">
-                          <span style={{ width: `${Math.min(100, (value / 220) * 100)}%` }} />
+                          <span
+                            className={`bl-statline-fill is-${tier}`}
+                            style={{ width: `${Math.min(100, (value / 220) * 100)}%` }}
+                          />
+                          <span
+                            className={`bl-statline-flourish is-${tier}`}
+                            key={`${stat}-${tier}`}
+                            aria-hidden="true"
+                          />
                         </span>
-                        <span className="bl-statline-value" key={value}>
+                        <span className={`bl-statline-value is-${tier}`}>
                           {value}
+                          <em>· {STAT_TIER_LABELS[tier]}</em>
                         </span>
                       </div>
                     )

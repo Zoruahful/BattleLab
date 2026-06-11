@@ -214,6 +214,16 @@ export const BATTLE_LEVEL = 50
 
 export const STAT_KEYS: Array<keyof StatSpread> = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
 
+export type StatTier = 'very-low' | 'low' | 'medium' | 'high' | 'extreme'
+
+export const STAT_TIER_LABELS: Record<StatTier, string> = {
+  'very-low': 'Very low',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  extreme: 'Extremely high',
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 // 1 SP == 8 EVs. Round on EV->SP so 252 EV maps to the 32 SP cap.
@@ -300,6 +310,22 @@ export function computeStats(
     result[key] = computeStatValue(base[key], evs[key], ivs[key], isHp, mult)
   })
   return result
+}
+
+export function getStatTier(statKey: keyof StatSpread, value: number): StatTier {
+  if (statKey === 'hp') {
+    if (value <= 134) return 'very-low'
+    if (value <= 164) return 'low'
+    if (value <= 194) return 'medium'
+    if (value <= 224) return 'high'
+    return 'extreme'
+  }
+
+  if (value <= 69) return 'very-low'
+  if (value <= 99) return 'low'
+  if (value <= 129) return 'medium'
+  if (value <= 159) return 'high'
+  return 'extreme'
 }
 
 export const STAT_LABELS: Record<keyof StatSpread, string> = {
