@@ -35,21 +35,42 @@ export interface StatSpread {
   spe: number;
 }
 
+export interface BuildCatalogReference {
+  catalogKey: string;
+  showdownId?: string;
+  displayName: string;
+}
+
+/** Fixed Showdown-style move slots. Empty strings represent unfilled slots. */
+export type PokemonMoveSlots = [string, string, string, string];
+
+export type PokemonMoveCatalogRefs = [
+  BuildCatalogReference | null,
+  BuildCatalogReference | null,
+  BuildCatalogReference | null,
+  BuildCatalogReference | null,
+];
+
 export interface PokemonBuild {
   id: string;
   slot: 1 | 2 | 3 | 4 | 5 | 6;
   species: string;
+  speciesRef?: BuildCatalogReference;
   nickname?: string;
   iconKey?: string;
   spriteKey?: string;
-  spriteUrl?: string;
   level: number;
   gender?: "M" | "F" | "N";
   teraType: PokemonType;
+  teraTypeRef?: BuildCatalogReference;
   item: string;
+  itemRef?: BuildCatalogReference;
   ability: string;
+  abilityRef?: BuildCatalogReference;
   nature: string;
-  moves: [string, string, string, string];
+  natureRef?: BuildCatalogReference;
+  moves: PokemonMoveSlots;
+  moveRefs?: PokemonMoveCatalogRefs;
   evs: StatSpread;
   ivs: StatSpread;
   notes?: string;
@@ -109,6 +130,21 @@ export interface SimulationSettings {
   openTeamSheets: boolean;
 }
 
+export interface SimulationReportSummary {
+  winRate: number;
+  tier: ReportTier;
+  wins: number;
+  losses: number;
+  totalBattles: number;
+  avgTurns: number;
+}
+
+export type ReportHistorySummary = Pick<
+  SimulationReportSummary,
+  "winRate" | "tier" | "totalBattles" | "avgTurns"
+>;
+
+/** Lightweight projection from SimulationReport.summary for list/history UI. */
 export interface ReportHistoryEntry {
   id: string;
   reportId: string;
@@ -118,10 +154,7 @@ export interface ReportHistoryEntry {
   opponentPoolName: string;
   status: SimulationStatus;
   generatedAt: string;
-  battleCount: number;
-  winRate: number;
-  tier: ReportTier;
-  avgTurns: number;
+  summary: ReportHistorySummary;
   formatLabel: string;
   profileName: string;
 }
@@ -148,6 +181,16 @@ export interface ReportCallout {
   detail: string;
 }
 
+export interface PokemonThreatResult {
+  id: string;
+  pokemon: string;
+  pokemonRef?: BuildCatalogReference;
+  lossRate: number;
+  games: number;
+  severity: "low" | "medium" | "high";
+  detail: string;
+}
+
 export interface LeadPairResult {
   id: string;
   pokemon: [string, string];
@@ -158,15 +201,29 @@ export interface LeadPairResult {
 
 export interface CoreResult {
   id: string;
-  pokemon: [string, string, string];
+  pokemon: [string, string, string, string];
+  pokemonRefs?: [
+    BuildCatalogReference | null,
+    BuildCatalogReference | null,
+    BuildCatalogReference | null,
+    BuildCatalogReference | null,
+  ];
   winRate: number;
   notes: string;
+}
+
+export interface CoverageTeamMemberResult {
+  pokemon: string;
+  pokemonRef?: BuildCatalogReference;
+  score: number;
+  notes?: string;
 }
 
 export interface CoverageResult {
   type: PokemonType;
   score: number;
   notes: string;
+  members: CoverageTeamMemberResult[];
 }
 
 export interface SimulationReport {
@@ -178,15 +235,9 @@ export interface SimulationReport {
   generatedAt: string;
   settings: SimulationSettings;
   performanceProfile: PerformanceProfile;
-  summary: {
-    winRate: number;
-    tier: ReportTier;
-    wins: number;
-    losses: number;
-    totalBattles: number;
-    avgTurns: number;
-  };
-  heroMetrics: ReportMetric[];
+  summary: SimulationReportSummary;
+  /** Deferred: current UI renders hero stats directly from summary. */
+  heroMetrics?: ReportMetric[];
   overview: {
     headline: string;
     paragraphs: string[];
@@ -195,7 +246,7 @@ export interface SimulationReport {
   archetypeWinRates: ArchetypeWinRate[];
   weaknesses: ReportCallout[];
   strategyTips: ReportCallout[];
-  threats: ReportCallout[];
+  threats: PokemonThreatResult[];
   leads: LeadPairResult[];
   cores: CoreResult[];
   coverage: CoverageResult[];

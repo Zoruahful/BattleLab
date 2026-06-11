@@ -143,15 +143,38 @@ export const submittedTeam: SubmittedTeam = {
         id: "build-tyranitar",
         slot: 1,
         species: "Tyranitar",
+        speciesRef: {
+          catalogKey: "pokemon-tyranitar",
+          showdownId: "tyranitar",
+          displayName: "Tyranitar",
+        },
         iconKey: "tyranitar",
         spriteKey: "tyranitar-default",
         level: 50,
         gender: "M",
         teraType: "Flying",
+        teraTypeRef: { catalogKey: "type-flying", showdownId: "flying", displayName: "Flying" },
         item: "Assault Vest",
+        itemRef: {
+          catalogKey: "item-assault-vest",
+          showdownId: "assaultvest",
+          displayName: "Assault Vest",
+        },
         ability: "Sand Stream",
+        abilityRef: {
+          catalogKey: "ability-sand-stream",
+          showdownId: "sandstream",
+          displayName: "Sand Stream",
+        },
         nature: "Adamant",
+        natureRef: { catalogKey: "nature-adamant", showdownId: "adamant", displayName: "Adamant" },
         moves: ["Rock Slide", "Knock Off", "Low Kick", "Tera Blast"],
+        moveRefs: [
+          { catalogKey: "move-rock-slide", showdownId: "rockslide", displayName: "Rock Slide" },
+          { catalogKey: "move-knock-off", showdownId: "knockoff", displayName: "Knock Off" },
+          { catalogKey: "move-low-kick", showdownId: "lowkick", displayName: "Low Kick" },
+          { catalogKey: "move-tera-blast", showdownId: "terablast", displayName: "Tera Blast" },
+        ],
         evs: { hp: 252, atk: 156, def: 4, spa: 0, spd: 76, spe: 20 },
         ivs: { hp: 31, atk: 31, def: 31, spa: 0, spd: 31, spe: 31 },
         notes: "Primary sand setter and special sponge.",
@@ -163,15 +186,38 @@ export const submittedTeam: SubmittedTeam = {
         id: "build-excadrill",
         slot: 2,
         species: "Excadrill",
+        speciesRef: {
+          catalogKey: "pokemon-excadrill",
+          showdownId: "excadrill",
+          displayName: "Excadrill",
+        },
         iconKey: "excadrill",
         spriteKey: "excadrill-default",
         level: 50,
         gender: "F",
         teraType: "Ground",
+        teraTypeRef: { catalogKey: "type-ground", showdownId: "ground", displayName: "Ground" },
         item: "Clear Amulet",
+        itemRef: {
+          catalogKey: "item-clear-amulet",
+          showdownId: "clearamulet",
+          displayName: "Clear Amulet",
+        },
         ability: "Sand Rush",
+        abilityRef: {
+          catalogKey: "ability-sand-rush",
+          showdownId: "sandrush",
+          displayName: "Sand Rush",
+        },
         nature: "Jolly",
+        natureRef: { catalogKey: "nature-jolly", showdownId: "jolly", displayName: "Jolly" },
         moves: ["High Horsepower", "Iron Head", "Protect", "Swords Dance"],
+        moveRefs: [
+          { catalogKey: "move-high-horsepower", showdownId: "highhorsepower", displayName: "High Horsepower" },
+          { catalogKey: "move-iron-head", showdownId: "ironhead", displayName: "Iron Head" },
+          { catalogKey: "move-protect", showdownId: "protect", displayName: "Protect" },
+          { catalogKey: "move-swords-dance", showdownId: "swordsdance", displayName: "Swords Dance" },
+        ],
         evs: { hp: 4, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },
         ivs: { hp: 31, atk: 31, def: 31, spa: 0, spd: 31, spe: 31 },
         notes: "Main sand sweeper and late-game cleaner.",
@@ -183,16 +229,39 @@ export const submittedTeam: SubmittedTeam = {
         id: "build-talontail",
         slot: 3,
         species: "Talonflame",
+        speciesRef: {
+          catalogKey: "pokemon-talonflame",
+          showdownId: "talonflame",
+          displayName: "Talonflame",
+        },
         nickname: "Tailwind",
         iconKey: "talonflame",
         spriteKey: "talonflame-default",
         level: 50,
         gender: "F",
         teraType: "Ghost",
+        teraTypeRef: { catalogKey: "type-ghost", showdownId: "ghost", displayName: "Ghost" },
         item: "Covert Cloak",
+        itemRef: {
+          catalogKey: "item-covert-cloak",
+          showdownId: "covertcloak",
+          displayName: "Covert Cloak",
+        },
         ability: "Gale Wings",
+        abilityRef: {
+          catalogKey: "ability-gale-wings",
+          showdownId: "galewings",
+          displayName: "Gale Wings",
+        },
         nature: "Jolly",
+        natureRef: { catalogKey: "nature-jolly", showdownId: "jolly", displayName: "Jolly" },
         moves: ["Tailwind", "Brave Bird", "Will-O-Wisp", "Protect"],
+        moveRefs: [
+          { catalogKey: "move-tailwind", showdownId: "tailwind", displayName: "Tailwind" },
+          { catalogKey: "move-brave-bird", showdownId: "bravebird", displayName: "Brave Bird" },
+          { catalogKey: "move-will-o-wisp", showdownId: "willowisp", displayName: "Will-O-Wisp" },
+          { catalogKey: "move-protect", showdownId: "protect", displayName: "Protect" },
+        ],
         evs: { hp: 44, atk: 180, def: 4, spa: 0, spd: 28, spe: 252 },
         ivs: { hp: 31, atk: 31, def: 31, spa: 0, spd: 31, spe: 31 },
         notes: "Backup speed control and burn support.",
@@ -204,15 +273,38 @@ export const submittedTeam: SubmittedTeam = {
         id: "build-amoonguss",
         slot: 4,
         species: "Amoonguss",
+        speciesRef: {
+          catalogKey: "pokemon-amoonguss",
+          showdownId: "amoonguss",
+          displayName: "Amoonguss",
+        },
         iconKey: "amoonguss",
         spriteKey: "amoonguss-default",
         level: 50,
         gender: "M",
         teraType: "Water",
+        teraTypeRef: { catalogKey: "type-water", showdownId: "water", displayName: "Water" },
         item: "Sitrus Berry",
+        itemRef: {
+          catalogKey: "item-sitrus-berry",
+          showdownId: "sitrusberry",
+          displayName: "Sitrus Berry",
+        },
         ability: "Regenerator",
+        abilityRef: {
+          catalogKey: "ability-regenerator",
+          showdownId: "regenerator",
+          displayName: "Regenerator",
+        },
         nature: "Relaxed",
+        natureRef: { catalogKey: "nature-relaxed", showdownId: "relaxed", displayName: "Relaxed" },
         moves: ["Spore", "Rage Powder", "Pollen Puff", "Protect"],
+        moveRefs: [
+          { catalogKey: "move-spore", showdownId: "spore", displayName: "Spore" },
+          { catalogKey: "move-rage-powder", showdownId: "ragepowder", displayName: "Rage Powder" },
+          { catalogKey: "move-pollen-puff", showdownId: "pollenpuff", displayName: "Pollen Puff" },
+          { catalogKey: "move-protect", showdownId: "protect", displayName: "Protect" },
+        ],
         evs: { hp: 236, atk: 0, def: 156, spa: 0, spd: 116, spe: 0 },
         ivs: { hp: 31, atk: 0, def: 31, spa: 31, spd: 31, spe: 0 },
         notes: "Redirection option into faster offense.",
@@ -236,58 +328,6 @@ export const localSimulationSettings: SimulationSettings = {
   openTeamSheets: true,
 };
 
-export const reportHistoryEntries: ReportHistoryEntry[] = [
-  {
-    id: "history-sandstorm-meta",
-    reportId: "report-sandstorm-meta",
-    title: "Sandstorm Hyper Offense vs All Meta + All Tournament",
-    description:
-      "Full meta pool plus tournament teams for broad matchup coverage.",
-    teamName: "Sandstorm Hyper Offense",
-    opponentPoolName: "All Meta + All Tournament",
-    status: "complete",
-    generatedAt: "2026-06-10T10:35:00.000Z",
-    battleCount: 1050,
-    winRate: 76.5,
-    tier: "S-Tier",
-    avgTurns: 6.7,
-    formatLabel: "Champion Format",
-    profileName: "Balanced Profile",
-  },
-  {
-    id: "history-rain-balance",
-    reportId: "report-rain-balance",
-    title: "Rain Balance vs S/A-Tier + Top 4 Tournament",
-    description: "Strong meta teams plus top tournament finishes.",
-    teamName: "Rain Balance",
-    opponentPoolName: "S/A-Tier + Top 4 Tournament",
-    status: "complete",
-    generatedAt: "2026-06-09T16:10:00.000Z",
-    battleCount: 500,
-    winRate: 64.2,
-    tier: "A-Tier",
-    avgTurns: 7.2,
-    formatLabel: "Standard Format",
-    profileName: "Balanced Profile",
-  },
-  {
-    id: "history-hard-trick-room",
-    reportId: "report-hard-trick-room",
-    title: "Hard Trick Room vs S-Tier + Top Tournament",
-    description: "Highest priority meta threats and top tournament teams.",
-    teamName: "Hard Trick Room",
-    opponentPoolName: "S-Tier + Top Tournament",
-    status: "complete",
-    generatedAt: "2026-06-08T12:05:00.000Z",
-    battleCount: 300,
-    winRate: 58,
-    tier: "B-Tier",
-    avgTurns: 5.4,
-    formatLabel: "Champion Format",
-    profileName: "High Profile",
-  },
-];
-
 export const detailedSimulationReport: SimulationReport = {
   id: "report-sandstorm-meta",
   teamId: submittedTeam.id,
@@ -305,12 +345,6 @@ export const detailedSimulationReport: SimulationReport = {
     totalBattles: 1050,
     avgTurns: 6.7,
   },
-  heroMetrics: [
-    { label: "Win Rate", value: "76.5%", detail: "S-Tier" },
-    { label: "Record", value: "803 W / 247 L" },
-    { label: "Battles", value: "1,050" },
-    { label: "Avg Turns", value: "6.7" },
-  ],
   overview: {
     headline:
       "Sand pressure is winning cleanly into broad meta pools, with the best results coming from proactive speed control.",
@@ -393,14 +427,28 @@ export const detailedSimulationReport: SimulationReport = {
   threats: [
     {
       id: "threat-urshifu-rapid",
-      title: "Urshifu-Rapid-Strike",
+      pokemon: "Urshifu-Rapid-Strike",
+      pokemonRef: {
+        catalogKey: "pokemon-urshifu-rapid-strike",
+        showdownId: "urshifurapidstrike",
+        displayName: "Urshifu-Rapid-Strike",
+      },
+      lossRate: 42.8,
+      games: 72,
       severity: "high",
       detail:
         "Surging Strikes ignores defensive boosts and pressures both Tyranitar and Excadrill.",
     },
     {
       id: "threat-incineroar",
-      title: "Incineroar",
+      pokemon: "Incineroar",
+      pokemonRef: {
+        catalogKey: "pokemon-incineroar",
+        showdownId: "incineroar",
+        displayName: "Incineroar",
+      },
+      lossRate: 34.5,
+      games: 96,
       severity: "medium",
       detail:
         "Fake Out plus Parting Shot can stall sand turns if Clear Amulet is not positioned well.",
@@ -432,15 +480,15 @@ export const detailedSimulationReport: SimulationReport = {
   cores: [
     {
       id: "core-sand-speed",
-      pokemon: ["Tyranitar", "Excadrill", "Talonflame"],
+      pokemon: ["Tyranitar", "Excadrill", "Talonflame", "Amoonguss"],
       winRate: 80.2,
-      notes: "Primary aggressive mode with two layers of speed control.",
+      notes: "Primary aggressive mode with two layers of speed control and one defensive reset.",
     },
     {
       id: "core-sand-redirection",
-      pokemon: ["Tyranitar", "Excadrill", "Amoonguss"],
+      pokemon: ["Tyranitar", "Excadrill", "Amoonguss", "Talonflame"],
       winRate: 77.6,
-      notes: "Most stable core into slower setup teams.",
+      notes: "Most stable core into slower setup teams while keeping Tailwind available.",
     },
   ],
   coverage: [
@@ -448,21 +496,45 @@ export const detailedSimulationReport: SimulationReport = {
       type: "Fire",
       score: 42,
       notes: "Coverage depends on Tera Blast and neutral Rock pressure.",
+      members: [
+        { pokemon: "Tyranitar", score: 56, notes: "Rock pressure is useful but not decisive." },
+        { pokemon: "Excadrill", score: 32, notes: "Usually needs Tera or chip support." },
+        { pokemon: "Talonflame", score: 44, notes: "Can pressure Grass partners around Fire types." },
+        { pokemon: "Amoonguss", score: 28, notes: "Mostly defensive into Fire pressure." },
+      ],
     },
     {
       type: "Water",
       score: 58,
       notes: "Amoonguss helps defensively, but direct damage is limited.",
+      members: [
+        { pokemon: "Tyranitar", score: 22, notes: "Avoids direct Water trades." },
+        { pokemon: "Excadrill", score: 34, notes: "Can clean only after Water attackers are chipped." },
+        { pokemon: "Talonflame", score: 46, notes: "Burn support can soften physical Water threats." },
+        { pokemon: "Amoonguss", score: 82, notes: "Main defensive answer and redirection option." },
+      ],
     },
     {
       type: "Steel",
       score: 86,
       notes: "Ground pressure gives the team reliable Steel answers.",
+      members: [
+        { pokemon: "Tyranitar", score: 64, notes: "Low Kick and Rock chip help support the matchup." },
+        { pokemon: "Excadrill", score: 96, notes: "Primary Steel answer with Ground pressure." },
+        { pokemon: "Talonflame", score: 58, notes: "Can cover Grass and Bug partners." },
+        { pokemon: "Amoonguss", score: 36, notes: "Mostly supports positioning." },
+      ],
     },
     {
       type: "Flying",
       score: 74,
       notes: "Rock Slide pressure is consistent across sand turns.",
+      members: [
+        { pokemon: "Tyranitar", score: 92, notes: "Rock Slide is the primary Flying answer." },
+        { pokemon: "Excadrill", score: 66, notes: "Can finish chipped Flying types." },
+        { pokemon: "Talonflame", score: 54, notes: "Mirror pressure depends on speed control." },
+        { pokemon: "Amoonguss", score: 42, notes: "Redirection buys time but does not solve the type alone." },
+      ],
     },
   ],
 };
@@ -490,12 +562,6 @@ export const rainBalanceSimulationReport: SimulationReport = {
     totalBattles: 500,
     avgTurns: 7.2,
   },
-  heroMetrics: [
-    { label: "Win Rate", value: "64.2%", detail: "A-Tier" },
-    { label: "Record", value: "321 W / 179 L" },
-    { label: "Battles", value: "500" },
-    { label: "Avg Turns", value: "7.2" },
-  ],
   overview: {
     headline:
       "Rain Balance is stable into broad meta teams, but it needs cleaner answers into weather mirrors and strong priority endgames.",
@@ -570,14 +636,28 @@ export const rainBalanceSimulationReport: SimulationReport = {
   threats: [
     {
       id: "threat-rillaboom",
-      title: "Rillaboom",
+      pokemon: "Rillaboom",
+      pokemonRef: {
+        catalogKey: "pokemon-rillaboom",
+        showdownId: "rillaboom",
+        displayName: "Rillaboom",
+      },
+      lossRate: 45.9,
+      games: 74,
       severity: "high",
       detail:
         "Grassy Glide threatens common rain attackers and can erase close endgames.",
     },
     {
       id: "threat-tornadus",
-      title: "Tornadus",
+      pokemon: "Tornadus",
+      pokemonRef: {
+        catalogKey: "pokemon-tornadus",
+        showdownId: "tornadus",
+        displayName: "Tornadus",
+      },
+      lossRate: 38.2,
+      games: 68,
       severity: "medium",
       detail:
         "Prankster speed control makes it harder to convert rain turns into decisive pressure.",
@@ -602,15 +682,15 @@ export const rainBalanceSimulationReport: SimulationReport = {
   cores: [
     {
       id: "core-rain-balance",
-      pokemon: ["Pelipper", "Archaludon", "Incineroar"],
+      pokemon: ["Pelipper", "Archaludon", "Incineroar", "Amoonguss"],
       winRate: 68.1,
-      notes: "Primary balance core with weather, damage, and pivot support.",
+      notes: "Primary balance core with weather, damage, pivot support, and redirection.",
     },
     {
       id: "core-rain-endgame",
-      pokemon: ["Pelipper", "Basculegion", "Amoonguss"],
+      pokemon: ["Pelipper", "Basculegion", "Amoonguss", "Incineroar"],
       winRate: 65.7,
-      notes: "Useful into slower teams that need to be denied setup turns.",
+      notes: "Useful into slower teams that need to be denied setup turns and pivoted safely.",
     },
   ],
   coverage: [
@@ -618,16 +698,34 @@ export const rainBalanceSimulationReport: SimulationReport = {
       type: "Fire",
       score: 72,
       notes: "Rain reduces incoming Fire pressure and Water damage answers most Fire types.",
+      members: [
+        { pokemon: "Pelipper", score: 88, notes: "Sets rain and threatens Water damage." },
+        { pokemon: "Archaludon", score: 68, notes: "Benefits from reduced Fire damage." },
+        { pokemon: "Incineroar", score: 54, notes: "Mostly pivots around Fire mirrors." },
+        { pokemon: "Amoonguss", score: 42, notes: "Needs rain support to avoid bad trades." },
+      ],
     },
     {
       type: "Grass",
       score: 48,
       notes: "Grass pressure is the main defensive stress point.",
+      members: [
+        { pokemon: "Pelipper", score: 44, notes: "Can pressure some Grass partners with Flying damage." },
+        { pokemon: "Archaludon", score: 52, notes: "Relies on bulk rather than super-effective damage." },
+        { pokemon: "Incineroar", score: 74, notes: "Primary Grass answer." },
+        { pokemon: "Amoonguss", score: 28, notes: "Often forced into support-only turns." },
+      ],
     },
     {
       type: "Steel",
       score: 78,
       notes: "Rain attackers and Electric coverage pressure Steel teams well.",
+      members: [
+        { pokemon: "Pelipper", score: 64, notes: "Water pressure helps into neutral Steel boards." },
+        { pokemon: "Archaludon", score: 82, notes: "Main damage contributor into Steel cores." },
+        { pokemon: "Incineroar", score: 86, notes: "Fire pressure remains useful even outside sun." },
+        { pokemon: "Amoonguss", score: 38, notes: "Supports positioning more than coverage." },
+      ],
     },
   ],
 };
@@ -657,12 +755,6 @@ export const hardTrickRoomSimulationReport: SimulationReport = {
     totalBattles: 300,
     avgTurns: 5.4,
   },
-  heroMetrics: [
-    { label: "Win Rate", value: "58%", detail: "B-Tier" },
-    { label: "Record", value: "174 W / 126 L" },
-    { label: "Battles", value: "300" },
-    { label: "Avg Turns", value: "5.4" },
-  ],
   overview: {
     headline:
       "Hard Trick Room has a strong ceiling when setup succeeds, but elite pressure teams are forcing too many awkward turn-one decisions.",
@@ -737,14 +829,28 @@ export const hardTrickRoomSimulationReport: SimulationReport = {
   threats: [
     {
       id: "threat-amoonguss",
-      title: "Amoonguss",
+      pokemon: "Amoonguss",
+      pokemonRef: {
+        catalogKey: "pokemon-amoonguss",
+        showdownId: "amoonguss",
+        displayName: "Amoonguss",
+      },
+      lossRate: 39.7,
+      games: 58,
       severity: "medium",
       detail:
         "Spore and redirection can waste critical Trick Room turns.",
     },
     {
       id: "threat-fake-out-taunt",
-      title: "Fake Out + Taunt cores",
+      pokemon: "Incineroar",
+      pokemonRef: {
+        catalogKey: "pokemon-incineroar",
+        showdownId: "incineroar",
+        displayName: "Incineroar",
+      },
+      lossRate: 47.4,
+      games: 76,
       severity: "high",
       detail:
         "Layered disruption creates the least stable setup outcomes.",
@@ -769,15 +875,15 @@ export const hardTrickRoomSimulationReport: SimulationReport = {
   cores: [
     {
       id: "core-trick-room-setup",
-      pokemon: ["Indeedee-F", "Hatterene", "Ursaluna"],
+      pokemon: ["Indeedee-F", "Hatterene", "Ursaluna", "Torkoal"],
       winRate: 62.4,
-      notes: "Classic setup and damage core for slower matchups.",
+      notes: "Classic setup and damage core with a second slow attacker.",
     },
     {
       id: "core-trick-room-bulk",
-      pokemon: ["Farigiraf", "Ursaluna", "Torkoal"],
+      pokemon: ["Farigiraf", "Ursaluna", "Torkoal", "Hatterene"],
       winRate: 59.3,
-      notes: "Best when the team needs multiple independent damage threats.",
+      notes: "Best when the team needs multiple independent damage threats and a backup setter.",
     },
   ],
   coverage: [
@@ -785,16 +891,34 @@ export const hardTrickRoomSimulationReport: SimulationReport = {
       type: "Ghost",
       score: 46,
       notes: "Ghost pressure can threaten common setup Pokemon.",
+      members: [
+        { pokemon: "Indeedee-F", score: 38, notes: "Terrain support matters more than coverage." },
+        { pokemon: "Hatterene", score: 58, notes: "Can trade if Trick Room is already active." },
+        { pokemon: "Ursaluna", score: 64, notes: "Ground pressure can punish some Ghost partners." },
+        { pokemon: "Torkoal", score: 24, notes: "Needs support into most Ghost pressure." },
+      ],
     },
     {
       type: "Steel",
       score: 71,
       notes: "Fire and Ground pressure are strong once Trick Room is active.",
+      members: [
+        { pokemon: "Indeedee-F", score: 34, notes: "Support-only into most Steel boards." },
+        { pokemon: "Hatterene", score: 52, notes: "Can chip but does not carry the matchup." },
+        { pokemon: "Ursaluna", score: 88, notes: "Primary Steel answer under Trick Room." },
+        { pokemon: "Torkoal", score: 92, notes: "Fire pressure is excellent once positioned." },
+      ],
     },
     {
       type: "Fairy",
       score: 69,
       notes: "Fairy attackers help punish Dragon-heavy offense.",
+      members: [
+        { pokemon: "Indeedee-F", score: 46, notes: "Supports the Fairy attacker with terrain." },
+        { pokemon: "Hatterene", score: 90, notes: "Main Fairy pressure." },
+        { pokemon: "Ursaluna", score: 62, notes: "Trades well into neutral Fairy boards." },
+        { pokemon: "Torkoal", score: 48, notes: "Secondary damage into Fairy partners." },
+      ],
     },
   ],
 };
@@ -804,6 +928,34 @@ export const simulationReports: SimulationReport[] = [
   rainBalanceSimulationReport,
   hardTrickRoomSimulationReport,
 ];
+
+const reportFormatLabels: Partial<Record<SimulationReport["id"], string>> = {
+  "report-sandstorm-meta": "Champion Format",
+  "report-rain-balance": "Standard Format",
+  "report-hard-trick-room": "Champion Format",
+};
+
+const toReportHistoryEntry = (report: SimulationReport): ReportHistoryEntry => ({
+  id: `history-${report.id.replace(/^report-/, "")}`,
+  reportId: report.id,
+  title: `${report.teamName} vs ${report.opponentPool.name}`,
+  description: report.opponentPool.description,
+  teamName: report.teamName,
+  opponentPoolName: report.opponentPool.name,
+  status: report.status,
+  generatedAt: report.generatedAt,
+  summary: {
+    winRate: report.summary.winRate,
+    tier: report.summary.tier,
+    totalBattles: report.summary.totalBattles,
+    avgTurns: report.summary.avgTurns,
+  },
+  formatLabel: reportFormatLabels[report.id] ?? "Champion Format",
+  profileName: report.performanceProfile.name,
+});
+
+export const reportHistoryEntries: ReportHistoryEntry[] =
+  simulationReports.map(toReportHistoryEntry);
 
 export const simulationReportsById: Record<string, SimulationReport> = Object.fromEntries(
   simulationReports.map((report) => [report.id, report]),

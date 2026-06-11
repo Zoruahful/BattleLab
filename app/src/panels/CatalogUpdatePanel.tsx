@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { fakeCatalogUpdateSnapshot } from '../data'
-import type { CatalogUpdateCategoryStatus, CatalogUpdateSnapshot, CatalogUpdateStatus } from '../types'
+import type {
+  CatalogStableStatus,
+  CatalogUpdateCategoryStatus,
+  CatalogUpdateProgressStatus,
+  CatalogUpdateSnapshot,
+} from '../types'
 import '../styles/settings-catalog-panels.css'
 
 export type CatalogUpdatePanelProps = {
@@ -9,9 +14,8 @@ export type CatalogUpdatePanelProps = {
   onClose?: () => void
 }
 
-const statusLabels: Record<CatalogUpdateStatus, string> = {
+const statusLabels: Record<CatalogStableStatus, string> = {
   ready: 'Ready',
-  checking: 'Checking',
   updateAvailable: 'Update available',
   upToDate: 'Up to date',
   error: 'Needs attention',
@@ -20,8 +24,16 @@ const statusLabels: Record<CatalogUpdateStatus, string> = {
 const categoryStatusLabels: Record<CatalogUpdateCategoryStatus, string> = {
   current: 'Current',
   stale: 'Stale',
-  queued: 'Queued',
   needsReview: 'Needs review',
+}
+
+const progressStatusLabels: Record<CatalogUpdateProgressStatus, string> = {
+  idle: 'Idle',
+  checking: 'Checking',
+  downloading: 'Downloading',
+  applying: 'Applying',
+  complete: 'Complete',
+  error: 'Needs attention',
 }
 
 function formatDate(value: string) {
@@ -44,16 +56,26 @@ export function CatalogUpdatePanel({
 }: CatalogUpdatePanelProps) {
   const [draftSnapshot, setDraftSnapshot] = useState<CatalogUpdateSnapshot>(snapshot)
   const totalRecords = draftSnapshot.categories.reduce((total, category) => total + category.recordCount, 0)
+  const sourceCandidate = draftSnapshot.sources[0]
   const averageProgress = Math.round(
-    draftSnapshot.categories.reduce((total, category) => total + category.progressPercent, 0) /
-      draftSnapshot.categories.length,
+    draftSnapshot.progress.categories.reduce((total, category) => total + category.progressPercent, 0) /
+      draftSnapshot.progress.categories.length,
   )
 
   const handleCheck = () => {
     setDraftSnapshot((current) => ({
       ...current,
-      status: current.status === 'checking' ? 'updateAvailable' : 'checking',
       lastCheckedAt: new Date().toISOString(),
+      progress: {
+        ...current.progress,
+        status: current.progress.status === 'checking' ? 'idle' : 'checking',
+        activeSourceIds:
+          current.progress.status === 'checking' ? [] : current.sources.map((source) => source.sourceId),
+        message:
+          current.progress.status === 'checking'
+            ? 'Catalog update progress is idle.'
+            : 'Checking local catalog source metadata. No network sync is running.',
+      },
     }))
   }
 
@@ -65,8 +87,18 @@ export function CatalogUpdatePanel({
       categories: current.categories.map((category) => ({
         ...category,
         status: category.status === 'needsReview' ? 'needsReview' : 'current',
-        progressPercent: category.status === 'needsReview' ? category.progressPercent : 100,
       })),
+      progress: {
+        ...current.progress,
+        status: 'complete',
+        activeSourceIds: [],
+        message: 'Fake local catalog update completed. Asset licensing review remains separate.',
+        categories: current.progress.categories.map((category) => ({
+          ...category,
+          status: category.id === 'assets' ? 'blocked' : 'complete',
+          progressPercent: category.id === 'assets' ? category.progressPercent : 100,
+        })),
+      },
     }))
   }
 
@@ -103,21 +135,29 @@ export function CatalogUpdatePanel({
               <span>Progress</span>
               <strong>{averageProgress}%</strong>
             </div>
+            <div>
+              <span>Update</span>
+              <strong>{progressStatusLabels[draftSnapshot.progress.status]}</strong>
+            </div>
           </section>
 
           <section className="bl-settings-section">
             <div className="bl-settings-section-heading">
               <h3>Source candidate</h3>
-              <span>{draftSnapshot.source.kind}</span>
+              <span>{sourceCandidate?.kind ?? 'local'}</span>
             </div>
 
             <div className="bl-catalog-source-card">
-              <strong>{draftSnapshot.source.name}</strong>
+              <strong>{sourceCandidate?.name ?? 'Local catalog source metadata'}</strong>
               <p>
                 PokeAPI can enrich display names, descriptions, picker data, and visual metadata
                 candidates. The UI should read local catalog artifacts after a future update step.
               </p>
               <dl>
+                <div>
+                  <dt>Sources</dt>
+                  <dd>{draftSnapshot.sources.map((source) => source.name).join(', ')}</dd>
+                </div>
                 <div>
                   <dt>Schema</dt>
                   <dd>{draftSnapshot.schemaVersion}</dd>
@@ -145,7 +185,11 @@ export function CatalogUpdatePanel({
             </div>
 
             <div className="bl-catalog-category-list">
-              {draftSnapshot.categories.map((category) => (
+              {draftSnapshot.categories.map((category) => {
+                const progress = draftSnapshot.progress.categories.find((item) => item.id === category.id)
+                const progressPercent = progress?.progressPercent ?? 0
+
+                return (
                 <article className="bl-catalog-category" key={category.id}>
                   <div className="bl-catalog-category-topline">
                     <div>
@@ -157,14 +201,18 @@ export function CatalogUpdatePanel({
                     </span>
                   </div>
                   <div className="bl-catalog-meter" aria-label={`${category.label} progress`}>
-                    <span style={{ width: `${category.progressPercent}%` }} />
+                    <span style={{ width: `${progressPercent}%` }} />
                   </div>
                   <div className="bl-catalog-meta">
                     <span>{formatCount(category.recordCount)} records</span>
-                    <span>{category.progressPercent}% prepared</span>
+                    <span>
+                      {progressPercent}% prepared
+                      {progress ? ` - ${progress.status}` : ''}
+                    </span>
                   </div>
                 </article>
-              ))}
+                )
+              })}
             </div>
           </section>
 

@@ -14,8 +14,10 @@ export {
 export {
   fakeAbilityCatalogOptions,
   fakeItemCatalogOptions,
+  fakeMoveCatalogOptions,
   fakeNatureCatalogOptions,
   fakePokemonCatalogOptions,
+  fakeTypeCatalogOptions,
 } from "./mockEditorCatalog";
 
 export {

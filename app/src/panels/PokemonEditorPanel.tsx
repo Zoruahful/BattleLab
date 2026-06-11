@@ -2,11 +2,13 @@ import { useMemo, useState, type FormEvent } from 'react'
 import {
   fakeAbilityCatalogOptions,
   fakeItemCatalogOptions,
+  fakeMoveCatalogOptions,
   fakeNatureCatalogOptions,
   fakePokemonCatalogOptions,
+  fakeTypeCatalogOptions,
 } from '../data'
 import type { CatalogPickerOption } from '../types/catalog'
-import type { PokemonBuild, PokemonType, StatSpread } from '../types'
+import type { BuildCatalogReference, PokemonBuild, PokemonType, StatSpread } from '../types'
 import '../styles/pokemon-editor-panel.css'
 
 type EditorMode = 'standard-evs' | 'champion-points'
@@ -37,27 +39,6 @@ const statLabels: Record<keyof StatSpread, string> = {
   spe: 'Spe',
 }
 
-const teraTypeOptions: PokemonType[] = [
-  'Normal',
-  'Fire',
-  'Water',
-  'Electric',
-  'Grass',
-  'Ice',
-  'Fighting',
-  'Poison',
-  'Ground',
-  'Flying',
-  'Psychic',
-  'Bug',
-  'Rock',
-  'Ghost',
-  'Dragon',
-  'Dark',
-  'Steel',
-  'Fairy',
-]
-
 const getInitials = (species: string) =>
   species
     .split(/[\s-]+/)
@@ -72,26 +53,61 @@ const toSlotNumber = (slot: number): PokemonBuild['slot'] =>
 const getOptionLabel = (options: CatalogPickerOption[], fallback: string) =>
   options[0]?.displayName ?? fallback
 
+const toBuildRef = (option?: CatalogPickerOption): BuildCatalogReference | undefined => {
+  if (!option) {
+    return undefined
+  }
+
+  return {
+    catalogKey: option.catalogKey,
+    ...(option.showdownId ? { showdownId: option.showdownId } : {}),
+    displayName: option.displayName,
+  }
+}
+
+const findOptionByLabel = (options: CatalogPickerOption[], label: string) =>
+  options.find(
+    (option) =>
+      option.displayName === label ||
+      option.showdownId === label.toLowerCase().replace(/[^a-z0-9]+/g, ''),
+  )
+
+const findMoveRef = (move: string): BuildCatalogReference | null =>
+  toBuildRef(findOptionByLabel(fakeMoveCatalogOptions, move)) ?? null
+
 const createPokemonBuildFromOption = (
   option: CatalogPickerOption,
   slot: PokemonBuild['slot'],
   current?: PokemonBuild | null,
 ): PokemonBuild => {
   const speciesChanged = current ? current.species !== option.displayName : true
+  const defaultItem = fakeItemCatalogOptions[0]
+  const defaultAbility = fakeAbilityCatalogOptions[0]
+  const defaultNature = fakeNatureCatalogOptions[0]
+  const teraTypeOption = fakeTypeCatalogOptions.find(
+    (candidate) => candidate.displayName === (option.primaryType ?? current?.teraType ?? 'Normal'),
+  )
+  const moves = current?.moves ?? (['Protect', 'Tera Blast', '', ''] as PokemonBuild['moves'])
 
   return {
     id: speciesChanged ? `draft-${option.catalogKey}-slot-${slot}` : current?.id ?? `draft-${option.catalogKey}-slot-${slot}`,
     slot,
     species: option.displayName,
+    speciesRef: toBuildRef(option),
     iconKey: option.asset?.iconKey,
     spriteKey: option.asset?.spriteKey,
     level: current?.level ?? 50,
     gender: current?.gender,
     teraType: option.primaryType ?? current?.teraType ?? 'Normal',
+    teraTypeRef: toBuildRef(teraTypeOption) ?? current?.teraTypeRef,
     item: current?.item ?? getOptionLabel(fakeItemCatalogOptions, 'Sitrus Berry'),
+    itemRef: current?.itemRef ?? toBuildRef(defaultItem),
     ability: current?.ability ?? getOptionLabel(fakeAbilityCatalogOptions, 'Levitate'),
+    abilityRef: current?.abilityRef ?? toBuildRef(defaultAbility),
     nature: current?.nature ?? getOptionLabel(fakeNatureCatalogOptions, 'Jolly'),
-    moves: current?.moves ?? (['Protect', 'Tera Blast', 'Helping Hand', 'Substitute'] as PokemonBuild['moves']),
+    natureRef: current?.natureRef ?? toBuildRef(defaultNature),
+    moves,
+    moveRefs: current?.moveRefs ?? (moves.map(findMoveRef) as PokemonBuild['moveRefs']),
     evs: current?.evs ?? { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },
     ivs: current?.ivs ?? { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 },
     notes: speciesChanged ? option.description : current?.notes ?? option.description,
@@ -162,7 +178,10 @@ export function PokemonEditorPanel({
       }
 
       const moves = current.moves.map((move, index) => (index === moveIndex ? value : move))
-      return { ...current, moves: moves as PokemonBuild['moves'] }
+      const moveRefs = (current.moveRefs ?? [null, null, null, null]).map((moveRef, index) =>
+        index === moveIndex ? findMoveRef(value) : moveRef,
+      )
+      return { ...current, moves: moves as PokemonBuild['moves'], moveRefs: moveRefs as PokemonBuild['moveRefs'] }
     })
   }
 
@@ -256,7 +275,14 @@ export function PokemonEditorPanel({
                     <span>Item</span>
                     <select
                       value={draftPokemon.item}
-                      onChange={(event) => updateDraft({ item: event.target.value })}
+                      onChange={(event) => {
+                        const selectedItem = findOptionByLabel(fakeItemCatalogOptions, event.target.value)
+                        const itemRef = toBuildRef(selectedItem)
+                        updateDraft({
+                          item: event.target.value,
+                          ...(itemRef ? { itemRef } : {}),
+                        })
+                      }}
                     >
                       {fakeItemCatalogOptions.map((option) => (
                         <option value={option.displayName} key={option.catalogKey}>
@@ -269,7 +295,14 @@ export function PokemonEditorPanel({
                     <span>Ability</span>
                     <select
                       value={draftPokemon.ability}
-                      onChange={(event) => updateDraft({ ability: event.target.value })}
+                      onChange={(event) => {
+                        const selectedAbility = findOptionByLabel(fakeAbilityCatalogOptions, event.target.value)
+                        const abilityRef = toBuildRef(selectedAbility)
+                        updateDraft({
+                          ability: event.target.value,
+                          ...(abilityRef ? { abilityRef } : {}),
+                        })
+                      }}
                     >
                       {fakeAbilityCatalogOptions.map((option) => (
                         <option value={option.displayName} key={option.catalogKey}>
@@ -282,7 +315,14 @@ export function PokemonEditorPanel({
                     <span>Nature</span>
                     <select
                       value={draftPokemon.nature}
-                      onChange={(event) => updateDraft({ nature: event.target.value })}
+                      onChange={(event) => {
+                        const selectedNature = findOptionByLabel(fakeNatureCatalogOptions, event.target.value)
+                        const natureRef = toBuildRef(selectedNature)
+                        updateDraft({
+                          nature: event.target.value,
+                          ...(natureRef ? { natureRef } : {}),
+                        })
+                      }}
                     >
                       {fakeNatureCatalogOptions.map((option) => (
                         <option value={option.displayName} key={option.catalogKey}>
@@ -295,13 +335,18 @@ export function PokemonEditorPanel({
                     <span>Tera type</span>
                     <select
                       value={draftPokemon.teraType}
-                      onChange={(event) =>
-                        updateDraft({ teraType: event.target.value as PokemonType })
-                      }
+                      onChange={(event) => {
+                        const selectedType = findOptionByLabel(fakeTypeCatalogOptions, event.target.value)
+                        const teraTypeRef = toBuildRef(selectedType)
+                        updateDraft({
+                          teraType: event.target.value as PokemonType,
+                          ...(teraTypeRef ? { teraTypeRef } : {}),
+                        })
+                      }}
                     >
-                      {teraTypeOptions.map((typeName) => (
-                        <option value={typeName} key={typeName}>
-                          {typeName}
+                      {fakeTypeCatalogOptions.map((typeOption) => (
+                        <option value={typeOption.displayName} key={typeOption.catalogKey}>
+                          {typeOption.displayName}
                         </option>
                       ))}
                     </select>

@@ -5,9 +5,25 @@ export type BattleLabThemePreference = 'light' | 'system'
 
 export type StatEditorModePreference = 'standard-evs' | 'champion-points'
 
-export type CatalogUpdateStatus = 'ready' | 'checking' | 'updateAvailable' | 'upToDate' | 'error'
+export type CatalogStableStatus = 'ready' | 'updateAvailable' | 'upToDate' | 'error'
 
-export type CatalogUpdateCategoryStatus = 'current' | 'stale' | 'queued' | 'needsReview'
+export type CatalogUpdateProgressStatus =
+  | 'idle'
+  | 'checking'
+  | 'downloading'
+  | 'applying'
+  | 'complete'
+  | 'error'
+
+export type CatalogUpdateCategoryStatus = 'current' | 'stale' | 'needsReview'
+
+export type CatalogUpdateProgressCategoryStatus =
+  | 'idle'
+  | 'queued'
+  | 'running'
+  | 'complete'
+  | 'blocked'
+  | 'error'
 
 export interface BattleLabSettings {
   theme: BattleLabThemePreference
@@ -27,15 +43,28 @@ export interface CatalogUpdateCategory {
   description: string
   recordCount: number
   status: CatalogUpdateCategoryStatus
+}
+
+export interface CatalogUpdateCategoryProgress {
+  id: CatalogUpdateCategory['id']
+  status: CatalogUpdateProgressCategoryStatus
   progressPercent: number
 }
 
+export interface CatalogUpdateProgressSnapshot {
+  status: CatalogUpdateProgressStatus
+  activeSourceIds: string[]
+  categories: CatalogUpdateCategoryProgress[]
+  message?: string
+}
+
 export interface CatalogUpdateSnapshot {
-  status: CatalogUpdateStatus
+  status: CatalogStableStatus
   lastCheckedAt: string
   lastUpdatedAt: string
   schemaVersion: string
-  source: CatalogSourceMetadata
+  sources: CatalogSourceMetadata[]
   categories: CatalogUpdateCategory[]
+  progress: CatalogUpdateProgressSnapshot
   warnings: string[]
 }

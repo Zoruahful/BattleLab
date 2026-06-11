@@ -32,26 +32,26 @@ export function ReportsListView({
 
   const visibleEntries = useMemo(() => {
     const filtered =
-      tierFilter === 'all' ? entries : entries.filter((entry) => entry.tier === tierFilter)
+      tierFilter === 'all' ? entries : entries.filter((entry) => entry.summary.tier === tierFilter)
 
     return [...filtered].sort((left, right) => {
       if (sortBy === 'best-win-rate') {
-        return right.winRate - left.winRate
+        return right.summary.winRate - left.summary.winRate
       }
 
       if (sortBy === 'most-battles') {
-        return right.battleCount - left.battleCount
+        return right.summary.totalBattles - left.summary.totalBattles
       }
 
       if (sortBy === 'fastest') {
-        return left.avgTurns - right.avgTurns
+        return left.summary.avgTurns - right.summary.avgTurns
       }
 
       return new Date(right.generatedAt).getTime() - new Date(left.generatedAt).getTime()
     })
   }, [entries, sortBy, tierFilter])
 
-  const totalBattles = visibleEntries.reduce((total, entry) => total + entry.battleCount, 0)
+  const totalBattles = visibleEntries.reduce((total, entry) => total + entry.summary.totalBattles, 0)
 
   return (
     <section className="bl-reports" aria-label="Reports history">
@@ -143,11 +143,11 @@ function ReportHistoryCard({
         <span className="bl-report-description">{entry.description}</span>
         <span className="bl-report-meta" aria-label={`${entry.title} metadata`}>
           <span>
-            <strong>{formatNumber(entry.battleCount)}</strong>
+            <strong>{formatNumber(entry.summary.totalBattles)}</strong>
             battles
           </span>
           <span>
-            <strong>{entry.avgTurns.toFixed(1)}</strong>
+            <strong>{entry.summary.avgTurns.toFixed(1)}</strong>
             avg turns
           </span>
           <span>{entry.formatLabel}</span>
@@ -158,11 +158,11 @@ function ReportHistoryCard({
 
       <span className="bl-report-card-score">
         <span className="bl-report-win-rate">
-          {formatWinRate(entry.winRate)}
+          {formatWinRate(entry.summary.winRate)}
           <span>%</span>
         </span>
         <span className="bl-report-wr-label">WR</span>
-        <span className={`bl-report-tier ${tierClassName(entry.tier)}`}>{entry.tier}</span>
+        <span className={`bl-report-tier ${tierClassName(entry.summary.tier)}`}>{entry.summary.tier}</span>
         <span className="bl-report-card-cta">View report</span>
       </span>
     </button>
