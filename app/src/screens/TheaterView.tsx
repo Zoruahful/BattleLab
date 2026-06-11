@@ -350,7 +350,7 @@ function MiniPlayer({ archive, game }: { archive: TheaterArchive; game: TheaterG
   return (
     <section className="th-mini" aria-label="Now previewing fastest replay">
       <header className="th-mini-head">
-        <span className="eyebrow">Now previewing · Fastest win</span>
+        <span className="eyebrow">Fastest win · all archives</span>
         <h2>
           {archive.team} <span>vs</span> {game.opponent}
         </h2>
@@ -658,6 +658,7 @@ function ArchivePlayer({
             <span className="th-time">
               Turn {currentTurn} / {game.turns}
             </span>
+            <span className="th-focus-sample-pill">Sample data</span>
 
             <button
               className="th-ctrl th-speed"

@@ -674,6 +674,20 @@
   white-space: nowrap;
 }
 
+.th-focus-sample-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  padding: 4px 9px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 /* ---------- Archive view ---------- */
 .theater-archive {
   display: flex;
