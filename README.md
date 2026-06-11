@@ -57,20 +57,20 @@ The current milestone is a frontend-only pre-simulation shell using mock data an
 
 ## Tech Stack
 
-**Core App**  
+**In use now**
 ![React](https://img.shields.io/badge/React-18181B?style=flat-square&logo=react&logoColor=A3E635&labelColor=27272A)
 ![TypeScript](https://img.shields.io/badge/TypeScript-18181B?style=flat-square&logo=typescript&logoColor=A3E635&labelColor=27272A)
 ![Vite](https://img.shields.io/badge/Vite-18181B?style=flat-square&logo=vite&logoColor=A3E635&labelColor=27272A)
-![Electron](https://img.shields.io/badge/Electron-18181B?style=flat-square&logo=electron&logoColor=A3E635&labelColor=27272A)
-
-**Local Data & Runtime**  
-![SQLite](https://img.shields.io/badge/SQLite-18181B?style=flat-square&logo=sqlite&logoColor=A3E635&labelColor=27272A)
-![Node.js](https://img.shields.io/badge/Node.js-18181B?style=flat-square&logo=nodedotjs&logoColor=A3E635&labelColor=27272A)
-![Python](https://img.shields.io/badge/Python-18181B?style=flat-square&logo=python&logoColor=A3E635&labelColor=27272A)
 
 **Tools**  
 ![Git](https://img.shields.io/badge/Git-18181B?style=flat-square&logo=git&logoColor=A3E635&labelColor=27272A)
 ![GitHub](https://img.shields.io/badge/GitHub-18181B?style=flat-square&logo=github&logoColor=A3E635&labelColor=27272A)
+
+**Planned**
+![Electron](https://img.shields.io/badge/Electron-18181B?style=flat-square&logo=electron&logoColor=A3E635&labelColor=27272A)
+![SQLite](https://img.shields.io/badge/SQLite-18181B?style=flat-square&logo=sqlite&logoColor=A3E635&labelColor=27272A)
+![Node.js](https://img.shields.io/badge/Node.js-18181B?style=flat-square&logo=nodedotjs&logoColor=A3E635&labelColor=27272A)
+![Python](https://img.shields.io/badge/Python-18181B?style=flat-square&logo=python&logoColor=A3E635&labelColor=27272A)
 ![Playwright](https://img.shields.io/badge/Playwright-18181B?style=flat-square&logo=playwright&logoColor=A3E635&labelColor=27272A)
 
 ## Roadmap
