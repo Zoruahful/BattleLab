@@ -201,6 +201,7 @@ export function PokemonEditorPanel({
   const [draftPokemon, setDraftPokemon] = useState<PokemonBuild | null>(initialPokemon)
   const [mode, setMode] = useState<EditorMode>('standard-evs')
   const [standardIvs, setStandardIvs] = useState<StatSpread>(initialPokemon?.ivs ?? { ...MAXED_IVS })
+  const [trimNotice, setTrimNotice] = useState(false)
 
   const panelOpen = open ?? isOpen ?? true
   const visualKey = draftPokemon?.iconKey ?? draftPokemon?.spriteKey
@@ -218,6 +219,7 @@ export function PokemonEditorPanel({
     const next = fakePokemonCatalogOptions.find((candidate) => candidate.catalogKey === catalogKey)
     if (next) {
       setDraftPokemon((current) => createPokemonBuildFromOption(next, selectedSlot, current))
+      setTrimNotice(false)
     }
   }
 
@@ -251,27 +253,33 @@ export function PokemonEditorPanel({
           : current,
       )
       setStandardIvs(draftPokemon?.ivs ?? standardIvs)
+      setTrimNotice(false)
     } else {
+      const convertedEvTotal = draftPokemon ? statKeys.reduce((total, key) => total + draftPokemon.evs[key], 0) : 0
       setDraftPokemon((current) =>
         current ? { ...current, evs: normalizeStandardEvSpread(current.evs), ivs: { ...standardIvs } } : current,
       )
+      setTrimNotice(convertedEvTotal > STANDARD_EV_TOTAL)
     }
     setMode(next)
   }
 
   const updateEv = (stat: keyof StatSpread, value: number) => {
+    setTrimNotice(false)
     setDraftPokemon((current) =>
       current ? { ...current, evs: { ...current.evs, [stat]: clamp(value, 0, STANDARD_EV_MAX) } } : current,
     )
   }
 
   const updateIv = (stat: keyof StatSpread, value: number) => {
+    setTrimNotice(false)
     const nextValue = clamp(value, 0, STANDARD_IV_MAX)
     setStandardIvs((current) => ({ ...current, [stat]: nextValue }))
     setDraftPokemon((current) => (current ? { ...current, ivs: { ...current.ivs, [stat]: nextValue } } : current))
   }
 
   const updateSp = (stat: keyof StatSpread, sp: number) => {
+    setTrimNotice(false)
     setDraftPokemon((current) =>
       current
         ? {
@@ -367,6 +375,9 @@ export function PokemonEditorPanel({
   const evTotal = draftPokemon ? statKeys.reduce((total, key) => total + draftPokemon.evs[key], 0) : 0
   const spTotal = spSpread ? statKeys.reduce((total, key) => total + spSpread[key], 0) : 0
   const isChampion = mode === 'champion-points'
+  const budgetTotal = isChampion ? CHAMPION_SP_TOTAL : STANDARD_EV_TOTAL
+  const budgetValue = isChampion ? spTotal : evTotal
+  const budgetOver = Math.max(0, budgetValue - budgetTotal)
 
   return (
     <aside
@@ -551,7 +562,7 @@ export function PokemonEditorPanel({
                   </div>
                 </div>
 
-                <p className="bl-training-total">
+                <p className={`bl-training-total ${budgetOver > 0 ? 'is-warning' : ''}`} aria-live="polite">
                   {isChampion ? (
                     <>
                       <strong>{spTotal}</strong> / {CHAMPION_SP_TOTAL} SP · IVs fixed at 31
@@ -561,7 +572,11 @@ export function PokemonEditorPanel({
                       <strong>{evTotal}</strong> / {STANDARD_EV_TOTAL} EVs · IVs editable
                     </>
                   )}
+                  {budgetOver > 0 ? <span className="bl-training-over">{budgetOver} over</span> : null}
                 </p>
+                {trimNotice && !isChampion ? (
+                  <p className="bl-training-note">Trimmed to fit 510 EVs.</p>
+                ) : null}
 
                 <div className="bl-stat-slider-list">
                   {statKeys.map((stat) => {
