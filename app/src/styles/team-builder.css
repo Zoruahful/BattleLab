@@ -649,6 +649,16 @@
   max-width: 420px;
 }
 
+.bl-clear-confirm-dialog .danger-action {
+  border-color: #a64b47;
+  background: #a64b47;
+  color: #ffffff;
+}
+
+.bl-clear-confirm-dialog .danger-action:hover {
+  box-shadow: 0 12px 28px rgba(166, 75, 71, 0.22);
+}
+
 .bl-io-text {
   width: 100%;
   resize: vertical;

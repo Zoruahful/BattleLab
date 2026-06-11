@@ -152,13 +152,14 @@ function App() {
                         {teamSaved ? 'Saved for this session' : 'Save team'}
                       </button>
                       <button
-                        className="secondary-action"
+                        className="secondary-action has-badge"
                         type="button"
                         disabled
                         aria-disabled="true"
-                        title="Coming soon: loading saved teams needs local storage."
+                        title="Saving and loading teams between sessions is coming soon."
                       >
-                        Load team soon
+                        Load team{' '}
+                        <span className="action-soon-badge">Soon</span>
                       </button>
                       <button className="primary-action" type="button" onClick={() => openPanel('simulate')}>
                         Run simulation

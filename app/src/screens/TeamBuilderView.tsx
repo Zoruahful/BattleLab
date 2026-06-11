@@ -285,14 +285,14 @@ export function TeamBuilderView({
             </header>
 
             <p className="bl-io-note">
-              This only clears the current in-session team. You can still cancel before changing anything.
+              This clears all six slots for the current session.
             </p>
 
             <div className="bl-io-actions">
               <button className="secondary-action" type="button" onClick={() => setClearConfirmOpen(false)}>
                 Cancel
               </button>
-              <button className="primary-action" type="button" onClick={confirmClearTeam}>
+              <button className="primary-action danger-action" type="button" onClick={confirmClearTeam}>
                 Clear team
               </button>
             </div>

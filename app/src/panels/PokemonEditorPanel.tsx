@@ -146,7 +146,7 @@ export function PokemonEditorPanel({
     ? [selectedPokemonOption.primaryType, selectedPokemonOption.secondaryType].filter(Boolean).join(' / ')
     : ''
   const selectedPokemonSummary = selectedPokemonTypes
-    ? `${selectedPokemonTypes} type`
+    ? `${selectedPokemonTypes}-type`
     : draftPokemon
       ? `${draftPokemon.teraType} Tera build`
       : 'Pick a Pokemon to start building this slot.'
