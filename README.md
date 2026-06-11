@@ -30,7 +30,7 @@ The current milestone is a frontend-only pre-simulation shell using mock data an
 | Editor Panel | Edit fake catalog Pokemon with moves, ability, item, nature, Tera type, and stats. |
 | Reports | Show saved simulation history with filters and report detail navigation. |
 | Overview Report | Recreate the Champion-style overview with win rate, archetype bars, weaknesses, and strategy tips. |
-| Theater | Preview sample replay cards and static matchups while playback remains unwired. |
+| Theater | Browse sample replay archives and play them in a local replay player built on fabricated battle data. |
 | Catalog Update | Show fake catalog readiness while keeping Pokemon Showdown as the legality source of truth. |
 
 ## Current Checkpoint
@@ -40,7 +40,7 @@ The current milestone is a frontend-only pre-simulation shell using mock data an
 - Team Builder supports local editing, clearing, Pokemon Showdown-style import/export, session save feedback, and guided simulation settings.
 - Pokemon editor, Reports list, Report Detail Overview, Theater shell, Settings, and Catalog Update render from local fake data.
 - Clear frontend boundaries are visible for disabled loading, local-only saves, sample replay previews, catalog data, and Showdown legality.
-- Simulation, persistence, Electron packaging, PDF export, live catalog sync, and Theater playback are intentionally not wired yet.
+- Simulation, persistence, Electron packaging, PDF export, live catalog sync, and real replay decoding/sharing are intentionally not wired yet; Theater plays fabricated sample data only.
 
 ## Planned Features
 

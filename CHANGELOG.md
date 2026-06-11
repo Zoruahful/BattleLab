@@ -12,6 +12,7 @@
 - Clarified frontend-only safety states for session saves, disabled loading, confirmed team clearing, Showdown legality notes, and sample replay cards.
 - Refined the safety pass with visible `Soon` badges, clearer session-clear copy, and danger styling for confirmed team clearing.
 - Updated sidebar active-state behavior so Settings and Catalog Update own the active highlight only while their panels are open.
+- Reworked Theater into a sample replay-archive browser with a working local replay player (faux playback, turn-notch scrubber, battle log, and result stats) on fabricated battle data; real replay decoding and shared replay codes remain future work.
 
 ## Frontend Milestone 1 - 2026-06-10
 
