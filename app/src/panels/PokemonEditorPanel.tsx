@@ -96,6 +96,29 @@ const findMoveRef = (name: string): BuildCatalogReference | null => {
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
+const standardEvTickMarks = [0, 84, 168, STANDARD_EV_MAX]
+const championSpTickMarks = [0, 8, 16, 24, CHAMPION_SP_MAX]
+
+const alignStandardEvStep = (value: number) => Math.floor(value / 4) * 4
+
+const getBudgetedStandardEvMax = (evs: StatSpread, stat: keyof StatSpread) => {
+  const currentValue = clamp(evs[stat], 0, STANDARD_EV_MAX)
+  const otherTotal = statKeys.reduce((total, key) => (key === stat ? total : total + evs[key]), 0)
+  const availableForStat = alignStandardEvStep(Math.max(0, STANDARD_EV_TOTAL - otherTotal))
+  const budgetedMax = Math.min(STANDARD_EV_MAX, availableForStat)
+
+  return Math.max(currentValue, budgetedMax)
+}
+
+const getBudgetedChampionSpMax = (sp: StatSpread, stat: keyof StatSpread) => {
+  const currentValue = clamp(sp[stat], 0, CHAMPION_SP_MAX)
+  const otherTotal = statKeys.reduce((total, key) => (key === stat ? total : total + sp[key]), 0)
+  const availableForStat = Math.max(0, CHAMPION_SP_TOTAL - otherTotal)
+  const budgetedMax = Math.min(CHAMPION_SP_MAX, availableForStat)
+
+  return Math.max(currentValue, budgetedMax)
+}
+
 // ---- Type + category icons (item #2) ----
 function TypeBadge({ type }: { type: PokemonType }) {
   return (
@@ -268,9 +291,12 @@ export function PokemonEditorPanel({
 
   const updateEv = (stat: keyof StatSpread, value: number) => {
     setTrimNotice(false)
-    setDraftPokemon((current) =>
-      current ? { ...current, evs: { ...current.evs, [stat]: clamp(value, 0, STANDARD_EV_MAX) } } : current,
-    )
+    setDraftPokemon((current) => {
+      if (!current) return current
+
+      const max = getBudgetedStandardEvMax(current.evs, stat)
+      return { ...current, evs: { ...current.evs, [stat]: clamp(value, 0, max) } }
+    })
   }
 
   const updateIv = (stat: keyof StatSpread, value: number) => {
@@ -282,15 +308,19 @@ export function PokemonEditorPanel({
 
   const updateSp = (stat: keyof StatSpread, sp: number) => {
     setTrimNotice(false)
-    setDraftPokemon((current) =>
-      current
-        ? {
-            ...current,
-            evs: { ...current.evs, [stat]: spToEv(sp) },
-            ivs: { ...current.ivs, [stat]: 31 },
-          }
-        : current,
-    )
+    setDraftPokemon((current) => {
+      if (!current) return current
+
+      const currentSpSpread = evSpreadToSp(current.evs)
+      const max = getBudgetedChampionSpMax(currentSpSpread, stat)
+      const nextSp = clamp(sp, 0, max)
+
+      return {
+        ...current,
+        evs: { ...current.evs, [stat]: spToEv(nextSp) },
+        ivs: { ...current.ivs, [stat]: 31 },
+      }
+    })
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -600,26 +630,42 @@ export function PokemonEditorPanel({
                           <em>{isChampion ? `${sp} SP` : `${draftPokemon.evs[stat]} EV`}</em>
                         </span>
                         {isChampion ? (
-                          <input
-                            type="range"
-                            min="0"
-                            max={CHAMPION_SP_MAX}
-                            step="1"
-                            value={sp}
-                            onChange={(event) => updateSp(stat, Number(event.target.value))}
-                            aria-label={`${STAT_LABELS[stat]} stat points`}
-                          />
-                        ) : (
-                          <div className="bl-stat-standard-row">
+                          <div className="bl-slider-track">
                             <input
                               type="range"
                               min="0"
-                              max={STANDARD_EV_MAX}
-                              step="4"
-                              value={draftPokemon.evs[stat]}
-                              onChange={(event) => updateEv(stat, Number(event.target.value))}
-                              aria-label={`${STAT_LABELS[stat]} EVs`}
+                              max={CHAMPION_SP_MAX}
+                              step="1"
+                              list="bl-champion-sp-ticks"
+                              value={sp}
+                              onChange={(event) => updateSp(stat, Number(event.target.value))}
+                              aria-label={`${STAT_LABELS[stat]} stat points`}
                             />
+                            <div className="bl-slider-ticks" aria-hidden="true">
+                              {championSpTickMarks.map((tick) => (
+                                <span key={tick}>{tick}</span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bl-stat-standard-row">
+                            <div className="bl-slider-track">
+                              <input
+                                type="range"
+                                min="0"
+                                max={STANDARD_EV_MAX}
+                                step="4"
+                                list="bl-standard-ev-ticks"
+                                value={draftPokemon.evs[stat]}
+                                onChange={(event) => updateEv(stat, Number(event.target.value))}
+                                aria-label={`${STAT_LABELS[stat]} EVs`}
+                              />
+                              <div className="bl-slider-ticks" aria-hidden="true">
+                                {standardEvTickMarks.map((tick) => (
+                                  <span key={tick}>{tick}</span>
+                                ))}
+                              </div>
+                            </div>
                             <label className="bl-iv-box">
                               <span>IV</span>
                               <input
@@ -637,6 +683,16 @@ export function PokemonEditorPanel({
                     )
                   })}
                 </div>
+                <datalist id="bl-standard-ev-ticks">
+                  {standardEvTickMarks.map((tick) => (
+                    <option key={tick} value={tick} />
+                  ))}
+                </datalist>
+                <datalist id="bl-champion-sp-ticks">
+                  {championSpTickMarks.map((tick) => (
+                    <option key={tick} value={tick} />
+                  ))}
+                </datalist>
               </section>
 
               <section className="bl-editor-section">
