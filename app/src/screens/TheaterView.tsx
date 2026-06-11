@@ -246,7 +246,10 @@ function ReplayCard({
           <span className="replay-title">
             {replay.team} <span className="replay-vs">vs</span> {replay.opponent}
           </span>
-          <span className={`replay-result ${isWin ? 'is-win' : 'is-loss'}`}>{replay.resultLabel}</span>
+          <span className="replay-card-badges">
+            <span className="replay-sample-tag">Sample</span>
+            <span className={`replay-result ${isWin ? 'is-win' : 'is-loss'}`}>{replay.resultLabel}</span>
+          </span>
         </span>
         <span className="replay-notes">{replay.notes}</span>
         <span className="replay-meta">

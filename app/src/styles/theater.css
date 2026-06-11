@@ -229,6 +229,27 @@
   white-space: nowrap;
 }
 
+.replay-card-badges {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.replay-sample-tag {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .replay-result.is-win {
   background: #d7e5d2;
   color: #3f6f5a;

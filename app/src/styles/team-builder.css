@@ -640,6 +640,15 @@
   line-height: 1.45;
 }
 
+.bl-io-note-secondary {
+  color: var(--text-strong);
+  font-weight: 650;
+}
+
+.bl-clear-confirm-dialog {
+  max-width: 420px;
+}
+
 .bl-io-text {
   width: 100%;
   resize: vertical;

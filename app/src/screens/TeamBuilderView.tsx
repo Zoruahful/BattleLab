@@ -46,6 +46,7 @@ export function TeamBuilderView({
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const exportTextRef = useRef<HTMLTextAreaElement | null>(null)
 
   const stableSlots = Array.from(
@@ -73,6 +74,19 @@ export function TeamBuilderView({
   }
 
   const closeIo = () => setIoMode(null)
+
+  const requestClearTeam = () => {
+    if (filledCount === 0) {
+      return
+    }
+
+    setClearConfirmOpen(true)
+  }
+
+  const confirmClearTeam = () => {
+    onClearTeam?.()
+    setClearConfirmOpen(false)
+  }
 
   const handleCopy = async () => {
     let didCopy = false
@@ -148,7 +162,7 @@ export function TeamBuilderView({
           className="secondary-action bl-clear-team-button"
           type="button"
           disabled={filledCount === 0}
-          onClick={onClearTeam}
+          onClick={requestClearTeam}
         >
           Clear team
         </button>
@@ -181,8 +195,8 @@ export function TeamBuilderView({
           ))}
         </div>
 
-        <span className="bl-winrate-preview" aria-label="Win rate preview">
-          {report.summary.winRate.toFixed(1)}% WR preview
+        <span className="bl-winrate-preview" aria-label="Example report note">
+          Example report: run a simulation to see your team's win rate
         </span>
       </section>
 
@@ -205,6 +219,11 @@ export function TeamBuilderView({
                 ? 'Copy this Pokemon Showdown export and send it to a friend. Format is text only.'
                 : 'Paste a Pokemon Showdown team export below to load it into the builder.'}
             </p>
+            {ioMode === 'import' ? (
+              <p className="bl-io-note bl-io-note-secondary">
+                BattleLab doesn't check legality here — Pokemon Showdown stays the source of truth for battle legality.
+              </p>
+            ) : null}
 
             {ioMode === 'export' ? (
               <textarea className="bl-io-text" readOnly ref={exportTextRef} value={exportText} rows={12} />
@@ -236,6 +255,46 @@ export function TeamBuilderView({
                   Import team
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {clearConfirmOpen ? (
+        <div className="bl-io-overlay" role="dialog" aria-modal="true" aria-label="Confirm clear team">
+          <button
+            className="bl-io-scrim"
+            type="button"
+            aria-label="Cancel clear team"
+            onClick={() => setClearConfirmOpen(false)}
+          />
+          <div className="bl-io-dialog bl-clear-confirm-dialog">
+            <header className="bl-io-header">
+              <div>
+                <span className="eyebrow">Clear team</span>
+                <h3>Clear this team?</h3>
+              </div>
+              <button
+                className="bl-io-close"
+                type="button"
+                aria-label="Cancel clear team"
+                onClick={() => setClearConfirmOpen(false)}
+              >
+                x
+              </button>
+            </header>
+
+            <p className="bl-io-note">
+              This only clears the current in-session team. You can still cancel before changing anything.
+            </p>
+
+            <div className="bl-io-actions">
+              <button className="secondary-action" type="button" onClick={() => setClearConfirmOpen(false)}>
+                Cancel
+              </button>
+              <button className="primary-action" type="button" onClick={confirmClearTeam}>
+                Clear team
+              </button>
             </div>
           </div>
         </div>

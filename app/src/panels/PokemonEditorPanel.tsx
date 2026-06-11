@@ -139,6 +139,17 @@ export function PokemonEditorPanel({
   const panelOpen = open ?? isOpen ?? true
   const visualKey = draftPokemon?.iconKey ?? draftPokemon?.spriteKey
   const selectedPokemonOptionKey = findPokemonOptionKey(draftPokemon)
+  const selectedPokemonOption = fakePokemonCatalogOptions.find(
+    (candidate) => candidate.catalogKey === selectedPokemonOptionKey,
+  )
+  const selectedPokemonTypes = selectedPokemonOption
+    ? [selectedPokemonOption.primaryType, selectedPokemonOption.secondaryType].filter(Boolean).join(' / ')
+    : ''
+  const selectedPokemonSummary = selectedPokemonTypes
+    ? `${selectedPokemonTypes} type`
+    : draftPokemon
+      ? `${draftPokemon.teraType} Tera build`
+      : 'Pick a Pokemon to start building this slot.'
 
   const updateDraft = (updates: Partial<PokemonBuild>) => {
     setDraftPokemon((current) => (current ? { ...current, ...updates } : current))
@@ -221,7 +232,7 @@ export function PokemonEditorPanel({
                 </span>
                 <div>
                   <strong>{draftPokemon.species}</strong>
-                  <span>{visualKey ? `Visual key: ${visualKey}` : 'Text fallback active'}</span>
+                  <span>{selectedPokemonSummary}</span>
                 </div>
               </section>
 
@@ -368,7 +379,7 @@ export function PokemonEditorPanel({
             ) : (
               <section className="bl-editor-empty">
                 <h3>No Pokemon selected</h3>
-                <p>Lead wiring can pass the clicked slot or a new local draft when the panel is integrated.</p>
+                <p>Pick a Pokemon to start building this slot.</p>
               </section>
             )}
           </div>

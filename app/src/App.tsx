@@ -149,10 +149,16 @@ function App() {
                   {activeView === 'team' ? (
                     <>
                       <button className="secondary-action" type="button" onClick={handleSaveTeam}>
-                        {teamSaved ? 'Team saved' : 'Save team'}
+                        {teamSaved ? 'Saved for this session' : 'Save team'}
                       </button>
-                      <button className="secondary-action" type="button">
-                        Load team
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        disabled
+                        aria-disabled="true"
+                        title="Coming soon: loading saved teams needs local storage."
+                      >
+                        Load team soon
                       </button>
                       <button className="primary-action" type="button" onClick={() => openPanel('simulate')}>
                         Run simulation

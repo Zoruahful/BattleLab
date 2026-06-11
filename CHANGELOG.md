@@ -9,6 +9,7 @@
 - Added Pokemon Showdown-style team import/export, local round-trip import, and copy fallback behavior.
 - Refined Team Builder slot cards with display-only type badges and compact build metadata.
 - Expanded the Theater shell with a sample replay library, local search, and static preview states.
+- Clarified frontend-only safety states for session saves, disabled loading, confirmed team clearing, Showdown legality notes, and sample replay cards.
 - Updated sidebar active-state behavior so Settings and Catalog Update own the active highlight only while their panels are open.
 
 ## Frontend Milestone 1 - 2026-06-10
