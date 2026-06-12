@@ -217,14 +217,77 @@ export const STAT_KEYS: Array<keyof StatSpread> = ['hp', 'atk', 'def', 'spa', 's
 export type StatTier = 'very-low' | 'low' | 'medium' | 'high' | 'extreme'
 
 export const STAT_TIER_LABELS: Record<StatTier, string> = {
-  'very-low': 'Very low',
+  'very-low': 'Very Low',
   low: 'Low',
   medium: 'Medium',
   high: 'High',
-  extreme: 'Extremely high',
+  extreme: 'Very High',
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+
+type StatBarStop = {
+  value: number
+  color: string
+}
+
+const NON_HP_STAT_BAR_STOPS: StatBarStop[] = [
+  { value: 60, color: '#b26659' },
+  { value: 90, color: '#c08a3e' },
+  { value: 115, color: '#9a9550' },
+  { value: 145, color: '#6f8f5e' },
+  { value: 160, color: '#3f7f63' },
+]
+
+const HP_STAT_BAR_STOPS: StatBarStop[] = [
+  { value: 125, color: '#b26659' },
+  { value: 155, color: '#c08a3e' },
+  { value: 185, color: '#9a9550' },
+  { value: 210, color: '#6f8f5e' },
+  { value: 230, color: '#3f7f63' },
+]
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  const normalized = hex.replace('#', '')
+  return [
+    parseInt(normalized.slice(0, 2), 16),
+    parseInt(normalized.slice(2, 4), 16),
+    parseInt(normalized.slice(4, 6), 16),
+  ]
+}
+
+const rgbToHex = ([r, g, b]: [number, number, number]) =>
+  `#${[r, g, b].map((part) => Math.round(part).toString(16).padStart(2, '0')).join('')}`
+
+const interpolateColor = (from: string, to: string, progress: number) => {
+  const start = hexToRgb(from)
+  const end = hexToRgb(to)
+  return rgbToHex([
+    start[0] + (end[0] - start[0]) * progress,
+    start[1] + (end[1] - start[1]) * progress,
+    start[2] + (end[2] - start[2]) * progress,
+  ])
+}
+
+export function getStatBarColor(statKey: keyof StatSpread, value: number): string {
+  const stops = statKey === 'hp' ? HP_STAT_BAR_STOPS : NON_HP_STAT_BAR_STOPS
+  const first = stops[0]
+  const last = stops[stops.length - 1]
+
+  if (value <= first.value) return first.color
+  if (value >= last.value) return last.color
+
+  for (let index = 1; index < stops.length; index += 1) {
+    const upper = stops[index]
+    if (value <= upper.value) {
+      const lower = stops[index - 1]
+      const progress = (value - lower.value) / (upper.value - lower.value)
+      return interpolateColor(lower.color, upper.color, progress)
+    }
+  }
+
+  return last.color
+}
 
 // 1 SP == 8 EVs. Round on EV->SP so 252 EV maps to the 32 SP cap.
 export function evToSp(ev: number): number {
