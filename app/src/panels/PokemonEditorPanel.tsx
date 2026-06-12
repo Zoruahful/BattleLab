@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import {
   fakeAbilityCatalogOptions,
   fakeItemCatalogOptions,
@@ -30,6 +30,7 @@ import {
   STAT_TIER_LABELS,
 } from '../data/pokemonEditorData'
 import { Combobox, type ComboOption } from '../components/Combobox'
+import { StatRadar } from '../components/StatRadar'
 import { Tooltip, TooltipCard } from '../components/Tooltip'
 import type { CatalogPickerOption } from '../types/catalog'
 import type { BuildCatalogReference, PokemonBuild, PokemonType, StatSpread } from '../types'
@@ -54,6 +55,7 @@ export type PokemonEditorPanelProps = {
 
 const statKeys: Array<keyof StatSpread> = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
 const MAXED_IVS: StatSpread = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 }
+const ZERO_EVS: StatSpread = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }
 
 const getInitials = (species: string) =>
   species
@@ -100,24 +102,75 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 const standardEvTickMarks = [0, 84, 168, STANDARD_EV_MAX]
 const championSpTickMarks = [0, 8, 16, 24, CHAMPION_SP_MAX]
 
-const alignStandardEvStep = (value: number) => Math.floor(value / 4) * 4
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const getBudgetedStandardEvMax = (evs: StatSpread, stat: keyof StatSpread) => {
-  const currentValue = clamp(evs[stat], 0, STANDARD_EV_MAX)
-  const otherTotal = statKeys.reduce((total, key) => (key === stat ? total : total + evs[key]), 0)
-  const availableForStat = alignStandardEvStep(Math.max(0, STANDARD_EV_TOTAL - otherTotal))
-  const budgetedMax = Math.min(STANDARD_EV_MAX, availableForStat)
+const spreadTotal = (spread: StatSpread) => statKeys.reduce((total, key) => total + spread[key], 0)
 
-  return Math.max(currentValue, budgetedMax)
+const statAllocationMax = (totalBudget: number, statCap: number, spread: StatSpread, stat: keyof StatSpread) => {
+  const otherSpent = statKeys.reduce((total, key) => (key === stat ? total : total + spread[key]), 0)
+  return clamp(totalBudget - otherSpent, 0, statCap)
 }
 
-const getBudgetedChampionSpMax = (sp: StatSpread, stat: keyof StatSpread) => {
-  const currentValue = clamp(sp[stat], 0, CHAMPION_SP_MAX)
-  const otherTotal = statKeys.reduce((total, key) => (key === stat ? total : total + sp[key]), 0)
-  const availableForStat = Math.max(0, CHAMPION_SP_TOTAL - otherTotal)
-  const budgetedMax = Math.min(CHAMPION_SP_MAX, availableForStat)
+function AnimatedStatTotal({
+  stat,
+  value,
+  tier,
+  tierLabel,
+  color,
+}: {
+  stat: keyof StatSpread
+  value: number
+  tier: ReturnType<typeof getStatTier>
+  tierLabel: string
+  color: string
+}) {
+  const reducedMotion = prefersReducedMotion()
+  const [displayValue, setDisplayValue] = useState(value)
+  const valueRef = useRef(value)
 
-  return Math.max(currentValue, budgetedMax)
+  useEffect(() => {
+    if (reducedMotion) {
+      valueRef.current = value
+      return
+    }
+
+    let raf = 0
+    const start = performance.now()
+    const duration = tier === 'high' || tier === 'extreme' ? 520 : 380
+    const from = valueRef.current
+
+    const tick = (now: number) => {
+      const progress = clamp((now - start) / duration, 0, 1)
+      const eased = 1 - (1 - progress) ** 3
+      const next = Math.round(from + (value - from) * eased)
+      valueRef.current = next
+      setDisplayValue(next)
+
+      if (progress < 1) {
+        raf = requestAnimationFrame(tick)
+      }
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [reducedMotion, tier, value])
+
+  const shownValue = reducedMotion ? value : displayValue
+
+  return (
+    <span
+      className={`bl-stat-table-total bl-statline-value is-${tier}`}
+      role="cell"
+      style={{ '--stat-total-color': color } as CSSProperties}
+      title={`${STAT_LABELS[stat]} ${value} · ${tierLabel}`}
+      aria-label={`${STAT_LABELS[stat]} total ${value}, ${tierLabel}`}
+    >
+      <span className="bl-stat-total-number" key={`${stat}-${value}-${tier}`}>
+        {shownValue}
+      </span>
+    </span>
+  )
 }
 
 function TypePill({ type }: { type: PokemonType }) {
@@ -259,7 +312,7 @@ const createPokemonBuildFromOption = (
     natureRef: current?.natureRef ?? toBuildRef(defaultNature),
     moves,
     moveRefs: current?.moveRefs ?? (moves.map(findMoveRef) as PokemonBuild['moveRefs']),
-    evs: current?.evs ?? { hp: 4, atk: 0, def: 0, spa: 252, spd: 0, spe: 252 },
+    evs: speciesChanged ? { ...ZERO_EVS } : current?.evs ?? { ...ZERO_EVS },
     ivs: current?.ivs ?? { ...MAXED_IVS },
     notes: speciesChanged ? option.description : current?.notes ?? option.description,
   }
@@ -363,9 +416,9 @@ export function PokemonEditorPanel({
     setTrimNotice(false)
     setDraftPokemon((current) => {
       if (!current) return current
+      const maxForStat = statAllocationMax(STANDARD_EV_TOTAL, STANDARD_EV_MAX, current.evs, stat)
 
-      const max = getBudgetedStandardEvMax(current.evs, stat)
-      return { ...current, evs: { ...current.evs, [stat]: clamp(value, 0, max) } }
+      return { ...current, evs: { ...current.evs, [stat]: clamp(value, 0, maxForStat) } }
     })
   }
 
@@ -382,8 +435,8 @@ export function PokemonEditorPanel({
       if (!current) return current
 
       const currentSpSpread = evSpreadToSp(current.evs)
-      const max = getBudgetedChampionSpMax(currentSpSpread, stat)
-      const nextSp = clamp(sp, 0, max)
+      const maxForStat = statAllocationMax(CHAMPION_SP_TOTAL, CHAMPION_SP_MAX, currentSpSpread, stat)
+      const nextSp = clamp(sp, 0, maxForStat)
 
       return {
         ...current,
@@ -495,12 +548,16 @@ export function PokemonEditorPanel({
   const natureMods = getNatureMods(draftPokemon?.natureRef?.showdownId ?? draftPokemon?.nature.toLowerCase() ?? '')
   const computed = draftPokemon ? computeStats(base, draftPokemon.evs, draftPokemon.ivs, natureMods) : null
   const spSpread = draftPokemon ? evSpreadToSp(draftPokemon.evs) : null
-  const evTotal = draftPokemon ? statKeys.reduce((total, key) => total + draftPokemon.evs[key], 0) : 0
-  const spTotal = spSpread ? statKeys.reduce((total, key) => total + spSpread[key], 0) : 0
+  const evTotal = draftPokemon ? spreadTotal(draftPokemon.evs) : 0
+  const spTotal = spSpread ? spreadTotal(spSpread) : 0
   const isChampion = mode === 'champion-points'
   const budgetTotal = isChampion ? CHAMPION_SP_TOTAL : STANDARD_EV_TOTAL
   const budgetValue = isChampion ? spTotal : evTotal
   const budgetOver = Math.max(0, budgetValue - budgetTotal)
+  const allocationMinimum = draftPokemon
+    ? Math.min(...statKeys.map((stat) => (isChampion ? (spSpread?.[stat] ?? 0) : draftPokemon.evs[stat])))
+    : 0
+  const budgetBelow = Math.max(0, -allocationMinimum)
 
   return (
     <aside
@@ -642,45 +699,29 @@ export function PokemonEditorPanel({
               </section>
 
               <section className="bl-editor-section">
-                <div className="bl-editor-section-heading">
-                  <h3>Stats</h3>
-                  <span>Lv 50 · {isChampion ? 'Champion' : 'Standard'}</span>
-                </div>
-                <div className="bl-stat-readout" aria-label="Computed stats">
-                  {statKeys.map((stat) => {
-                    const value = computed[stat]
-                    const tier = getStatTier(stat, value)
-                    const barColor = getStatBarColor(stat, value)
-                    return (
-                      <div className="bl-statline" key={stat}>
-                        <span className="bl-statline-label">{STAT_LABELS[stat]}</span>
-                        <span className="bl-statline-bar">
-                          <span
-                            className={`bl-statline-fill is-${tier}`}
-                            style={{
-                              width: `${Math.min(100, (value / 220) * 100)}%`,
-                              backgroundColor: barColor,
-                            }}
-                          />
-                          <span
-                            className={`bl-statline-flourish is-${tier}`}
-                            key={`${stat}-${tier}`}
-                            aria-hidden="true"
-                          />
-                        </span>
-                        <span className={`bl-statline-value is-${tier}`}>
-                          {value}
-                          <em>· {STAT_TIER_LABELS[tier]}</em>
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-
-              <section className="bl-editor-section">
-                <div className="bl-editor-section-heading">
-                  <h3>Training</h3>
+                <div className="bl-stat-editor-topline">
+                  <div>
+                    <h3>Gym</h3>
+                    <p
+                      className={`bl-training-total ${budgetOver > 0 || budgetBelow > 0 ? 'is-warning' : ''}`}
+                      aria-live="polite"
+                    >
+                      {isChampion ? (
+                        <>
+                          <strong>{spTotal}</strong> / {CHAMPION_SP_TOTAL} SP · IVs fixed at 31
+                        </>
+                      ) : (
+                        <>
+                          <strong>{evTotal}</strong> / {STANDARD_EV_TOTAL} EVs · IVs editable
+                        </>
+                      )}
+                      {budgetOver > 0 ? <span className="bl-training-over">{budgetOver} over</span> : null}
+                      {budgetBelow > 0 ? <span className="bl-training-over">{budgetBelow} below 0</span> : null}
+                    </p>
+                    {trimNotice && !isChampion ? (
+                      <p className="bl-training-note">Trimmed to fit 510 EVs.</p>
+                    ) : null}
+                  </div>
                   <div className="bl-editor-toggle" role="group" aria-label="Training mode">
                     <button
                       className={mode === 'standard-evs' ? 'active' : ''}
@@ -699,70 +740,81 @@ export function PokemonEditorPanel({
                   </div>
                 </div>
 
-                <p className={`bl-training-total ${budgetOver > 0 ? 'is-warning' : ''}`} aria-live="polite">
-                  {isChampion ? (
-                    <>
-                      <strong>{spTotal}</strong> / {CHAMPION_SP_TOTAL} SP · IVs fixed at 31
-                    </>
-                  ) : (
-                    <>
-                      <strong>{evTotal}</strong> / {STANDARD_EV_TOTAL} EVs · IVs editable
-                    </>
-                  )}
-                  {budgetOver > 0 ? <span className="bl-training-over">{budgetOver} over</span> : null}
-                </p>
-                {trimNotice && !isChampion ? (
-                  <p className="bl-training-note">Trimmed to fit 510 EVs.</p>
-                ) : null}
-
-                <div className="bl-stat-slider-list">
-                  {statKeys.map((stat) => {
-                    const sp = spSpread ? spSpread[stat] : 0
-                    return (
-                      <div className={`bl-stat-slider ${isChampion ? 'is-champion' : ''}`} key={stat}>
-                        <span className="bl-stat-slider-head">
-                          <strong>{STAT_LABELS[stat]}</strong>
-                          <em>{isChampion ? `${sp} SP` : `${draftPokemon.evs[stat]} EV`}</em>
-                        </span>
-                        {isChampion ? (
-                          <div className="bl-slider-track">
-                            <input
-                              type="range"
-                              min="0"
-                              max={CHAMPION_SP_MAX}
-                              step="1"
-                              list="bl-champion-sp-ticks"
-                              value={sp}
-                              onChange={(event) => updateSp(stat, Number(event.target.value))}
-                              aria-label={`${STAT_LABELS[stat]} stat points`}
-                            />
-                            <div className="bl-slider-ticks" aria-hidden="true">
-                              {championSpTickMarks.map((tick) => (
-                                <span key={tick}>{tick}</span>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bl-stat-standard-row">
-                            <div className="bl-slider-track">
+                <div className="bl-stat-editor-layout">
+                  <StatRadar baseStats={base} totalStats={computed} />
+                  <div className="bl-stat-table" role="table" aria-label="Stats and training controls">
+                    <div className="bl-stat-table-head" role="row">
+                      <span role="columnheader">Stat</span>
+                      <span role="columnheader">Base</span>
+                      <span role="columnheader">Slider</span>
+                      <span role="columnheader">IV</span>
+                      <span role="columnheader">{isChampion ? 'SP' : 'EV'}</span>
+                      <span role="columnheader">Total</span>
+                    </div>
+                    {statKeys.map((stat) => {
+                      const value = computed[stat]
+                      const tier = getStatTier(stat, value)
+                      const barColor = getStatBarColor(stat, value)
+                      const tierLabel = STAT_TIER_LABELS[tier]
+                      const sp = spSpread ? spSpread[stat] : 0
+                      const points = isChampion ? sp : draftPokemon.evs[stat]
+                      const pointMax = isChampion ? CHAMPION_SP_MAX : STANDARD_EV_MAX
+                      const pointStep = 1
+                      const pointSpread = isChampion ? (spSpread ?? ZERO_EVS) : draftPokemon.evs
+                      const allowedPointMax = statAllocationMax(budgetTotal, pointMax, pointSpread, stat)
+                      const controlMax = Math.max(points, allowedPointMax)
+                      const updatePoints = (next: number) => (isChampion ? updateSp(stat, next) : updateEv(stat, next))
+                      const sliderFill = `${Math.min(100, (points / pointMax) * 100)}%`
+                      return (
+                        <div className="bl-stat-table-row" role="row" key={stat}>
+                          <strong className="bl-stat-table-stat" role="cell">
+                            {STAT_LABELS[stat]}
+                          </strong>
+                          <span className="bl-stat-table-base" role="cell">
+                            {base[stat]}
+                          </span>
+                          <span
+                            className="bl-stat-table-slider"
+                            role="cell"
+                            style={{ '--slider-fill': sliderFill } as CSSProperties}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => updatePoints(points - pointStep)}
+                              disabled={points <= 0}
+                              aria-label={`Lower ${STAT_LABELS[stat]} ${isChampion ? 'SP' : 'EV'}`}
+                            >
+                              -
+                            </button>
+                            <span className="bl-stat-range-shell">
+                              <span className="bl-stat-range-track" aria-hidden="true">
+                                <span className="bl-stat-range-fill" />
+                                <span className="bl-stat-range-thumb" />
+                              </span>
                               <input
                                 type="range"
                                 min="0"
-                                max={STANDARD_EV_MAX}
-                                step="4"
-                                list="bl-standard-ev-ticks"
-                                value={draftPokemon.evs[stat]}
-                                onChange={(event) => updateEv(stat, Number(event.target.value))}
-                                aria-label={`${STAT_LABELS[stat]} EVs`}
+                                max={pointMax}
+                                step={pointStep}
+                                list={isChampion ? 'bl-champion-sp-ticks' : 'bl-standard-ev-ticks'}
+                                value={points}
+                                onChange={(event) => updatePoints(Number(event.target.value))}
+                                aria-label={`${STAT_LABELS[stat]} ${isChampion ? 'SP' : 'EV'} slider`}
                               />
-                              <div className="bl-slider-ticks" aria-hidden="true">
-                                {standardEvTickMarks.map((tick) => (
-                                  <span key={tick}>{tick}</span>
-                                ))}
-                              </div>
-                            </div>
-                            <label className="bl-iv-box">
-                              <span>IV</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updatePoints(points + pointStep)}
+                              disabled={points >= allowedPointMax}
+                              aria-label={`Raise ${STAT_LABELS[stat]} ${isChampion ? 'SP' : 'EV'}`}
+                            >
+                              +
+                            </button>
+                          </span>
+                          <span className="bl-stat-table-iv" role="cell">
+                            {isChampion ? (
+                              <input type="number" value={31} disabled aria-label={`${STAT_LABELS[stat]} IV fixed at 31`} />
+                            ) : (
                               <input
                                 type="number"
                                 min="0"
@@ -771,12 +823,30 @@ export function PokemonEditorPanel({
                                 onChange={(event) => updateIv(stat, Number(event.target.value))}
                                 aria-label={`${STAT_LABELS[stat]} IV`}
                               />
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                            )}
+                          </span>
+                          <span className="bl-stat-table-points" role="cell">
+                            <input
+                              type="number"
+                              min="0"
+                              max={controlMax}
+                              step={pointStep}
+                              value={points}
+                              onChange={(event) => updatePoints(Number(event.target.value))}
+                              aria-label={`${STAT_LABELS[stat]} ${isChampion ? 'SP' : 'EV'} value`}
+                            />
+                          </span>
+                          <AnimatedStatTotal
+                            stat={stat}
+                            value={value}
+                            tier={tier}
+                            tierLabel={tierLabel}
+                            color={barColor}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
                 <datalist id="bl-standard-ev-ticks">
                   {standardEvTickMarks.map((tick) => (
