@@ -545,7 +545,7 @@
   bottom: 0;
   z-index: 10;
   display: flex;
-  width: min(480px, calc(100% - 212px));
+  width: min(var(--side-panel-width), calc(100% - 220px));
   flex-direction: column;
   border-left: 1px solid var(--border);
   background: var(--surface);
@@ -605,7 +605,7 @@
 .panel-body {
   flex: 1;
   overflow: auto;
-  padding: 18px 22px;
+  padding: 18px 26px;
 }
 
 .panel-placeholder {
@@ -681,7 +681,7 @@
   }
 
   .side-panel {
-    width: min(480px, 100%);
+    width: min(var(--side-panel-width), 100%);
   }
 }
 

@@ -1,6 +1,6 @@
 .bl-sim-panel {
   display: flex;
-  width: min(540px, calc(100% - 212px));
+  width: min(var(--side-panel-width), calc(100% - 220px));
   background: var(--surface);
 }
 
@@ -65,7 +65,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 18px 22px;
+  padding: 18px 26px;
 }
 
 .bl-sim-summary {
