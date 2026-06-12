@@ -21,38 +21,38 @@ BattleLab is a standalone desktop app concept for building competitive Pokemon t
 
 ## Current Focus
 
-The current milestone is a frontend-only pre-simulation shell using mock data and local session state. The app now focuses on clear Team Builder workflows, guided simulation setup, report review, Theater previews, Settings, and Catalog Update boundaries before any runtime or persistence work begins.
+The current build is a frontend-only pre-simulation shell using mock data and local session state. BattleLab now has a coherent desktop-style workflow for Team Builder, Pokemon editing, guided simulation setup, report review, Theater previews, Settings, and Catalog Update boundaries before runtime or persistence work begins.
 
 | Area | Goal |
 | --- | --- |
-| App Shell | Create the main desktop-style layout, sidebar, and status footer. |
-| Team Builder | Build six editable Pokemon slots with filled and empty states. |
-| Editor Panel | Edit fake catalog Pokemon with moves, ability, item, nature, Tera type, and stats. |
-| Reports | Show saved simulation history with filters and report detail navigation. |
-| Overview Report | Recreate the Champion-style overview with win rate, archetype bars, weaknesses, and strategy tips. |
-| Theater | Browse sample replay archives and play them in a local replay player built on fabricated battle data. |
-| Catalog Update | Show fake catalog readiness while keeping Pokemon Showdown as the legality source of truth. |
+| App Shell | Desktop-style layout, sidebar navigation, shared right-side panels, scrim, and blurred main view. |
+| Team Builder | Six editable Pokemon slots with local clear, import/export, and guided simulation entry. |
+| Pokemon Editor | Fake catalog editing with combobox metadata, Gym allocation table, StatRadar, and budget-aware EV/SP controls. |
+| Reports | Saved simulation history plus Overview, Threats, Leads, Cores, and Coverage detail tabs on mock data. |
+| Theater | Sample-only replay archive browser and faux local player built on fabricated battle data. |
+| Catalog Update | Fake local catalog readiness preview while keeping Pokemon Showdown as the future legality source of truth. |
+| Settings | Session-only settings panel; durable persistence and deeper app-wide behavior are planned. |
 
 ## Current Checkpoint
 
 - Frontend app scaffolded under `app/` with React, TypeScript, and Vite.
 - Desktop-style shell, sidebar navigation, header actions, shared panel host, scrim, and blur behavior are in place.
 - Team Builder supports local editing, clearing, Pokemon Showdown-style import/export, session save feedback, and guided simulation settings.
-- Pokemon editor, Reports list, Report Detail Overview, Theater shell, Settings, and Catalog Update render from local fake data.
+- Pokemon Editor includes frontend-only fake catalog pickers, metadata-rich comboboxes, Gym allocation controls, StatRadar, and defensive budget warnings.
+- Reports list/detail and all current report detail tabs render from mock data.
+- Theater remains a sample-only replay workspace with fabricated playback data.
+- Phase 2 TypeScript data contracts are stable enough for the current Team Builder, Editor, Reports, Catalog Update, and pre-runtime flows.
 - Clear frontend boundaries are visible for disabled loading, local-only saves, sample replay previews, catalog data, and Showdown legality.
 - Simulation, persistence, Electron packaging, PDF export, live catalog sync, and real replay decoding/sharing are intentionally not wired yet; Theater plays fabricated sample data only.
 
-## Planned Features
+## Planned Work
 
-- Six-Pokemon team builder
-- Pokemon Showdown-style team import/export
-- Champion-format simulation reports
-- Local report history
-- Animated matchup graphs
-- Threat, lead, core, and coverage views
-- Defensive coverage matrix
+- Apply Settings preferences across more of the frontend shell.
+- Plan local catalog update architecture and cache boundaries.
+- Wire a local simulation runtime after the pre-runtime frontend remains stable.
+- Add durable local persistence for teams, settings, catalog data, and reports.
 - Local PDF report export
-- PC performance profiles
+- Desktop packaging with Electron
 - Future EV optimizer mode
 
 ## Tech Stack
@@ -79,8 +79,8 @@ The current milestone is a frontend-only pre-simulation shell using mock data an
 | --- | --- | --- |
 | Phase 0 | Project structure and planning | Complete |
 | Phase 1 | Frontend rough draft | Complete |
-| Phase 1.5 | Pre-simulation frontend shell | In progress |
-| Phase 2 | Catalog data architecture | Planned |
+| Phase 1.5 | Pre-simulation frontend shell | Complete |
+| Phase 2 | Stable frontend data contracts | Complete |
 | Phase 3 | Local simulation proof | Planned |
 | Phase 4 | Desktop wrapper | Planned |
 | Phase 5 | Report export | Planned |

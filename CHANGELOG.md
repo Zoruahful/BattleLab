@@ -1,5 +1,14 @@
 # Changelog
 
+## Frontend Polish and Contract Checkpoints - 2026-06-12
+
+- Stabilized frontend TypeScript data contracts for team builds, fixed move slots, report history projections, report tab data, and catalog update status/progress boundaries.
+- Added active report detail tabs for Overview, Threats, Leads, Cores, and Coverage using local mock data.
+- Refined the Pokemon Editor with metadata-rich comboboxes, budget-aware allocation controls, stat color ramps, wider panel layouts, and a Gym section with StatRadar.
+- Kept Pokemon Editor catalog, radar, and stat workflows frontend-only on fabricated/local data.
+- Aligned report surfaces and right-side workspace panels with the shared app shell layout.
+- Preserved clear pre-runtime boundaries: no backend simulation, persistence, live sync, PDF generation, Electron wrapper, or real replay decoding is wired yet.
+
 ## Phase 1.5 Frontend Shell Checkpoint - 2026-06-10
 
 - Added the Theater shell as a frontend-only replay workspace placeholder.
@@ -23,4 +32,4 @@
 - Added report history and report detail overview screens using fake local data.
 - Added matching fake detail fixtures so every report history card opens an overview detail screen.
 - Replaced scaffold documentation with BattleLab-specific setup, status, validation, and product notes.
-- Updated ignore rules for local-only coordination files, mockup references, dependencies, build output, generated reports, caches, and local databases.
+- Updated ignore rules for internal coordination files, dependencies, build output, generated reports, caches, and local databases.
