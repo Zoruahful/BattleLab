@@ -7,6 +7,7 @@ export interface ComboOption {
   searchText: string
   leading?: ReactNode
   meta?: ReactNode
+  selectedMeta?: ReactNode
   tooltip?: ReactNode
 }
 
@@ -76,6 +77,7 @@ export function Combobox({
     <span className="bl-combo-trigger-inner">
       {selected?.leading}
       <span className="bl-combo-value">{triggerLabel}</span>
+      {selected?.selectedMeta ? <span className="bl-combo-selected-meta">{selected.selectedMeta}</span> : null}
     </span>
   )
   const triggerButton = (
@@ -138,7 +140,7 @@ export function Combobox({
                   >
                     {option.leading}
                     <span className="bl-combo-option-label">{option.label}</span>
-                    {option.meta}
+                    {option.meta ? <span className="bl-combo-option-meta">{option.meta}</span> : null}
                   </button>
                 )
                 return (

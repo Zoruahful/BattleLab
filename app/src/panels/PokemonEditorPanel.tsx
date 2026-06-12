@@ -18,6 +18,7 @@ import {
   editorMoves,
   editorMovesById,
   evSpreadToSp,
+  getStatBarColor,
   getStatTier,
   getBaseStats,
   getLearnsetMoves,
@@ -119,8 +120,7 @@ const getBudgetedChampionSpMax = (sp: StatSpread, stat: keyof StatSpread) => {
   return Math.max(currentValue, budgetedMax)
 }
 
-// ---- Type + category icons (item #2) ----
-function TypeBadge({ type }: { type: PokemonType }) {
+function TypePill({ type }: { type: PokemonType }) {
   return (
     <span className={`bl-type-pill bl-type-${type.toLowerCase()}`} title={type}>
       {type}
@@ -128,16 +128,75 @@ function TypeBadge({ type }: { type: PokemonType }) {
   )
 }
 
-function CategoryIcon({ category }: { category: MoveCategory }) {
+function TypeGem({ type }: { type: PokemonType }) {
   return (
-    <span className={`bl-cat-icon is-${category}`} title={CATEGORY_META[category].label} aria-label={CATEGORY_META[category].label} />
+    <span
+      className={`bl-type-gem bl-type-${type.toLowerCase()}`}
+      title={type}
+      aria-label={`${type} type`}
+    >
+      {type[0]}
+    </span>
+  )
+}
+
+function CategoryIcon({ category }: { category: MoveCategory }) {
+  const label = CATEGORY_META[category].label
+  return (
+    <span className={`bl-cat-icon is-${category}`} title={label} aria-label={label}>
+      <svg viewBox="0 0 18 18" focusable="false" aria-hidden="true">
+        {category === 'physical' ? (
+          <>
+            <polygon className="bl-cat-shape-fill" points="9 1.6 11.2 6.4 16.4 5.8 12.8 9.5 15 14.4 9.8 12.4 6.2 16.4 6.4 11 1.6 8.8 6.8 7.4" />
+            <polyline className="bl-cat-shape-line" points="5.2 4.4 8.2 7.8 4.4 9.4" />
+          </>
+        ) : null}
+        {category === 'special' ? (
+          <>
+            <circle className="bl-cat-shape-line" cx="9" cy="9" r="6.3" />
+            <circle className="bl-cat-shape-line" cx="9" cy="9" r="3.2" />
+            <path className="bl-cat-shape-fill" d="M13.7 2.6l.7 1.4 1.4.7-1.4.7-.7 1.4-.7-1.4-1.4-.7 1.4-.7z" />
+          </>
+        ) : null}
+        {category === 'status' ? (
+          <>
+            <path className="bl-cat-shape-line" d="M9 2.2l5 1.8v4.1c0 3.2-2 5.7-5 7.6-3-1.9-5-4.4-5-7.6V4z" />
+            <path className="bl-cat-shape-fill" d="M8 5.8h2v2.3h2.3v2H10v2.3H8v-2.3H5.7v-2H8z" />
+          </>
+        ) : null}
+      </svg>
+    </span>
+  )
+}
+
+function ItemIconSlot({ option }: { option: CatalogPickerOption }) {
+  const fallback = option.asset?.fallbackText ?? getInitials(option.displayName)
+  const assetKey = option.asset?.iconKey ?? option.catalogKey
+  return (
+    <span className="bl-item-icon-slot" title={`${option.displayName} item icon placeholder`} data-icon-key={assetKey}>
+      {fallback}
+    </span>
+  )
+}
+
+function NatureModChip({ showdownId }: { showdownId?: string }) {
+  const mods = getNatureMods(showdownId ?? '')
+  if (!mods.inc || !mods.dec) {
+    return <span className="bl-nature-chip is-neutral">No stat change</span>
+  }
+
+  return (
+    <span className="bl-nature-chip" title={`${STAT_LABELS[mods.inc]} up, ${STAT_LABELS[mods.dec]} down`}>
+      <span className="bl-nature-up">▲ {STAT_LABELS[mods.inc]}</span>
+      <span className="bl-nature-down">▼ {STAT_LABELS[mods.dec]}</span>
+    </span>
   )
 }
 
 function moveTooltip(move: (typeof editorMoves)[number]): ReactNode {
   return (
     <TooltipCard
-      icon={<TypeBadge type={move.type} />}
+      icon={<TypeGem type={move.type} />}
       title={move.name}
       subtitle={`${move.type} · ${CATEGORY_META[move.category].label}`}
       rows={[
@@ -152,6 +211,17 @@ function moveTooltip(move: (typeof editorMoves)[number]): ReactNode {
 
 function optionTooltip(option: CatalogPickerOption, subtitle: string): ReactNode {
   return <TooltipCard title={option.displayName} subtitle={subtitle} description={option.description} />
+}
+
+function natureTooltip(option: CatalogPickerOption): ReactNode {
+  return (
+    <TooltipCard
+      title={option.displayName}
+      subtitle="Nature"
+      rows={[{ label: 'Stat change', value: <NatureModChip showdownId={option.showdownId} /> }]}
+      description={option.description}
+    />
+  )
 }
 
 const createPokemonBuildFromOption = (
@@ -342,7 +412,7 @@ export function PokemonEditorPanel({
           leading: (
             <span className="bl-combo-types">
               {types.map((type) => (
-                <TypeBadge type={type} key={type} />
+                <TypeGem type={type} key={type} />
               ))}
             </span>
           ),
@@ -360,16 +430,37 @@ export function PokemonEditorPanel({
       tooltip: optionTooltip(option, kindLabel),
     }))
 
-  const itemOptions = useMemo(() => buildSimpleOptions(fakeItemCatalogOptions, 'Held item'), [])
+  const itemOptions = useMemo(
+    () =>
+      fakeItemCatalogOptions.map((option) => ({
+        value: option.displayName,
+        label: option.displayName,
+        searchText: `${option.displayName} ${option.aliases.join(' ')} ${option.description ?? ''}`,
+        leading: <ItemIconSlot option={option} />,
+        tooltip: optionTooltip(option, 'Held item'),
+      })),
+    [],
+  )
   const abilityOptions = useMemo(() => buildSimpleOptions(fakeAbilityCatalogOptions, 'Ability'), [])
-  const natureOptions = useMemo(() => buildSimpleOptions(fakeNatureCatalogOptions, 'Nature'), [])
+  const natureOptions = useMemo(
+    () =>
+      fakeNatureCatalogOptions.map((option) => ({
+        value: option.displayName,
+        label: option.displayName,
+        searchText: `${option.displayName} ${option.aliases.join(' ')} ${option.description ?? ''}`,
+        meta: <NatureModChip showdownId={option.showdownId} />,
+        selectedMeta: <NatureModChip showdownId={option.showdownId} />,
+        tooltip: natureTooltip(option),
+      })),
+    [],
+  )
   const teraOptions: ComboOption[] = useMemo(
     () =>
       fakeTypeCatalogOptions.map((option) => ({
         value: option.displayName,
         label: option.displayName,
         searchText: option.displayName,
-        leading: option.primaryType ? <TypeBadge type={option.primaryType} /> : undefined,
+        leading: option.primaryType ? <TypeGem type={option.primaryType} /> : undefined,
         tooltip: optionTooltip(option, 'Tera type'),
       })),
     [],
@@ -390,7 +481,7 @@ export function PokemonEditorPanel({
         searchText: `${move.name} ${move.type} ${CATEGORY_META[move.category].label}`,
         leading: (
           <span className="bl-move-lead">
-            <TypeBadge type={move.type} />
+            <TypeGem type={move.type} />
             <CategoryIcon category={move.category} />
           </span>
         ),
@@ -456,7 +547,7 @@ export function PokemonEditorPanel({
                     {selectedPokemonOption
                       ? ([selectedPokemonOption.primaryType, selectedPokemonOption.secondaryType].filter(
                           Boolean,
-                        ) as PokemonType[]).map((type) => <TypeBadge type={type} key={type} />)
+                        ) as PokemonType[]).map((type) => <TypePill type={type} key={type} />)
                       : null}
                   </span>
                 </div>
@@ -559,13 +650,17 @@ export function PokemonEditorPanel({
                   {statKeys.map((stat) => {
                     const value = computed[stat]
                     const tier = getStatTier(stat, value)
+                    const barColor = getStatBarColor(stat, value)
                     return (
                       <div className="bl-statline" key={stat}>
                         <span className="bl-statline-label">{STAT_LABELS[stat]}</span>
                         <span className="bl-statline-bar">
                           <span
                             className={`bl-statline-fill is-${tier}`}
-                            style={{ width: `${Math.min(100, (value / 220) * 100)}%` }}
+                            style={{
+                              width: `${Math.min(100, (value / 220) * 100)}%`,
+                              backgroundColor: barColor,
+                            }}
                           />
                           <span
                             className={`bl-statline-flourish is-${tier}`}
