@@ -104,13 +104,12 @@ export function CatalogUpdatePanel({
 
   return (
     <aside
-      className={`bl-catalog-panel side-panel wide ${open ? 'is-open open' : ''}`}
+      className={`bl-catalog-panel side-panel wide ${open ? 'is-open' : ''}`}
       aria-labelledby="catalog-update-title"
       aria-hidden={!open}
-      data-open={open}
     >
       <div className="bl-settings-shell">
-        <header className="bl-settings-header ph">
+        <header className="bl-settings-header">
           <div>
             <span className="eyebrow">Catalog Update</span>
             <h2 id="catalog-update-title">Local catalog status</h2>
@@ -121,7 +120,7 @@ export function CatalogUpdatePanel({
           </button>
         </header>
 
-        <div className="bl-settings-body pb">
+        <div className="bl-settings-body">
           <section className="bl-catalog-hero" aria-label="Catalog update summary">
             <div>
               <span>Status</span>
@@ -231,7 +230,7 @@ export function CatalogUpdatePanel({
           </section>
         </div>
 
-        <footer className="bl-settings-footer pf">
+        <footer className="bl-settings-footer">
           <button className="secondary-action" type="button" onClick={onClose}>
             Close
           </button>

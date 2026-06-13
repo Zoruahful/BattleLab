@@ -56,13 +56,12 @@ export function SettingsPanel({
 
   return (
     <aside
-      className={`bl-settings-panel side-panel wide ${open ? 'is-open open' : ''}`}
+      className={`bl-settings-panel side-panel wide ${open ? 'is-open' : ''}`}
       aria-labelledby="battlelab-settings-title"
       aria-hidden={!open}
-      data-open={open}
     >
       <div className="bl-settings-shell">
-        <header className="bl-settings-header ph">
+        <header className="bl-settings-header">
           <div>
             <span className="eyebrow">Settings</span>
             <h2 id="battlelab-settings-title">Preferences</h2>
@@ -73,7 +72,7 @@ export function SettingsPanel({
           </button>
         </header>
 
-        <div className="bl-settings-body pb">
+        <div className="bl-settings-body">
           <section className="bl-settings-section">
             <div className="bl-settings-section-heading">
               <h3>Battle defaults</h3>
@@ -232,7 +231,7 @@ export function SettingsPanel({
           </section>
         </div>
 
-        <footer className="bl-settings-footer pf">
+        <footer className="bl-settings-footer">
           <button className="secondary-action" type="button" onClick={() => setDraft(settings)}>
             Reset to defaults
           </button>

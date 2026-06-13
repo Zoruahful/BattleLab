@@ -79,7 +79,7 @@ const viewCopy: Record<MainViewId, { title: string; subtitle: string }> = {
   },
   theater: {
     title: 'Theater',
-    subtitle: 'Local replay library and future export-code workspace.',
+    subtitle: 'Watch and review local battle replays.',
   },
 }
 
@@ -309,7 +309,7 @@ function App() {
                       aria-label="Cancel load team"
                       onClick={cancelLoadTeam}
                     >
-                      x
+                      <AppCloseIcon />
                     </button>
                   </header>
 
@@ -349,7 +349,7 @@ function App() {
                       aria-label="Close load team message"
                       onClick={dismissLoadTeamError}
                     >
-                      x
+                      <AppCloseIcon />
                     </button>
                   </header>
 
@@ -653,7 +653,7 @@ function ActivePanelHost({
           <h2>{panel.title}</h2>
         </div>
         <button className="panel-close" type="button" aria-label="Close panel" onClick={onClose}>
-          x
+          <AppCloseIcon />
         </button>
       </header>
 
@@ -674,6 +674,21 @@ function ActivePanelHost({
         </button>
       </footer>
     </aside>
+  )
+}
+
+function AppCloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M6 6l12 12M18 6 6 18"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.4"
+      />
+    </svg>
   )
 }
 
