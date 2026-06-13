@@ -304,7 +304,7 @@ export function CatalogUpdatePanel({
             Close
           </button>
           <button className="secondary-action" type="button" onClick={handleCheck}>
-            Check for updates
+            Check preview status
           </button>
         </footer>
       </div>
