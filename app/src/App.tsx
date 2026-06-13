@@ -75,7 +75,7 @@ const viewCopy: Record<MainViewId, { title: string; subtitle: string }> = {
   },
   reports: {
     title: 'Reports',
-    subtitle: 'Unified simulation history and report overview placeholder.',
+    subtitle: 'Review sample simulation history and report summaries.',
   },
   theater: {
     title: 'Theater',

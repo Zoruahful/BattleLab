@@ -180,7 +180,7 @@ export function TeamBuilderView({
         ))}
       </div>
 
-      <section className="bl-coverage-panel" aria-label="Team coverage placeholder">
+      <section className="bl-coverage-panel" aria-label="Sample team coverage preview">
         <div>
           <h3>Team coverage</h3>
           <p>{report.overview.headline}</p>
