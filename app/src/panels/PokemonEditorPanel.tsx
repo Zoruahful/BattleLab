@@ -1,10 +1,12 @@
 import { useMemo, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import {
-  fakeAbilityCatalogOptions,
-  fakeItemCatalogOptions,
-  fakeNatureCatalogOptions,
-  fakePokemonCatalogOptions,
-  fakeTypeCatalogOptions,
+  getAbilityPickerOptions,
+  getItemPickerOptions,
+  getMovePickerOptions,
+  getNaturePickerOptions,
+  getPokemonPickerOptions,
+  getTypePickerOptions,
+  resolveCatalogAssetReference,
 } from '../data'
 import {
   CATEGORY_META,
@@ -85,10 +87,20 @@ const moveIdByName: Record<string, string> = Object.fromEntries(
   editorMoves.map((move) => [move.name, move.showdownId]),
 )
 
-const findMoveRef = (name: string): BuildCatalogReference | null => {
+const findMoveRef = (name: string, moveOptions: CatalogPickerOption[] = []): BuildCatalogReference | null => {
   const id = moveIdByName[name]
   const move = id ? editorMovesById[id] : undefined
-  return move ? { catalogKey: `move-${move.showdownId}`, showdownId: move.showdownId, displayName: move.name } : null
+  if (!move) return null
+
+  const catalogOption = moveOptions.find(
+    (option) => option.showdownId === move.showdownId || option.displayName === move.name,
+  )
+
+  return {
+    catalogKey: catalogOption?.catalogKey ?? `move-${move.showdownId}`,
+    showdownId: catalogOption?.showdownId ?? move.showdownId,
+    displayName: catalogOption?.displayName ?? move.name,
+  }
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
@@ -158,8 +170,9 @@ function CategoryIcon({ category }: { category: MoveCategory }) {
 }
 
 function ItemIconSlot({ option }: { option: CatalogPickerOption }) {
-  const fallback = option.asset?.fallbackText ?? getInitials(option.displayName)
-  const assetKey = option.asset?.iconKey ?? option.catalogKey
+  const resolvedAsset = resolveCatalogAssetReference(option.asset)
+  const fallback = resolvedAsset.fallbackText ?? option.asset?.fallbackText ?? getInitials(option.displayName)
+  const assetKey = resolvedAsset.icon?.assetKey ?? option.asset?.iconKey ?? option.catalogKey
   return (
     <span className="bl-item-icon-slot" title={`${option.displayName} item icon placeholder`} data-icon-key={assetKey}>
       {fallback}
@@ -182,18 +195,18 @@ function NatureModChip({ showdownId }: { showdownId?: string }) {
 }
 
 
-function moveTooltip(move: (typeof editorMoves)[number]): ReactNode {
+function moveTooltip(move: (typeof editorMoves)[number], catalogOption?: CatalogPickerOption): ReactNode {
   return (
     <TooltipCard
       icon={<TypeGem type={move.type} />}
-      title={move.name}
+      title={catalogOption?.displayName ?? move.name}
       subtitle={`${move.type} · ${CATEGORY_META[move.category].label}`}
       rows={[
         { label: 'Power', value: move.power ?? '—' },
         { label: 'Accuracy', value: move.accuracy ? `${move.accuracy}%` : '—' },
         { label: 'PP', value: move.pp },
       ]}
-      description={move.description}
+      description={catalogOption?.description ?? move.description}
     />
   )
 }
@@ -216,10 +229,12 @@ function natureTooltip(option: CatalogPickerOption): ReactNode {
 const createPokemonBuildFromOption = (
   option: CatalogPickerOption,
   slot: PokemonBuild['slot'],
+  typeOptions: CatalogPickerOption[],
+  moveOptions: CatalogPickerOption[],
   current?: PokemonBuild | null,
 ): PokemonBuild => {
   const speciesChanged = current ? current.species !== option.displayName : true
-  const teraTypeOption = fakeTypeCatalogOptions.find(
+  const teraTypeOption = typeOptions.find(
     (candidate) => candidate.displayName === (option.primaryType ?? current?.teraType ?? 'Normal'),
   )
   const moves = speciesChanged ? (['', '', '', ''] as PokemonBuild['moves']) : current?.moves ?? (['', '', '', ''] as PokemonBuild['moves'])
@@ -246,16 +261,16 @@ const createPokemonBuildFromOption = (
     moves,
     moveRefs: speciesChanged
       ? ([null, null, null, null] as PokemonBuild['moveRefs'])
-      : current?.moveRefs ?? (moves.map(findMoveRef) as PokemonBuild['moveRefs']),
+      : current?.moveRefs ?? (moves.map((move) => findMoveRef(move, moveOptions)) as PokemonBuild['moveRefs']),
     evs: speciesChanged ? { ...ZERO_EVS } : current?.evs ?? { ...ZERO_EVS },
     ivs: current?.ivs ?? { ...MAXED_IVS },
     notes: speciesChanged ? '' : current?.notes ?? '',
   }
 }
 
-const findPokemonOptionKey = (pokemon: PokemonBuild | null) =>
+const findPokemonOptionKey = (pokemon: PokemonBuild | null, options: CatalogPickerOption[]) =>
   pokemon
-    ? fakePokemonCatalogOptions.find(
+    ? options.find(
         (option) =>
           option.displayName === pokemon.species || option.showdownId === pokemon.species.toLowerCase(),
       )?.catalogKey ?? ''
@@ -284,10 +299,17 @@ export function PokemonEditorPanel({
   const [trimNotice, setTrimNotice] = useState(false)
   const [savePulseKey, setSavePulseKey] = useState(0)
 
+  const pokemonPickerOptions = useMemo(() => getPokemonPickerOptions(), [])
+  const movePickerOptions = useMemo(() => getMovePickerOptions(), [])
+  const itemPickerOptions = useMemo(() => getItemPickerOptions(), [])
+  const abilityPickerOptions = useMemo(() => getAbilityPickerOptions(), [])
+  const naturePickerOptions = useMemo(() => getNaturePickerOptions(), [])
+  const typePickerOptions = useMemo(() => getTypePickerOptions(), [])
+
   const panelOpen = open ?? isOpen ?? true
   const visualKey = draftPokemon?.iconKey ?? draftPokemon?.spriteKey
-  const selectedPokemonOptionKey = findPokemonOptionKey(draftPokemon)
-  const selectedPokemonOption = fakePokemonCatalogOptions.find(
+  const selectedPokemonOptionKey = findPokemonOptionKey(draftPokemon, pokemonPickerOptions)
+  const selectedPokemonOption = pokemonPickerOptions.find(
     (candidate) => candidate.catalogKey === selectedPokemonOptionKey,
   )
   const speciesShowdownId = selectedPokemonOption?.showdownId ?? draftPokemon?.species.toLowerCase() ?? ''
@@ -297,9 +319,11 @@ export function PokemonEditorPanel({
   }
 
   const handleSelectPokemon = (catalogKey: string) => {
-    const next = fakePokemonCatalogOptions.find((candidate) => candidate.catalogKey === catalogKey)
+    const next = pokemonPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
     if (next) {
-      setDraftPokemon((current) => createPokemonBuildFromOption(next, selectedSlot, current))
+      setDraftPokemon((current) =>
+        createPokemonBuildFromOption(next, selectedSlot, typePickerOptions, movePickerOptions, current),
+      )
       setTrimNotice(false)
     }
   }
@@ -311,7 +335,9 @@ export function PokemonEditorPanel({
       const name = move?.name ?? ''
       const moves = current.moves.map((value, index) => (index === moveIndex ? name : value))
       const baseRefs = current.moveRefs ?? [null, null, null, null]
-      const moveRefs = baseRefs.map((ref, index) => (index === moveIndex ? findMoveRef(name) : ref))
+      const moveRefs = baseRefs.map((ref, index) =>
+        index === moveIndex ? findMoveRef(name, movePickerOptions) : ref,
+      )
       return {
         ...current,
         moves: moves as PokemonBuild['moves'],
@@ -395,7 +421,7 @@ export function PokemonEditorPanel({
   // ---- Derived data for pickers + stats ----
   const pokemonOptions: ComboOption[] = useMemo(
     () =>
-      fakePokemonCatalogOptions.map((option) => {
+      pokemonPickerOptions.map((option) => {
         const types = [option.primaryType, option.secondaryType].filter(Boolean) as PokemonType[]
         return {
           value: option.catalogKey,
@@ -411,7 +437,7 @@ export function PokemonEditorPanel({
           tooltip: optionTooltip(option, types.join(' / ') || 'Pokemon'),
         }
       }),
-    [],
+    [pokemonPickerOptions],
   )
 
   const buildSimpleOptions = (options: CatalogPickerOption[], kindLabel: string): ComboOption[] =>
@@ -428,7 +454,7 @@ export function PokemonEditorPanel({
   const itemOptions = useMemo(
     () => [
       EMPTY_OPTION,
-      ...fakeItemCatalogOptions.map((option) => ({
+      ...itemPickerOptions.map((option) => ({
         value: option.displayName,
         label: option.displayName,
         searchText: `${option.displayName} ${option.aliases.join(' ')} ${option.description ?? ''}`,
@@ -436,13 +462,13 @@ export function PokemonEditorPanel({
         tooltip: optionTooltip(option, 'Held item'),
       })),
     ],
-    [],
+    [itemPickerOptions],
   )
-  const abilityOptions = useMemo(() => buildSimpleOptions(fakeAbilityCatalogOptions, 'Ability'), [])
+  const abilityOptions = useMemo(() => buildSimpleOptions(abilityPickerOptions, 'Ability'), [abilityPickerOptions])
   const natureOptions = useMemo(
     () => [
       EMPTY_OPTION,
-      ...fakeNatureCatalogOptions.map((option) => ({
+      ...naturePickerOptions.map((option) => ({
         value: option.displayName,
         label: option.displayName,
         searchText: `${option.displayName} ${option.aliases.join(' ')} ${option.description ?? ''}`,
@@ -451,22 +477,27 @@ export function PokemonEditorPanel({
         tooltip: natureTooltip(option),
       })),
     ],
-    [],
+    [naturePickerOptions],
   )
   const teraOptions: ComboOption[] = useMemo(
     () =>
-      fakeTypeCatalogOptions.map((option) => ({
+      typePickerOptions.map((option) => ({
         value: option.displayName,
         label: option.displayName,
         searchText: option.displayName,
         leading: option.primaryType ? <TypeGem type={option.primaryType} /> : undefined,
         tooltip: optionTooltip(option, 'Tera type'),
       })),
-    [],
+    [typePickerOptions],
   )
 
   const moveOptions: ComboOption[] = useMemo(() => {
     const learnset = getLearnsetMoves(speciesShowdownId)
+    const catalogMovesById = new Map(
+      movePickerOptions
+        .filter((option) => option.showdownId)
+        .map((option) => [option.showdownId, option]),
+    )
     const noneOption: ComboOption = {
       value: '__none__',
       label: '— None —',
@@ -474,21 +505,25 @@ export function PokemonEditorPanel({
     }
     return [
       noneOption,
-      ...learnset.map((move) => ({
-        value: move.showdownId,
-        label: move.name,
-        searchText: `${move.name} ${move.type} ${CATEGORY_META[move.category].label}`,
-        leading: (
-          <span className="bl-move-lead">
-            <TypeGem type={move.type} />
-            <CategoryIcon category={move.category} />
-          </span>
-        ),
-        meta: <span className="bl-move-power">{move.power ?? '—'}</span>,
-        tooltip: moveTooltip(move),
-      })),
+      ...learnset.map((move) => {
+        const catalogOption = catalogMovesById.get(move.showdownId)
+
+        return {
+          value: move.showdownId,
+          label: catalogOption?.displayName ?? move.name,
+          searchText: `${catalogOption?.displayName ?? move.name} ${catalogOption?.aliases.join(' ') ?? ''} ${move.type} ${CATEGORY_META[move.category].label} ${catalogOption?.description ?? ''}`,
+          leading: (
+            <span className="bl-move-lead">
+              <TypeGem type={move.type} />
+              <CategoryIcon category={move.category} />
+            </span>
+          ),
+          meta: <span className="bl-move-power">{move.power ?? '—'}</span>,
+          tooltip: moveTooltip(move, catalogOption),
+        }
+      }),
     ]
-  }, [speciesShowdownId])
+  }, [movePickerOptions, speciesShowdownId])
 
   const base = getBaseStats(speciesShowdownId)
   const natureMods = getNatureMods(draftPokemon?.natureRef?.showdownId ?? draftPokemon?.nature.toLowerCase() ?? '')
@@ -575,7 +610,7 @@ export function PokemonEditorPanel({
                       value={draftPokemon.item}
                       options={itemOptions}
                       onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(fakeItemCatalogOptions, displayName))
+                        const ref = toBuildRef(findOptionByLabel(itemPickerOptions, displayName))
                         updateDraft({ item: displayName, itemRef: ref })
                       }}
                     />
@@ -587,7 +622,7 @@ export function PokemonEditorPanel({
                       value={draftPokemon.ability}
                       options={abilityOptions}
                       onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(fakeAbilityCatalogOptions, displayName))
+                        const ref = toBuildRef(findOptionByLabel(abilityPickerOptions, displayName))
                         updateDraft({ ability: displayName, abilityRef: ref })
                       }}
                     />
@@ -599,7 +634,7 @@ export function PokemonEditorPanel({
                       value={draftPokemon.nature}
                       options={natureOptions}
                       onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(fakeNatureCatalogOptions, displayName))
+                        const ref = toBuildRef(findOptionByLabel(naturePickerOptions, displayName))
                         updateDraft({ nature: displayName, natureRef: ref })
                       }}
                     />
@@ -611,7 +646,7 @@ export function PokemonEditorPanel({
                       value={draftPokemon.teraType}
                       options={teraOptions}
                       onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(fakeTypeCatalogOptions, displayName))
+                        const ref = toBuildRef(findOptionByLabel(typePickerOptions, displayName))
                         updateDraft({ teraType: displayName as PokemonType, ...(ref ? { teraTypeRef: ref } : {}) })
                       }}
                     />

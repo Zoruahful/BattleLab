@@ -10,6 +10,7 @@ import type {
   CatalogSourceMetadata,
   CatalogType,
 } from '../types/catalog'
+import type { PokemonType } from '../types'
 
 const generatedAt = '2026-06-13T12:00:00.000Z'
 
@@ -276,47 +277,44 @@ export const localCatalogSeedItems: CatalogItem[] = [
   },
 ]
 
-export const localCatalogSeedTypes: CatalogType[] = [
-  {
-    kind: 'type',
-    catalogKey: 'type-rock',
-    showdownId: 'rock',
-    displayName: 'Rock',
-    aliases: [],
-    status: 'available',
-    sourceIds: ['source-battlelab-seed', 'source-pokeapi-candidate'],
-    type: 'Rock',
-    colorToken: 'type-rock',
-    iconKey: 'asset-type-rock-icon',
-    matchupNotes: 'Compact helper metadata only; Showdown owns matchup validation.',
-  },
-  {
-    kind: 'type',
-    catalogKey: 'type-ground',
-    showdownId: 'ground',
-    displayName: 'Ground',
-    aliases: [],
-    status: 'available',
-    sourceIds: ['source-battlelab-seed', 'source-pokeapi-candidate'],
-    type: 'Ground',
-    colorToken: 'type-ground',
-    iconKey: 'asset-type-ground-icon',
-    matchupNotes: 'Compact helper metadata only; Showdown owns matchup validation.',
-  },
-  {
-    kind: 'type',
-    catalogKey: 'type-grass',
-    showdownId: 'grass',
-    displayName: 'Grass',
-    aliases: [],
-    status: 'available',
-    sourceIds: ['source-battlelab-seed', 'source-pokeapi-candidate'],
-    type: 'Grass',
-    colorToken: 'type-grass',
-    iconKey: 'asset-type-grass-icon',
-    matchupNotes: 'Compact helper metadata only; Showdown owns matchup validation.',
-  },
+const localCatalogTypeNames: PokemonType[] = [
+  'Normal',
+  'Fire',
+  'Water',
+  'Electric',
+  'Grass',
+  'Ice',
+  'Fighting',
+  'Poison',
+  'Ground',
+  'Flying',
+  'Psychic',
+  'Bug',
+  'Rock',
+  'Ghost',
+  'Dragon',
+  'Dark',
+  'Steel',
+  'Fairy',
 ]
+
+export const localCatalogSeedTypes: CatalogType[] = localCatalogTypeNames.map((type) => {
+  const typeId = type.toLowerCase()
+
+  return {
+    kind: 'type',
+    catalogKey: `type-${typeId}`,
+    showdownId: typeId,
+    displayName: type,
+    aliases: [],
+    status: 'available',
+    sourceIds: ['source-battlelab-seed', 'source-pokeapi-candidate'],
+    type,
+    colorToken: `type-${typeId}`,
+    iconKey: `asset-type-${typeId}-icon`,
+    matchupNotes: 'Compact helper metadata only; Showdown owns matchup validation.',
+  }
+})
 
 export const localCatalogSeedNatures: CatalogNature[] = [
   {
