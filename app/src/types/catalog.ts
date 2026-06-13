@@ -29,11 +29,20 @@ export type CatalogValidationStatus =
 export type CatalogAssetKind =
   | "pokemon-icon"
   | "pokemon-sprite"
+  | "pokemon-animated-sprite"
   | "pokemon-artwork"
   | "item-icon"
   | "type-icon";
 
 export type CatalogAssetFormat = "png" | "svg" | "gif" | "webp" | "unknown";
+
+export type CatalogPokemonVisualMode = "static" | "animated";
+
+export type CatalogAssetLicenseReviewStatus =
+  | "unknown"
+  | "approved"
+  | "rejected"
+  | "needsReview";
 
 export type CatalogMoveCategory = "physical" | "special" | "status" | "unknown";
 
@@ -70,6 +79,7 @@ export interface CatalogNamedReference {
 export interface CatalogAssetReference {
   iconKey?: CatalogKey;
   spriteKey?: CatalogKey;
+  animatedSpriteKey?: CatalogKey;
   artworkKey?: CatalogKey;
   fallbackText?: string;
 }
@@ -92,11 +102,15 @@ export interface CatalogAssetMetadata {
   kind: CatalogAssetKind;
   format: CatalogAssetFormat;
   sourceId: string;
+  sourceName?: string;
+  candidateSourceUrl?: string;
   sourceUrl?: string;
+  localCacheKey?: string;
   localPath?: string;
   width?: number;
   height?: number;
-  licenseReviewStatus: "unknown" | "approved" | "rejected" | "needsReview";
+  licenseReviewStatus: CatalogAssetLicenseReviewStatus;
+  fallbackBehavior?: "use-static" | "use-icon" | "use-text" | "hide";
   fallbackText?: string;
 }
 
@@ -122,6 +136,7 @@ export interface CatalogPokemonForm {
   baseStats?: StatSpread;
   iconKey?: CatalogKey;
   spriteKey?: CatalogKey;
+  animatedSpriteKey?: CatalogKey;
   artworkKey?: CatalogKey;
 }
 
@@ -134,7 +149,9 @@ export interface CatalogPokemon extends CatalogRecordBase {
   baseStats?: StatSpread;
   iconKey?: CatalogKey;
   spriteKey?: CatalogKey;
+  animatedSpriteKey?: CatalogKey;
   artworkKey?: CatalogKey;
+  preferredVisualModes?: CatalogPokemonVisualMode[];
   generationIntroduced?: string;
   formatAvailability?: CatalogFormatAvailability[];
 }
