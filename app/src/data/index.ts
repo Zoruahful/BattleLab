@@ -74,6 +74,17 @@ export {
 } from "./catalogLiveFetchPrototypeValidation";
 
 export {
+  sampleCatalogLiveFetchCacheFallbackResponses,
+  sampleCatalogLiveFetchCacheHandoffScenarios,
+  sampleCatalogLiveFetchOfflineCacheHandoff,
+  sampleCatalogLiveFetchOfflineValidationHandoff,
+  sampleCatalogLiveFetchRateLimitedCacheHandoff,
+  sampleCatalogLiveFetchSourceValidationBlockedHandoff,
+  sampleCatalogLiveFetchSuccessCacheHandoff,
+  sampleCatalogLiveFetchSuccessValidationHandoff,
+} from "./catalogLiveFetchCacheFixtures";
+
+export {
   validateCatalogDataFoundationPipeline,
   type CatalogValidationPipelineIssue,
   type CatalogValidationPipelineResult,
