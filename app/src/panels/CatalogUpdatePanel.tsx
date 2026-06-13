@@ -104,7 +104,7 @@ export function CatalogUpdatePanel({
 
   return (
     <aside
-      className={`bl-catalog-panel side-panel wide ${open ? 'is-open' : ''}`}
+      className={`bl-catalog-panel side-panel ${open ? 'is-open' : ''}`}
       aria-labelledby="catalog-update-title"
       aria-hidden={!open}
     >

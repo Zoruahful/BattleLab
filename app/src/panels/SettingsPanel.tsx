@@ -56,7 +56,7 @@ export function SettingsPanel({
 
   return (
     <aside
-      className={`bl-settings-panel side-panel wide ${open ? 'is-open' : ''}`}
+      className={`bl-settings-panel side-panel ${open ? 'is-open' : ''}`}
       aria-labelledby="battlelab-settings-title"
       aria-hidden={!open}
     >
@@ -202,6 +202,9 @@ export function SettingsPanel({
                 System
               </button>
             </div>
+            <p className="bl-settings-field-hint" style={{ marginTop: '10px' }}>
+              System matches your OS light/dark preference. Dark mode palette is planned — both options currently use the light theme.
+            </p>
           </section>
 
           <section className="bl-settings-note">
