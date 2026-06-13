@@ -48,7 +48,13 @@ const pokemonTypes: PokemonType[] = [
   "Fairy",
 ];
 
+const displayNameOverrides: Record<string, string> = {
+  "rotom-wash": "Rotom-Wash",
+  "will-o-wisp": "Will-O-Wisp",
+};
+
 const titleCase = (value: string) =>
+  displayNameOverrides[value] ??
   value
     .split("-")
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
