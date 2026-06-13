@@ -256,6 +256,7 @@ export type * from "./catalog";
 export type * from "./catalogBundle";
 export type * from "./catalogFetch";
 export type * from "./catalogPipeline";
+export type * from "./pokeApiSource";
 export type * from "./reportArtifacts";
 export type * from "./runtime";
 export type * from "./settingsCatalog";

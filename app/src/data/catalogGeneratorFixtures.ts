@@ -1,99 +1,24 @@
 import type { PokemonType, StatSpread } from "../types";
+import type {
+  PokeApiAbilityFixture,
+  PokeApiCatalogGeneratorSnapshot,
+  PokeApiItemFixture,
+  PokeApiMoveFixture,
+  PokeApiNamedResourceFixture,
+  PokeApiNatureFixture,
+  PokeApiPokemonFixture,
+} from "../types/pokeApiSource";
 
-export interface PokeApiNamedResourceFixture {
-  name: string;
-  url: string;
-}
-
-export interface PokeApiPokemonFixture {
-  id: number;
-  name: string;
-  sprites: {
-    front_default?: string | null;
-    other?: {
-      "official-artwork"?: {
-        front_default?: string | null;
-      };
-    };
-    versions?: {
-      "generation-v"?: {
-        "black-white"?: {
-          animated?: {
-            front_default?: string | null;
-          };
-        };
-      };
-    };
-  };
-  stats: Array<{
-    base_stat: number;
-    stat: PokeApiNamedResourceFixture;
-  }>;
-  types: Array<{
-    slot: number;
-    type: PokeApiNamedResourceFixture;
-  }>;
-}
-
-export interface PokeApiMoveFixture {
-  id: number;
-  name: string;
-  accuracy: number | null;
-  power: number | null;
-  pp: number | null;
-  priority: number;
-  damage_class: PokeApiNamedResourceFixture;
-  flavor_text_entries: Array<{
-    flavor_text: string;
-    language: PokeApiNamedResourceFixture;
-  }>;
-  target: PokeApiNamedResourceFixture;
-  type: PokeApiNamedResourceFixture;
-}
-
-export interface PokeApiAbilityFixture {
-  id: number;
-  name: string;
-  flavor_text_entries: Array<{
-    flavor_text: string;
-    language: PokeApiNamedResourceFixture;
-  }>;
-}
-
-export interface PokeApiItemFixture {
-  id: number;
-  name: string;
-  flavor_text_entries: Array<{
-    text: string;
-    language: PokeApiNamedResourceFixture;
-  }>;
-  sprites: {
-    default?: string | null;
-  };
-}
-
-export interface PokeApiTypeFixture {
-  id: number;
-  name: string;
-}
-
-export interface PokeApiNatureFixture {
-  id: number;
-  name: string;
-  increased_stat: PokeApiNamedResourceFixture | null;
-  decreased_stat: PokeApiNamedResourceFixture | null;
-}
-
-export interface PokeApiCatalogGeneratorSnapshot {
-  fetchedAt: string;
-  sourceVersion: string;
-  pokemon: PokeApiPokemonFixture[];
-  moves: PokeApiMoveFixture[];
-  abilities: PokeApiAbilityFixture[];
-  items: PokeApiItemFixture[];
-  types: PokeApiTypeFixture[];
-  natures: PokeApiNatureFixture[];
-}
+export type {
+  PokeApiAbilityFixture,
+  PokeApiCatalogGeneratorSnapshot,
+  PokeApiItemFixture,
+  PokeApiMoveFixture,
+  PokeApiNamedResourceFixture,
+  PokeApiNatureFixture,
+  PokeApiPokemonFixture,
+  PokeApiTypeFixture,
+} from "../types/pokeApiSource";
 
 const apiUrl = (resource: string, idOrName: string | number) =>
   `https://pokeapi.co/api/v2/${resource}/${idOrName}/`;
