@@ -1,6 +1,11 @@
-import { useState } from 'react'
-import { fakeCatalogUpdateSnapshot } from '../data'
+import { useEffect, useState } from 'react'
+import {
+  createSampleBattleLabCatalogBundleWithHashes,
+  fakeCatalogUpdateSnapshot,
+  validateBattleLabCatalogBundleHashes,
+} from '../data'
 import type {
+  CatalogBundleFixtureStatus,
   CatalogStableStatus,
   CatalogUpdateCategoryStatus,
   CatalogUpdateProgressStatus,
@@ -36,6 +41,34 @@ const progressStatusLabels: Record<CatalogUpdateProgressStatus, string> = {
   error: 'Needs attention',
 }
 
+const bundleStatusLabels: Record<CatalogBundleFixtureStatus['status'], string> = {
+  checking: 'Checking',
+  loaded: 'Loaded',
+  invalid: 'Needs review',
+  unavailable: 'Unavailable',
+}
+
+const bundleStatusClassNames: Record<CatalogBundleFixtureStatus['status'], string> = {
+  checking: 'is-stale',
+  loaded: 'is-current',
+  invalid: 'is-needsReview',
+  unavailable: 'is-needsReview',
+}
+
+const initialBundleFixtureStatus: CatalogBundleFixtureStatus = {
+  status: 'checking',
+  isValid: false,
+  fileExtension: 'unknown',
+  readOnly: false,
+  signatureStatus: 'unknown',
+  hashAlgorithm: 'unknown',
+  canonicalization: 'pending',
+  errorCount: 0,
+  warningCount: 0,
+  issues: [],
+  message: 'Checking bundled .bl catalog fixture hashes. No file import or live sync is running.',
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en', {
     month: 'short',
@@ -55,13 +88,74 @@ export function CatalogUpdatePanel({
   onClose,
 }: CatalogUpdatePanelProps) {
   const [draftSnapshot, setDraftSnapshot] = useState<CatalogUpdateSnapshot>(snapshot)
+  const [bundleFixtureStatus, setBundleFixtureStatus] =
+    useState<CatalogBundleFixtureStatus>(initialBundleFixtureStatus)
   const totalRecords = draftSnapshot.categories.reduce((total, category) => total + category.recordCount, 0)
   const sourceCandidate = draftSnapshot.sources[0]
   const integrityLabel = draftSnapshot.seedIntegrity.isValid ? 'Valid' : 'Needs review'
+  const bundleLabel = bundleStatusLabels[bundleFixtureStatus.status]
   const averageProgress = Math.round(
     draftSnapshot.progress.categories.reduce((total, category) => total + category.progressPercent, 0) /
       draftSnapshot.progress.categories.length,
   )
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    let isMounted = true
+
+    const checkBundledFixture = async () => {
+      try {
+        const bundle = await createSampleBattleLabCatalogBundleWithHashes()
+        const result = await validateBattleLabCatalogBundleHashes(bundle)
+        const errorCount = result.issues.filter((issue) => issue.severity === 'error').length
+        const warningCount = result.issues.filter((issue) => issue.severity === 'warning').length
+
+        if (!isMounted) return
+
+        setBundleFixtureStatus({
+          status: result.isValid ? 'loaded' : 'invalid',
+          isValid: result.isValid,
+          fileExtension: bundle.fileExtension,
+          readOnly: bundle.readOnly,
+          signatureStatus: bundle.manifest.signature.status,
+          hashAlgorithm: bundle.manifest.bundleHash.algorithm,
+          canonicalization: bundle.manifest.bundleHash.canonicalization ?? 'unknown',
+          errorCount,
+          warningCount,
+          issues: result.issues,
+          message: result.isValid
+            ? 'Bundled read-only .bl catalog fixture validated with deterministic local hashes.'
+            : 'Bundled .bl catalog fixture validation found issues. No live sync or loader ran.',
+        })
+      } catch (error) {
+        if (!isMounted) return
+
+        setBundleFixtureStatus({
+          status: 'unavailable',
+          isValid: false,
+          fileExtension: 'unknown',
+          readOnly: false,
+          signatureStatus: 'unknown',
+          hashAlgorithm: 'unknown',
+          canonicalization: 'unavailable',
+          errorCount: 1,
+          warningCount: 0,
+          issues: [],
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Bundled .bl catalog fixture hash validation is unavailable in this environment.',
+        })
+      }
+    }
+
+    void checkBundledFixture()
+
+    return () => {
+      isMounted = false
+    }
+  }, [open])
 
   const handleCheck = () => {
     setDraftSnapshot((current) => ({
@@ -141,6 +235,10 @@ export function CatalogUpdatePanel({
               <strong>{integrityLabel}</strong>
             </div>
             <div>
+              <span>.bl fixture</span>
+              <strong>{bundleLabel}</strong>
+            </div>
+            <div>
               <span>Preview</span>
               <strong>{progressStatusLabels[draftSnapshot.progress.status]}</strong>
             </div>
@@ -217,6 +315,73 @@ export function CatalogUpdatePanel({
                 <div className="bl-catalog-warning-list" aria-label="Local seed integrity issues">
                   {draftSnapshot.seedIntegrity.issues.map((issue) => (
                     <p key={`${issue.code}-${issue.path}`}>
+                      <span>{issue.severity}</span> {issue.path}: {issue.message}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="bl-settings-section">
+            <div className="bl-settings-section-heading">
+              <h3>Bundled .bl fixture</h3>
+              <span className={`bl-catalog-status ${bundleStatusClassNames[bundleFixtureStatus.status]}`}>
+                {bundleLabel}
+              </span>
+            </div>
+
+            <div className="bl-catalog-source-card">
+              <strong>
+                {bundleFixtureStatus.isValid
+                  ? 'Read-only catalog bundle hashes passed'
+                  : 'Read-only catalog bundle hash check'}
+              </strong>
+              <p>
+                This is bundled local fixture validation only. It does not load a file, fetch data,
+                run catalog sync, or change the Pokemon Showdown legality and simulation boundary.
+              </p>
+              <dl>
+                <div>
+                  <dt>Extension</dt>
+                  <dd>{bundleFixtureStatus.fileExtension}</dd>
+                </div>
+                <div>
+                  <dt>Read only</dt>
+                  <dd>{bundleFixtureStatus.readOnly ? 'Yes' : 'No'}</dd>
+                </div>
+                <div>
+                  <dt>Signature</dt>
+                  <dd>{bundleFixtureStatus.signatureStatus}</dd>
+                </div>
+                <div>
+                  <dt>Hash</dt>
+                  <dd>{bundleFixtureStatus.hashAlgorithm}</dd>
+                </div>
+                <div>
+                  <dt>Canonicalization</dt>
+                  <dd>{bundleFixtureStatus.canonicalization}</dd>
+                </div>
+                <div>
+                  <dt>Issues</dt>
+                  <dd>{formatCount(bundleFixtureStatus.issues.length)}</dd>
+                </div>
+              </dl>
+              <p>{bundleFixtureStatus.message}</p>
+              <dl>
+                <div>
+                  <dt>Errors</dt>
+                  <dd>{formatCount(bundleFixtureStatus.errorCount)}</dd>
+                </div>
+                <div>
+                  <dt>Warnings</dt>
+                  <dd>{formatCount(bundleFixtureStatus.warningCount)}</dd>
+                </div>
+              </dl>
+              {bundleFixtureStatus.issues.length > 0 ? (
+                <div className="bl-catalog-warning-list" aria-label="Bundled .bl fixture issues">
+                  {bundleFixtureStatus.issues.map((issue) => (
+                    <p key={`${issue.code}-${issue.path}-${issue.section ?? 'bundle'}`}>
                       <span>{issue.severity}</span> {issue.path}: {issue.message}
                     </p>
                   ))}

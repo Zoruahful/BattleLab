@@ -1,5 +1,10 @@
 import type { BattleFormat, PerformanceProfile } from './index'
 import type { CatalogPickerKind, CatalogSourceMetadata } from './catalog'
+import type {
+  BattleLabCatalogBundleHash,
+  BattleLabCatalogBundleSignatureStatus,
+  BattleLabCatalogBundleValidationIssue,
+} from './catalogBundle'
 
 export type BattleLabThemePreference = 'light' | 'system'
 
@@ -76,6 +81,22 @@ export interface CatalogSeedIntegrityStatus {
   errorCount: number
   warningCount: number
   issues: CatalogSeedIntegrityIssue[]
+}
+
+export type CatalogBundleFixtureStatusState = 'checking' | 'loaded' | 'invalid' | 'unavailable'
+
+export interface CatalogBundleFixtureStatus {
+  status: CatalogBundleFixtureStatusState
+  isValid: boolean
+  fileExtension: '.bl' | 'unknown'
+  readOnly: boolean
+  signatureStatus: BattleLabCatalogBundleSignatureStatus | 'unknown'
+  hashAlgorithm: BattleLabCatalogBundleHash['algorithm'] | 'unknown'
+  canonicalization: string
+  errorCount: number
+  warningCount: number
+  issues: BattleLabCatalogBundleValidationIssue[]
+  message: string
 }
 
 export interface CatalogUpdateSnapshot {
