@@ -27,6 +27,40 @@ export {
   validateBattleLabCatalogBundleFixture,
   type CatalogBundleFixtureValidationCode,
 } from "./catalogBundleValidation";
+
+export {
+  samplePokeApiCatalogGeneratorSnapshot,
+  type PokeApiAbilityFixture,
+  type PokeApiCatalogGeneratorSnapshot,
+  type PokeApiItemFixture,
+  type PokeApiMoveFixture,
+  type PokeApiNamedResourceFixture,
+  type PokeApiNatureFixture,
+  type PokeApiPokemonFixture,
+  type PokeApiTypeFixture,
+} from "./catalogGeneratorFixtures";
+
+export {
+  generateCatalogFromPokeApiSnapshot,
+  normalizePokeApiAbilityFixture,
+  normalizePokeApiItemFixture,
+  normalizePokeApiMoveFixture,
+  normalizePokeApiNatureFixture,
+  normalizePokeApiPokemonFixture,
+  normalizePokeApiTypeFixture,
+  sampleCatalogGeneratorSourceMetadata,
+  sampleGeneratedPokeApiCatalog,
+} from "./catalogGeneratorPrototype";
+
+export {
+  sampleGeneratedPokeApiCatalogValidation,
+  validateGeneratedPokeApiCatalogPrototype,
+  type CatalogGeneratorPrototypeValidationCode,
+  type CatalogGeneratorPrototypeValidationIssue,
+  type CatalogGeneratorPrototypeValidationResult,
+  type CatalogGeneratorPrototypeValidationSeverity,
+} from "./catalogGeneratorPrototypeValidation";
+
 export {
   createSampleCatalogPipelineBundleEmissionSummary,
   createSampleCatalogPipelineValidationResult,
