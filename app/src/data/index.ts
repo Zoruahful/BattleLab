@@ -14,6 +14,16 @@ export {
 export { sampleBattleLabCatalogBundle } from "./catalogBundleFixture";
 
 export {
+  battleLabCatalogBundleCanonicalization,
+  canonicalizeBattleLabCatalogBundleSection,
+  createBattleLabCatalogBundleHash,
+  createBattleLabCatalogBundleSectionHashes,
+  createSampleBattleLabCatalogBundleWithHashes,
+  hashBattleLabCatalogBundlePayload,
+  validateBattleLabCatalogBundleHashes,
+} from "./catalogBundleHashes";
+
+export {
   validateBattleLabCatalogBundleFixture,
   type CatalogBundleFixtureValidationCode,
 } from "./catalogBundleValidation";

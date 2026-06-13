@@ -9,10 +9,10 @@ import { validateLocalCatalogSeedIntegrity } from './catalogSeedValidation'
 
 export type CatalogBundleFixtureValidationCode =
   | 'bundle-not-read-only'
+  | 'invalid-bundle-hash'
   | 'invalid-bundle-extension'
   | 'invalid-bundle-format'
-  | 'invalid-bundle-hash-placeholder'
-  | 'invalid-section-hash-placeholder'
+  | 'invalid-section-hash'
   | 'invalid-signature-placeholder'
   | 'record-count-mismatch'
   | 'seed-integrity-invalid'
@@ -31,6 +31,7 @@ const requiredSectionNames: BattleLabCatalogBundleSectionName[] = [
 
 const expectedCatalogOnlyTopLevelKeys = new Set(['fileExtension', 'readOnly', 'manifest', 'sections'])
 const expectedSectionKeys = new Set(requiredSectionNames)
+const canonicalization = 'battlelab-json-stable-v1'
 
 const addIssue = (
   issues: BattleLabCatalogBundleValidationIssue[],
@@ -57,7 +58,7 @@ const validateCount = (
   }
 }
 
-const validatePlaceholderHash = (
+const validateSha256HashMetadata = (
   issues: BattleLabCatalogBundleValidationIssue[],
   hash: BattleLabCatalogBundle['manifest']['bundleHash'] | undefined,
   path: string,
@@ -66,16 +67,16 @@ const validatePlaceholderHash = (
 ) => {
   if (
     !hash ||
-    hash.algorithm !== 'unknown' ||
-    !hash.value.startsWith('placeholder-local-seed-') ||
-    hash.canonicalization !== 'placeholder-unhashed-local-seed-fixture'
+    hash.algorithm !== 'sha256' ||
+    hash.canonicalization !== canonicalization ||
+    !/^[a-f0-9]{64}$/.test(hash.value)
   ) {
     addIssue(issues, {
       code,
       severity: 'error',
       path,
       section,
-      message: 'Sample .bl bundle fixture must use explicit placeholder hashes until canonical hashing is approved.',
+      message: 'Sample .bl bundle fixture must use deterministic sha256 hashes with battlelab-json-stable-v1 canonicalization.',
     })
   }
 }
@@ -156,20 +157,20 @@ export function validateBattleLabCatalogBundleFixture(
   )
 
   requiredSectionNames.forEach((sectionName) => {
-    validatePlaceholderHash(
+    validateSha256HashMetadata(
       issues,
       manifest.sectionHashes[sectionName],
       `manifest.sectionHashes.${sectionName}`,
-      'invalid-section-hash-placeholder',
+      'invalid-section-hash',
       sectionName,
     )
   })
 
-  validatePlaceholderHash(
+  validateSha256HashMetadata(
     issues,
     manifest.bundleHash,
     'manifest.bundleHash',
-    'invalid-bundle-hash-placeholder',
+    'invalid-bundle-hash',
   )
 
   if (manifest.signature.status !== 'unsigned') {

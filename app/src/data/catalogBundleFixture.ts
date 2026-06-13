@@ -62,9 +62,9 @@ export const sampleBattleLabCatalogBundle: BattleLabCatalogBundle = {
       sourceId: source.sourceId,
       kind: source.kind,
       name: source.name,
-      version: source.version,
-      fetchedAt: source.fetchedAt,
-      documentationUrl: source.documentationUrl,
+      ...(source.version ? { version: source.version } : {}),
+      ...(source.fetchedAt ? { fetchedAt: source.fetchedAt } : {}),
+      ...(source.documentationUrl ? { documentationUrl: source.documentationUrl } : {}),
       requiresAttribution: source.requiresAttribution,
     })),
     recordCounts: {
