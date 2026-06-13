@@ -1,5 +1,13 @@
 # Changelog
 
+## Frontend Shell Polish Checkpoint - 2026-06-13
+
+- Hardened browser-local Team Builder save/load with a versioned payload, shape validation, legacy payload migration, and confirmation before replacing the active team.
+- Wired session Settings into the frontend shell for theme handling, animation preference, Pokemon Editor stat mode defaults, and guided Simulation Settings defaults.
+- Polished Settings, Catalog Update, and Theater copy while keeping all three clearly frontend-only and pre-runtime.
+- Cleaned shared panel classes and close controls across Settings, Catalog Update, and shell fallback dialogs.
+- Preserved local-only boundaries: no backend simulation, durable persistence, live catalog sync, Electron wrapper, PDF export, or real Theater decoding is wired yet.
+
 ## Frontend Polish and Contract Checkpoints - 2026-06-12
 
 - Stabilized frontend TypeScript data contracts for team builds, fixed move slots, report history projections, report tab data, and catalog update status/progress boundaries.
@@ -14,7 +22,7 @@
 - Added the Theater shell as a frontend-only replay workspace placeholder.
 - Added Settings and Catalog Update panels using the shared shell-owned panel host.
 - Added local fake settings, catalog status, and editor catalog data for frontend workflows.
-- Improved Team Builder editor handoff and clear-slot affordances without adding persistence.
+- Improved Team Builder editor integration and clear-slot affordances without adding persistence.
 - Added Pokemon Showdown-style team import/export, local round-trip import, and copy fallback behavior.
 - Refined Team Builder slot cards with display-only type badges and compact build metadata.
 - Expanded the Theater shell with a sample replay library, local search, and static preview states.

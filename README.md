@@ -26,28 +26,28 @@ The current build is a frontend-only pre-simulation shell using mock data and lo
 | Area | Goal |
 | --- | --- |
 | App Shell | Desktop-style layout, sidebar navigation, shared right-side panels, scrim, and blurred main view. |
-| Team Builder | Six editable Pokemon slots with local clear, import/export, and guided simulation entry. |
-| Pokemon Editor | Fake catalog editing with combobox metadata, Gym allocation table, StatRadar, and budget-aware EV/SP controls. |
+| Team Builder | Six editable Pokemon slots with local clear, import/export, versioned browser-local save/load, and guided simulation entry. |
+| Pokemon Editor | Fake catalog editing with combobox metadata, rich-text notes, Gym allocation table, StatRadar, and budget-aware EV/SP controls. |
 | Reports | Saved simulation history plus Overview, Threats, Leads, Cores, and Coverage detail tabs on mock data. |
 | Theater | Sample-only replay archive browser and faux local player built on fabricated battle data. |
 | Catalog Update | Fake local catalog readiness preview while keeping Pokemon Showdown as the future legality source of truth. |
-| Settings | Session-only settings panel; durable persistence and deeper app-wide behavior are planned. |
+| Settings | Session-only settings for theme, animation preference, stat editor default, and simulation defaults. |
 
 ## Current Checkpoint
 
 - Frontend app scaffolded under `app/` with React, TypeScript, and Vite.
 - Desktop-style shell, sidebar navigation, header actions, shared panel host, scrim, and blur behavior are in place.
-- Team Builder supports local editing, clearing, Pokemon Showdown-style import/export, session save feedback, and guided simulation settings.
-- Pokemon Editor includes frontend-only fake catalog pickers, metadata-rich comboboxes, Gym allocation controls, StatRadar, and defensive budget warnings.
+- Team Builder supports local editing, confirmed clearing, Pokemon Showdown-style import/export, versioned browser-local save/load with confirmation, and guided simulation settings.
+- Pokemon Editor includes frontend-only fake catalog pickers, metadata-rich comboboxes, rich-text notes, Gym allocation controls, StatRadar, and defensive budget warnings.
 - Reports list/detail and all current report detail tabs render from mock data.
 - Theater remains a sample-only replay workspace with fabricated playback data.
 - Phase 2 TypeScript data contracts are stable enough for the current Team Builder, Editor, Reports, Catalog Update, and pre-runtime flows.
-- Clear frontend boundaries are visible for disabled loading, local-only saves, sample replay previews, catalog data, and Showdown legality.
+- Settings apply during the current browser session for theme, animation preference, Pokemon Editor stat mode, and guided simulation defaults.
+- Clear frontend boundaries are visible for browser-local saves, sample replay previews, catalog data, and Showdown legality.
 - Simulation, persistence, Electron packaging, PDF export, live catalog sync, and real replay decoding/sharing are intentionally not wired yet; Theater plays fabricated sample data only.
 
 ## Planned Work
 
-- Apply Settings preferences across more of the frontend shell.
 - Plan local catalog update architecture and cache boundaries.
 - Wire a local simulation runtime after the pre-runtime frontend remains stable.
 - Add durable local persistence for teams, settings, catalog data, and reports.

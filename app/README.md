@@ -2,11 +2,21 @@
 
 BattleLab's frontend is a Vite, React, and TypeScript application for the local-first desktop product experience.
 
-This package implements the first accepted fake-data UI milestone: the desktop shell, Team Builder, Pokemon editor panel, guided simulation settings panel, Reports list, and Report Detail Overview.
+This package implements the accepted pre-runtime frontend shell: the desktop shell, Team Builder, Pokemon Editor, guided Simulation Settings, Reports list/detail tabs, Theater preview workspace, Settings, and Catalog Update panels.
 
 ## Status
 
-This is an accepted frontend rough draft milestone. The app uses local mock data only.
+This is an accepted frontend-only pre-simulation shell. The app uses local mock data, fabricated sample reports/replays, and browser session state only.
+
+Implemented now:
+
+- Desktop-style shell navigation and shared right-side panel host
+- Team Builder with six slots, local clear, Pokemon Showdown-style import/export, and versioned browser-local save/load
+- Pokemon Editor with fake catalog controls, rich-text notes, Gym allocation controls, StatRadar, and budget-aware EV/SP editing
+- Guided Simulation Settings panel that stores settings in frontend state only
+- Reports list and report detail tabs for Overview, Threats, Leads, Cores, and Coverage on mock data
+- Theater sample replay library and faux player built on fabricated battle data
+- Settings and Catalog Update panels with clear pre-runtime/session-only boundaries
 
 Not implemented yet:
 
@@ -15,6 +25,7 @@ Not implemented yet:
 - Durable local persistence
 - PDF export
 - Real catalog sync
+- Real Theater replay decoding or shared replay codes
 - Real sprite or icon source
 
 ## Getting Started
@@ -60,7 +71,10 @@ src/
 ```text
 Team Builder -> Pokemon Editor Panel
 Team Builder -> Guided Simulation Settings Panel
-Reports -> Report Detail Overview -> Back to Reports
+Reports -> Report Detail Tabs -> Back to Reports
+Theater -> Sample Replay Archive
+Settings -> Session Preferences
+Catalog Update -> Local Catalog Preview
 ```
 
 The guided simulation settings panel confirms settings in local UI state only. It does not run a backend simulation.
