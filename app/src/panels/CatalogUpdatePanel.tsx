@@ -24,7 +24,7 @@ const statusLabels: Record<CatalogStableStatus, string> = {
 const categoryStatusLabels: Record<CatalogUpdateCategoryStatus, string> = {
   current: 'Current',
   stale: 'Stale',
-  needsReview: 'Needs review',
+  needsReview: 'Review required',
 }
 
 const progressStatusLabels: Record<CatalogUpdateProgressStatus, string> = {
@@ -117,7 +117,7 @@ export function CatalogUpdatePanel({
             <p>Pokemon, move, ability, item, type, nature, and picker data readiness.</p>
           </div>
           <button className="bl-panel-icon-button" type="button" aria-label="Close" onClick={onClose}>
-            x
+            <CloseIcon />
           </button>
         </header>
 
@@ -132,7 +132,7 @@ export function CatalogUpdatePanel({
               <strong>{formatCount(totalRecords)}</strong>
             </div>
             <div>
-              <span>Progress</span>
+              <span>Avg. progress</span>
               <strong>{averageProgress}%</strong>
             </div>
             <div>
@@ -150,8 +150,8 @@ export function CatalogUpdatePanel({
             <div className="bl-catalog-source-card">
               <strong>{sourceCandidate?.name ?? 'Local catalog source metadata'}</strong>
               <p>
-                PokeAPI can enrich display names, descriptions, picker data, and visual metadata
-                candidates. The UI should read local catalog artifacts after a future update step.
+                Catalog data enriches Pokemon names, move descriptions, and dropdown pickers. After an
+                update, the app reads from a local cached copy — no live internet required during normal use.
               </p>
               <dl>
                 <div>
@@ -217,7 +217,7 @@ export function CatalogUpdatePanel({
           </section>
 
           <section className="bl-settings-note">
-            <strong>Offline-first boundary</strong>
+            <strong>Works offline</strong>
             <p>
               This panel does not fetch live data. Future catalog updates should write a validated local
               cache, keep the previous good cache, and let team editing work offline.
@@ -244,6 +244,21 @@ export function CatalogUpdatePanel({
         </footer>
       </div>
     </aside>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M6 6l12 12M18 6 6 18"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.4"
+      />
+    </svg>
   )
 }
 

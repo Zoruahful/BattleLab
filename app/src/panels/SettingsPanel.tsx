@@ -32,6 +32,7 @@ export function SettingsPanel({
   onSave,
 }: SettingsPanelProps) {
   const [draft, setDraft] = useState<BattleLabSettings>(settings)
+  const [saveAcknowledged, setSaveAcknowledged] = useState(false)
 
   const updateDraft = (updates: Partial<BattleLabSettings>) => {
     setDraft((current) => ({
@@ -41,8 +42,16 @@ export function SettingsPanel({
   }
 
   const handleSave = () => {
-    onSave?.(draft)
-    onClose?.()
+    if (saveAcknowledged) {
+      return
+    }
+
+    setSaveAcknowledged(true)
+    window.setTimeout(() => {
+      onSave?.(draft)
+      setSaveAcknowledged(false)
+      onClose?.()
+    }, 1500)
   }
 
   return (
@@ -57,10 +66,10 @@ export function SettingsPanel({
           <div>
             <span className="eyebrow">Settings</span>
             <h2 id="battlelab-settings-title">Preferences</h2>
-            <p>Frontend-only defaults for the local BattleLab workspace.</p>
+            <p>Settings apply to your current session. Durable preferences are coming in a later update.</p>
           </div>
           <button className="bl-panel-icon-button" type="button" aria-label="Close" onClick={onClose}>
-            x
+            <CloseIcon />
           </button>
         </header>
 
@@ -68,7 +77,6 @@ export function SettingsPanel({
           <section className="bl-settings-section">
             <div className="bl-settings-section-heading">
               <h3>Battle defaults</h3>
-              <span>Local draft</span>
             </div>
 
             <div className="bl-settings-grid-2">
@@ -100,6 +108,9 @@ export function SettingsPanel({
                     </option>
                   ))}
                 </select>
+                <span className="bl-settings-field-hint">
+                  Limits which Pokemon appear in the editor. Takes effect when catalog data is available.
+                </span>
               </label>
 
               <label className="bl-settings-field">
@@ -130,6 +141,9 @@ export function SettingsPanel({
                     </option>
                   ))}
                 </select>
+                <span className="bl-settings-field-hint">
+                  Controls simulation worker load on your PC. Balanced works for most setups.
+                </span>
               </label>
             </div>
           </section>
@@ -137,7 +151,7 @@ export function SettingsPanel({
           <section className="bl-settings-section">
             <div className="bl-settings-section-heading">
               <h3>Workspace</h3>
-              <span>No persistence yet</span>
+              <span>Session only</span>
             </div>
 
             <div className="bl-settings-toggle-list">
@@ -149,19 +163,19 @@ export function SettingsPanel({
               />
               <SettingsToggle
                 checked={draft.autosaveTeams}
-                description="Shape for future local vault saves. This checkpoint does not persist changes."
+                description="Automatically saves your team after each edit. Requires local persistence — coming in a future update."
                 label="Autosave teams"
                 onChange={(checked) => updateDraft({ autosaveTeams: checked })}
               />
               <SettingsToggle
                 checked={draft.checkCatalogUpdatesOnLaunch}
-                description="Future startup check for catalog manifests. No network call is made here."
+                description="Checks for catalog updates when the app opens. Requires catalog sync — coming in a future update."
                 label="Check catalog updates on launch"
                 onChange={(checked) => updateDraft({ checkCatalogUpdatesOnLaunch: checked })}
               />
               <SettingsToggle
                 checked={draft.diagnosticsEnabled}
-                description="Future local troubleshooting logs. No files are written in this checkpoint."
+                description="Captures local troubleshooting details. Requires diagnostics storage — coming in a future update."
                 label="Diagnostic logs"
                 onChange={(checked) => updateDraft({ diagnosticsEnabled: checked })}
               />
@@ -171,7 +185,6 @@ export function SettingsPanel({
           <section className="bl-settings-section">
             <div className="bl-settings-section-heading">
               <h3>Appearance</h3>
-              <span>Light mode</span>
             </div>
 
             <div className="bl-settings-segmented" role="group" aria-label="Theme preference">
@@ -193,10 +206,10 @@ export function SettingsPanel({
           </section>
 
           <section className="bl-settings-note">
-            <strong>Local-first shell</strong>
+            <strong>Session settings</strong>
             <p>
-              Settings apply for this session. Durable preferences, SQLite, Electron settings, and
-              runtime worker configuration belong to later checkpoints.
+              These settings are not saved between sessions yet. Durable preferences and profile sync are
+              planned for a future update.
             </p>
           </section>
 
@@ -221,13 +234,13 @@ export function SettingsPanel({
 
         <footer className="bl-settings-footer pf">
           <button className="secondary-action" type="button" onClick={() => setDraft(settings)}>
-            Reset
+            Reset to defaults
           </button>
           <button className="secondary-action" type="button" onClick={onClose}>
             Close
           </button>
-          <button className="primary-action" type="button" onClick={handleSave}>
-            Save settings
+          <button className="primary-action" type="button" onClick={handleSave} disabled={saveAcknowledged}>
+            {saveAcknowledged ? 'Saved' : 'Save settings'}
           </button>
         </footer>
       </div>
@@ -254,6 +267,21 @@ function SettingsToggle({
         <em>{description}</em>
       </span>
     </label>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M6 6l12 12M18 6 6 18"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.4"
+      />
+    </svg>
   )
 }
 

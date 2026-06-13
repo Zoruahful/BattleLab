@@ -419,6 +419,7 @@ function ArchiveCard({
       className={`replay-card ${active ? 'is-active' : ''}`}
       role="button"
       tabIndex={0}
+      aria-label={`Open archive for ${archive.team} vs ${archive.pool}`}
       aria-pressed={active}
       onClick={onSelect}
       onDoubleClick={onEnter}
@@ -463,12 +464,13 @@ function ArchiveCard({
           <button
             type="button"
             className="replay-enter"
+            aria-label={`Open archive for ${archive.team} vs ${archive.pool}`}
             onClick={(event) => {
               event.stopPropagation()
               onEnter()
             }}
           >
-            Enter archive →
+            Open archive →
           </button>
         </span>
       </span>
@@ -540,7 +542,12 @@ function TheaterLibrary({
           </div>
 
           <div className="theater-list" aria-label="Saved archives">
-            {filtered.length === 0 ? (
+            {theaterArchives.length === 0 ? (
+              <div className="theater-empty-state">
+                <strong>No local replays yet.</strong>
+                <span>Run a simulation from Team Builder to generate your first archive.</span>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="theater-empty-list">
                 <strong>No archives match your search.</strong>
                 <span>Try a team name, pool, or tag.</span>
@@ -568,10 +575,20 @@ function TheaterLibrary({
             </section>
           )}
           <p className="th-mini-hint">
-            Double-click an archive or use <strong>Enter archive</strong> to watch every game.
+            Double-click an archive card, or use <strong>Open archive</strong>, to step through every game.
           </p>
         </aside>
       </div>
+
+      <section className="theater-import-placeholder" aria-label="Replay code import">
+        <div className="theater-import-inner">
+          <strong>Replay codes</strong>
+          <span>Import or share a replay using an export code. Coming in a future update.</span>
+          <button className="secondary-action" type="button" disabled aria-disabled="true">
+            Import replay code
+          </button>
+        </div>
+      </section>
     </section>
   )
 }
@@ -711,7 +728,7 @@ function TheaterArchiveView({ archive, onBack }: { archive: TheaterArchive; onBa
       {!focus ? (
         <div className="th-topbar">
           <button className="th-back" type="button" onClick={onBack}>
-            ‹ All archives
+            ← Library
           </button>
           <div className="th-topbar-title">
             <strong>
