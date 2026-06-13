@@ -43,6 +43,11 @@
   box-sizing: border-box;
 }
 
+[data-animations='off'] * {
+  transition: none !important;
+  animation: none !important;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;

@@ -45,6 +45,7 @@ export type PokemonEditorPanelProps = {
   slotIndex?: number | null
   slotNumber?: number
   pokemon?: PokemonBuild | null
+  statEditorMode?: EditorMode
   onClose?: () => void
   onSave?: (draft: PokemonEditorDraft) => void
 }
@@ -266,16 +267,20 @@ export function PokemonEditorPanel({
   slotIndex,
   slotNumber,
   pokemon,
+  statEditorMode = 'standard-evs',
   onClose,
   onSave,
 }: PokemonEditorPanelProps) {
   const selectedSlot = toSlotNumber(
     slotNumber ?? (slotIndex !== null && slotIndex !== undefined ? slotIndex + 1 : undefined) ?? pokemon?.slot ?? 1,
   )
-  const initialPokemon = pokemon ?? null
+  const initialPokemon =
+    statEditorMode === 'champion-points' && pokemon
+      ? { ...pokemon, evs: spSpreadToEv(evSpreadToSp(pokemon.evs)), ivs: { ...MAXED_IVS } }
+      : pokemon ?? null
   const [draftPokemon, setDraftPokemon] = useState<PokemonBuild | null>(initialPokemon)
-  const [mode, setMode] = useState<EditorMode>('standard-evs')
-  const [standardIvs, setStandardIvs] = useState<StatSpread>(initialPokemon?.ivs ?? { ...MAXED_IVS })
+  const [mode, setMode] = useState<EditorMode>(statEditorMode)
+  const [standardIvs, setStandardIvs] = useState<StatSpread>(pokemon?.ivs ?? { ...MAXED_IVS })
   const [trimNotice, setTrimNotice] = useState(false)
   const [savePulseKey, setSavePulseKey] = useState(0)
 

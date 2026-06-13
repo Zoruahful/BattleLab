@@ -90,7 +90,7 @@ function App() {
     editingSlot: null,
   })
   const [simulationSettings, setSimulationSettings] =
-    useState<SimulationSettings>(localSimulationSettings)
+    useState<SimulationSettings | null>(null)
   const [battleLabSettings, setBattleLabSettings] =
     useState<BattleLabSettings>(localBattleLabSettings)
   const [activeTeam, setActiveTeam] = useState<SubmittedTeam>(initialSubmittedTeam)
@@ -194,6 +194,15 @@ function App() {
   }
 
   useEffect(() => {
+    const root = document.documentElement
+    if (battleLabSettings.theme === 'system') {
+      root.removeAttribute('data-theme')
+    } else {
+      root.setAttribute('data-theme', battleLabSettings.theme)
+    }
+  }, [battleLabSettings.theme])
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && panelOpen) {
         closePanel()
@@ -205,7 +214,7 @@ function App() {
   }, [panelOpen])
 
   return (
-    <div className="stage">
+    <div className="stage" data-animations={battleLabSettings.animationsEnabled ? 'on' : 'off'}>
       <div className="stage-inner">
         <div className="desktop-window">
           <TitleBar activeTitle={activeItem.label} />
@@ -567,7 +576,7 @@ function ActivePanelHost({
   editingSlot: number | null
   battleLabSettings: BattleLabSettings
   team: SubmittedTeam
-  simulationSettings: SimulationSettings
+  simulationSettings: SimulationSettings | null
   onClose: () => void
   onBattleLabSettingsChange: (settings: BattleLabSettings) => void
   onTeamChange: (team: SubmittedTeam) => void
@@ -588,6 +597,7 @@ function ActivePanelHost({
         slotIndex={editingSlot}
         slotNumber={slotNumber}
         pokemon={pokemon}
+        statEditorMode={battleLabSettings.statEditorMode}
         onClose={onClose}
         onSave={handleSavePokemon}
       />
@@ -610,10 +620,13 @@ function ActivePanelHost({
   }
 
   if (activePanel === 'simulate') {
+    const activeSimulationSettings =
+      simulationSettings ?? createSimulationSettingsFromDefaults(localSimulationSettings, battleLabSettings)
+
     return (
       <SimulationSettingsPanel
         open
-        settings={simulationSettings}
+        settings={activeSimulationSettings}
         opponentPools={opponentPools}
         performanceProfiles={performanceProfiles}
         onChange={onSimulationSettingsChange}
@@ -703,6 +716,22 @@ function upsertSubmittedTeamPokemon(
         : slot,
     ) as SubmittedTeam['slots'],
     updatedAt: new Date().toISOString(),
+  }
+}
+
+function createSimulationSettingsFromDefaults(
+  baseSettings: SimulationSettings,
+  settings: BattleLabSettings,
+): SimulationSettings {
+  const defaultProfile =
+    performanceProfiles.find((profile) => profile.id === settings.defaultPerformanceProfileId) ??
+    performanceProfiles[0]
+
+  return {
+    ...baseSettings,
+    format: settings.defaultFormat,
+    performanceProfileId: defaultProfile?.id ?? baseSettings.performanceProfileId,
+    workerCount: defaultProfile?.recommendedWorkerCount ?? baseSettings.workerCount,
   }
 }
 
