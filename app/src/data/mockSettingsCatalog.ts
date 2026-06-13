@@ -1,4 +1,8 @@
 import type { BattleLabSettings, CatalogUpdateSnapshot } from '../types/settingsCatalog'
+import { localCatalogSeed, localCatalogSeedAssets } from './catalogSeed'
+
+const visualAssetCount = localCatalogSeedAssets.filter((asset) => asset.kind.startsWith('pokemon-')).length
+const pickerAssetCount = localCatalogSeedAssets.length - visualAssetCount
 
 export const localBattleLabSettings: BattleLabSettings = {
   theme: 'light',
@@ -16,82 +20,70 @@ export const fakeCatalogUpdateSnapshot: CatalogUpdateSnapshot = {
   status: 'updateAvailable',
   lastCheckedAt: '2026-06-10T12:45:00.000Z',
   lastUpdatedAt: '2026-06-09T21:10:00.000Z',
-  schemaVersion: 'catalog-ui-0.1',
-  sources: [
-    {
-      sourceId: 'source-pokeapi-candidate',
-      kind: 'pokeapi',
-      name: 'PokeAPI candidate enrichment source',
-      baseUrl: 'https://pokeapi.co/api/v2',
-      documentationUrl: 'https://pokeapi.co/docs/v2',
-      version: 'candidate',
-      fetchedAt: '2026-06-10T12:45:00.000Z',
-      requiresAttribution: false,
-    },
-    {
-      sourceId: 'source-showdown-authority',
-      kind: 'pokemon-showdown',
-      name: 'Pokemon Showdown legality and simulator authority',
-      version: 'future-local-authority',
-      fetchedAt: '2026-06-10T12:45:00.000Z',
-      requiresAttribution: false,
-    },
-  ],
+  schemaVersion: localCatalogSeed.manifest.schemaVersion,
+  sources: localCatalogSeed.manifest.sources,
   categories: [
     {
       id: 'pokemon',
       label: 'Pokemon',
       description: 'Names, forms, types, base stat previews, and visual metadata keys.',
-      recordCount: 1025,
+      recordCount: localCatalogSeed.manifest.recordCounts.pokemon,
       status: 'stale',
     },
     {
       id: 'move',
       label: 'Moves',
       description: 'Move names, types, categories, targeting, and short helper descriptions.',
-      recordCount: 919,
+      recordCount: localCatalogSeed.manifest.recordCounts.moves,
       status: 'stale',
     },
     {
       id: 'ability',
       label: 'Abilities',
       description: 'Ability names and short beginner-readable descriptions for pickers.',
-      recordCount: 307,
+      recordCount: localCatalogSeed.manifest.recordCounts.abilities,
       status: 'current',
     },
     {
       id: 'item',
       label: 'Items',
       description: 'Held item names, descriptions, and future item icon keys.',
-      recordCount: 2180,
+      recordCount: localCatalogSeed.manifest.recordCounts.items,
       status: 'current',
     },
     {
       id: 'type',
       label: 'Types',
       description: 'Type labels, colors, and matchup helper metadata.',
-      recordCount: 18,
+      recordCount: localCatalogSeed.manifest.recordCounts.types,
       status: 'current',
     },
     {
       id: 'nature',
       label: 'Natures',
       description: 'Stat up/down metadata for the Pokemon editor training controls.',
-      recordCount: 25,
+      recordCount: localCatalogSeed.manifest.recordCounts.natures,
       status: 'current',
     },
     {
-      id: 'assets',
-      label: 'Asset metadata',
-      description: 'Local sprite/icon keys and source review status. No final sprite source chosen.',
-      recordCount: 4160,
+      id: 'picker-assets',
+      label: 'Picker assets',
+      description: 'Compact item, type, and shared picker asset metadata for local option lists.',
+      recordCount: pickerAssetCount,
+      status: 'needsReview',
+    },
+    {
+      id: 'visual-assets',
+      label: 'Pokemon visuals',
+      description: 'Icon, static sprite, animated sprite, artwork, cache keys, and source-review metadata.',
+      recordCount: visualAssetCount,
       status: 'needsReview',
     },
     {
       id: 'search-index',
       label: 'Picker search index',
       description: 'Prepared local search tokens for Pokemon, moves, abilities, items, types, and natures.',
-      recordCount: 4474,
+      recordCount: localCatalogSeed.manifest.recordCounts.searchIndexEntries ?? 0,
       status: 'stale',
     },
   ],
@@ -106,8 +98,9 @@ export const fakeCatalogUpdateSnapshot: CatalogUpdateSnapshot = {
       { id: 'item', status: 'complete', progressPercent: 100 },
       { id: 'type', status: 'complete', progressPercent: 100 },
       { id: 'nature', status: 'complete', progressPercent: 100 },
-      { id: 'assets', status: 'blocked', progressPercent: 55 },
+      { id: 'picker-assets', status: 'blocked', progressPercent: 55 },
       { id: 'search-index', status: 'queued', progressPercent: 24 },
+      { id: 'visual-assets', status: 'blocked', progressPercent: 44 },
     ],
   },
   warnings: [

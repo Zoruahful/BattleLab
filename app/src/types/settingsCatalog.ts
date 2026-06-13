@@ -37,8 +37,14 @@ export interface BattleLabSettings {
   checkCatalogUpdatesOnLaunch: boolean
 }
 
+export type CatalogUpdateCategoryId =
+  | CatalogPickerKind
+  | 'picker-assets'
+  | 'search-index'
+  | 'visual-assets'
+
 export interface CatalogUpdateCategory {
-  id: CatalogPickerKind | 'assets' | 'search-index'
+  id: CatalogUpdateCategoryId
   label: string
   description: string
   recordCount: number

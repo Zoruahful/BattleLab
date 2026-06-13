@@ -95,8 +95,9 @@ export function CatalogUpdatePanel({
         message: 'Fake local catalog update completed. Asset licensing review remains separate.',
         categories: current.progress.categories.map((category) => ({
           ...category,
-          status: category.id === 'assets' ? 'blocked' : 'complete',
-          progressPercent: category.id === 'assets' ? category.progressPercent : 100,
+          status: category.id === 'picker-assets' || category.id === 'visual-assets' ? 'blocked' : 'complete',
+          progressPercent:
+            category.id === 'picker-assets' || category.id === 'visual-assets' ? category.progressPercent : 100,
         })),
       },
     }))
