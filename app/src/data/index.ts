@@ -35,6 +35,29 @@ export {
 } from "./catalogGeneratedBundleFixture";
 
 export {
+  sampleCatalogFetchGenerationRequest,
+  sampleCatalogFetchNormalizationHandoff,
+  sampleCatalogFetchPipelineSnapshot,
+  sampleCatalogFetchSectionNames,
+  sampleCatalogSourceFetchBlockedAssetResponse,
+  sampleCatalogSourceFetchCacheFallbackResponse,
+  sampleCatalogSourceFetchRateLimitedResponse,
+  sampleCatalogSourceFetchRequest,
+  sampleCatalogSourceFetchResponses,
+  sampleCatalogSourceFetchSuccessResponse,
+  sampleCatalogSourceSnapshotPayload,
+} from "./catalogFetchFixtures";
+
+export {
+  sampleCatalogFetchFixtureValidation,
+  validateCatalogFetchFixtureExamples,
+  type CatalogFetchFixtureValidationCode,
+  type CatalogFetchFixtureValidationIssue,
+  type CatalogFetchFixtureValidationResult,
+  type CatalogFetchFixtureValidationSeverity,
+} from "./catalogFetchFixtureValidation";
+
+export {
   samplePokeApiCatalogGeneratorSnapshot,
   type PokeApiAbilityFixture,
   type PokeApiCatalogGeneratorSnapshot,
