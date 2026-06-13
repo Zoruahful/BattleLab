@@ -11,6 +11,13 @@ export {
   localCatalogSeedTypes,
 } from "./catalogSeed";
 
+export { sampleBattleLabCatalogBundle } from "./catalogBundleFixture";
+
+export {
+  validateBattleLabCatalogBundleFixture,
+  type CatalogBundleFixtureValidationCode,
+} from "./catalogBundleValidation";
+
 export {
   findCatalogAbilityByKey,
   findCatalogAbilityByShowdownId,
