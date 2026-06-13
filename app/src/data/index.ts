@@ -70,6 +70,15 @@ export {
 } from "./catalogGeneratorFixtures";
 
 export {
+  samplePokeApiSourceSnapshotValidation,
+  validatePokeApiSourceSnapshot,
+  type PokeApiSourceValidationCode,
+  type PokeApiSourceValidationIssue,
+  type PokeApiSourceValidationResult,
+  type PokeApiSourceValidationSeverity,
+} from "./pokeApiSourceValidation";
+
+export {
   generateCatalogFromPokeApiSnapshot,
   normalizePokeApiAbilityFixture,
   normalizePokeApiItemFixture,
