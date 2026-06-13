@@ -49,6 +49,14 @@ export {
 } from "./catalogSelectors";
 
 export {
+  validateLocalCatalogSeedIntegrity,
+  type CatalogSeedValidationCode,
+  type CatalogSeedValidationIssue,
+  type CatalogSeedValidationResult,
+  type CatalogSeedValidationSeverity,
+} from "./catalogSeedValidation";
+
+export {
   detailedSimulationReport,
   hardTrickRoomSimulationReport,
   localSimulationSettings,
