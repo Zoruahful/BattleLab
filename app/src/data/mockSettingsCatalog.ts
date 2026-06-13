@@ -1,8 +1,16 @@
 import type { BattleLabSettings, CatalogUpdateSnapshot } from '../types/settingsCatalog'
 import { localCatalogSeed, localCatalogSeedAssets } from './catalogSeed'
+import { validateLocalCatalogSeedIntegrity } from './catalogSeedValidation'
 
 const visualAssetCount = localCatalogSeedAssets.filter((asset) => asset.kind.startsWith('pokemon-')).length
 const pickerAssetCount = localCatalogSeedAssets.length - visualAssetCount
+const seedIntegrityResult = validateLocalCatalogSeedIntegrity()
+const seedIntegrity = {
+  isValid: seedIntegrityResult.isValid,
+  errorCount: seedIntegrityResult.issues.filter((issue) => issue.severity === 'error').length,
+  warningCount: seedIntegrityResult.issues.filter((issue) => issue.severity === 'warning').length,
+  issues: seedIntegrityResult.issues,
+}
 
 export const localBattleLabSettings: BattleLabSettings = {
   theme: 'light',
@@ -17,9 +25,9 @@ export const localBattleLabSettings: BattleLabSettings = {
 }
 
 export const fakeCatalogUpdateSnapshot: CatalogUpdateSnapshot = {
-  status: 'updateAvailable',
-  lastCheckedAt: '2026-06-10T12:45:00.000Z',
-  lastUpdatedAt: '2026-06-09T21:10:00.000Z',
+  status: seedIntegrity.isValid ? 'ready' : 'error',
+  lastCheckedAt: localCatalogSeed.manifest.generatedAt,
+  lastUpdatedAt: localCatalogSeed.manifest.generatedAt,
   schemaVersion: localCatalogSeed.manifest.schemaVersion,
   sources: localCatalogSeed.manifest.sources,
   categories: [
@@ -28,14 +36,14 @@ export const fakeCatalogUpdateSnapshot: CatalogUpdateSnapshot = {
       label: 'Pokemon',
       description: 'Names, forms, types, base stat previews, and visual metadata keys.',
       recordCount: localCatalogSeed.manifest.recordCounts.pokemon,
-      status: 'stale',
+      status: 'current',
     },
     {
       id: 'move',
       label: 'Moves',
       description: 'Move names, types, categories, targeting, and short helper descriptions.',
       recordCount: localCatalogSeed.manifest.recordCounts.moves,
-      status: 'stale',
+      status: 'current',
     },
     {
       id: 'ability',
@@ -84,27 +92,25 @@ export const fakeCatalogUpdateSnapshot: CatalogUpdateSnapshot = {
       label: 'Picker search index',
       description: 'Prepared local search tokens for Pokemon, moves, abilities, items, types, and natures.',
       recordCount: localCatalogSeed.manifest.recordCounts.searchIndexEntries ?? 0,
-      status: 'stale',
+      status: 'current',
     },
   ],
   progress: {
-    status: 'checking',
-    activeSourceIds: ['source-pokeapi-candidate'],
-    message: 'Fake local catalog preparation preview. No network sync is running.',
+    status: 'idle',
+    activeSourceIds: [],
+    message: 'Local preview only. Seed data is bundled and no network sync is running.',
     categories: [
-      { id: 'pokemon', status: 'running', progressPercent: 72 },
-      { id: 'move', status: 'queued', progressPercent: 38 },
+      { id: 'pokemon', status: 'complete', progressPercent: 100 },
+      { id: 'move', status: 'complete', progressPercent: 100 },
       { id: 'ability', status: 'complete', progressPercent: 100 },
       { id: 'item', status: 'complete', progressPercent: 100 },
       { id: 'type', status: 'complete', progressPercent: 100 },
       { id: 'nature', status: 'complete', progressPercent: 100 },
       { id: 'picker-assets', status: 'blocked', progressPercent: 55 },
-      { id: 'search-index', status: 'queued', progressPercent: 24 },
+      { id: 'search-index', status: 'complete', progressPercent: 100 },
       { id: 'visual-assets', status: 'blocked', progressPercent: 44 },
     ],
   },
-  warnings: [
-    'PokeAPI is a candidate enrichment source only; Pokemon Showdown remains the legality and battle source of truth.',
-    'Remote sprite URLs are not enabled for normal offline use until licensing and bundling are reviewed.',
-  ],
+  seedIntegrity,
+  warnings: localCatalogSeed.manifest.warnings,
 }

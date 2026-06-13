@@ -277,7 +277,7 @@
 
 .bl-catalog-hero {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -439,6 +439,12 @@
   gap: 8px;
   border-style: dashed;
   background: var(--surface-muted);
+}
+
+.bl-catalog-warning-list span {
+  color: var(--danger);
+  font-weight: 850;
+  text-transform: capitalize;
 }
 
 @media (max-width: 560px) {

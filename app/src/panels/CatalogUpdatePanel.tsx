@@ -15,7 +15,7 @@ export type CatalogUpdatePanelProps = {
 }
 
 const statusLabels: Record<CatalogStableStatus, string> = {
-  ready: 'Ready',
+  ready: 'Local seed ready',
   updateAvailable: 'Update available',
   upToDate: 'Up to date',
   error: 'Needs attention',
@@ -28,11 +28,11 @@ const categoryStatusLabels: Record<CatalogUpdateCategoryStatus, string> = {
 }
 
 const progressStatusLabels: Record<CatalogUpdateProgressStatus, string> = {
-  idle: 'Idle',
-  checking: 'Checking',
+  idle: 'Preview idle',
+  checking: 'Checking local seed',
   downloading: 'Downloading',
   applying: 'Applying',
-  complete: 'Complete',
+  complete: 'Preview complete',
   error: 'Needs attention',
 }
 
@@ -57,6 +57,7 @@ export function CatalogUpdatePanel({
   const [draftSnapshot, setDraftSnapshot] = useState<CatalogUpdateSnapshot>(snapshot)
   const totalRecords = draftSnapshot.categories.reduce((total, category) => total + category.recordCount, 0)
   const sourceCandidate = draftSnapshot.sources[0]
+  const integrityLabel = draftSnapshot.seedIntegrity.isValid ? 'Valid' : 'Needs review'
   const averageProgress = Math.round(
     draftSnapshot.progress.categories.reduce((total, category) => total + category.progressPercent, 0) /
       draftSnapshot.progress.categories.length,
@@ -73,16 +74,16 @@ export function CatalogUpdatePanel({
           current.progress.status === 'checking' ? [] : current.sources.map((source) => source.sourceId),
         message:
           current.progress.status === 'checking'
-            ? 'Catalog update progress is idle.'
-            : 'Checking local catalog source metadata. No network sync is running.',
+            ? 'Local preview is idle. No network sync is running.'
+            : 'Checking bundled seed metadata and validator output. No network sync is running.',
       },
     }))
   }
 
-  const handleUseFakeUpdate = () => {
+  const handlePreviewPrepared = () => {
     setDraftSnapshot((current) => ({
       ...current,
-      status: 'upToDate',
+      status: current.seedIntegrity.isValid ? 'ready' : 'error',
       lastUpdatedAt: new Date().toISOString(),
       categories: current.categories.map((category) => ({
         ...category,
@@ -92,7 +93,7 @@ export function CatalogUpdatePanel({
         ...current.progress,
         status: 'complete',
         activeSourceIds: [],
-        message: 'Fake local catalog update completed. Asset licensing review remains separate.',
+        message: 'Local preview marked prepared. Asset licensing review remains separate.',
         categories: current.progress.categories.map((category) => ({
           ...category,
           status: category.id === 'picker-assets' || category.id === 'visual-assets' ? 'blocked' : 'complete',
@@ -136,7 +137,11 @@ export function CatalogUpdatePanel({
               <strong>{averageProgress}%</strong>
             </div>
             <div>
-              <span>Update</span>
+              <span>Seed check</span>
+              <strong>{integrityLabel}</strong>
+            </div>
+            <div>
+              <span>Preview</span>
               <strong>{progressStatusLabels[draftSnapshot.progress.status]}</strong>
             </div>
           </section>
@@ -150,8 +155,8 @@ export function CatalogUpdatePanel({
             <div className="bl-catalog-source-card">
               <strong>{sourceCandidate?.name ?? 'Local catalog source metadata'}</strong>
               <p>
-                Catalog data enriches Pokemon names, move descriptions, and dropdown pickers. After an
-                update, the app reads from a local cached copy — no live internet required during normal use.
+                Catalog data enriches Pokemon names, move descriptions, and dropdown pickers. This view reads
+                bundled seed metadata only; no live internet or runtime sync is running.
               </p>
               <dl>
                 <div>
@@ -180,8 +185,50 @@ export function CatalogUpdatePanel({
 
           <section className="bl-settings-section">
             <div className="bl-settings-section-heading">
+              <h3>Local seed integrity</h3>
+              <span>{integrityLabel}</span>
+            </div>
+
+            <div className="bl-catalog-source-card">
+              <strong>
+                {draftSnapshot.seedIntegrity.isValid
+                  ? 'Seed validator passed'
+                  : 'Seed validator found issues'}
+              </strong>
+              <p>
+                validateLocalCatalogSeedIntegrity checks record counts, catalog keys, source references,
+                asset references, search index links, and minimum local coverage.
+              </p>
+              <dl>
+                <div>
+                  <dt>Errors</dt>
+                  <dd>{formatCount(draftSnapshot.seedIntegrity.errorCount)}</dd>
+                </div>
+                <div>
+                  <dt>Warnings</dt>
+                  <dd>{formatCount(draftSnapshot.seedIntegrity.warningCount)}</dd>
+                </div>
+                <div>
+                  <dt>Issues</dt>
+                  <dd>{formatCount(draftSnapshot.seedIntegrity.issues.length)}</dd>
+                </div>
+              </dl>
+              {draftSnapshot.seedIntegrity.issues.length > 0 ? (
+                <div className="bl-catalog-warning-list" aria-label="Local seed integrity issues">
+                  {draftSnapshot.seedIntegrity.issues.map((issue) => (
+                    <p key={`${issue.code}-${issue.path}`}>
+                      <span>{issue.severity}</span> {issue.path}: {issue.message}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="bl-settings-section">
+            <div className="bl-settings-section-heading">
               <h3>Catalog areas</h3>
-              <span>Fake progress</span>
+              <span>Local preview</span>
             </div>
 
             <div className="bl-catalog-category-list">
@@ -190,27 +237,27 @@ export function CatalogUpdatePanel({
                 const progressPercent = progress?.progressPercent ?? 0
 
                 return (
-                <article className="bl-catalog-category" key={category.id}>
-                  <div className="bl-catalog-category-topline">
-                    <div>
-                      <strong>{category.label}</strong>
-                      <p>{category.description}</p>
+                  <article className="bl-catalog-category" key={category.id}>
+                    <div className="bl-catalog-category-topline">
+                      <div>
+                        <strong>{category.label}</strong>
+                        <p>{category.description}</p>
+                      </div>
+                      <span className={`bl-catalog-status is-${category.status}`}>
+                        {categoryStatusLabels[category.status]}
+                      </span>
                     </div>
-                    <span className={`bl-catalog-status is-${category.status}`}>
-                      {categoryStatusLabels[category.status]}
-                    </span>
-                  </div>
-                  <div className="bl-catalog-meter" aria-label={`${category.label} progress`}>
-                    <span style={{ width: `${progressPercent}%` }} />
-                  </div>
-                  <div className="bl-catalog-meta">
-                    <span>{formatCount(category.recordCount)} records</span>
-                    <span>
-                      {progressPercent}% prepared
-                      {progress ? ` - ${progress.status}` : ''}
-                    </span>
-                  </div>
-                </article>
+                    <div className="bl-catalog-meter" aria-label={`${category.label} progress`}>
+                      <span style={{ width: `${progressPercent}%` }} />
+                    </div>
+                    <div className="bl-catalog-meta">
+                      <span>{formatCount(category.recordCount)} records</span>
+                      <span>
+                        {progressPercent}% prepared
+                        {progress ? ` - ${progress.status}` : ''}
+                      </span>
+                    </div>
+                  </article>
                 )
               })}
             </div>
@@ -238,8 +285,8 @@ export function CatalogUpdatePanel({
           <button className="secondary-action" type="button" onClick={handleCheck}>
             Check status
           </button>
-          <button className="primary-action" type="button" onClick={handleUseFakeUpdate}>
-            Update catalog
+          <button className="primary-action" type="button" onClick={handlePreviewPrepared}>
+            Preview prepared
           </button>
         </footer>
       </div>

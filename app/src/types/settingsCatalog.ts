@@ -64,6 +64,20 @@ export interface CatalogUpdateProgressSnapshot {
   message?: string
 }
 
+export interface CatalogSeedIntegrityIssue {
+  code: string
+  severity: 'error' | 'warning'
+  message: string
+  path: string
+}
+
+export interface CatalogSeedIntegrityStatus {
+  isValid: boolean
+  errorCount: number
+  warningCount: number
+  issues: CatalogSeedIntegrityIssue[]
+}
+
 export interface CatalogUpdateSnapshot {
   status: CatalogStableStatus
   lastCheckedAt: string
@@ -72,5 +86,6 @@ export interface CatalogUpdateSnapshot {
   sources: CatalogSourceMetadata[]
   categories: CatalogUpdateCategory[]
   progress: CatalogUpdateProgressSnapshot
+  seedIntegrity: CatalogSeedIntegrityStatus
   warnings: string[]
 }
