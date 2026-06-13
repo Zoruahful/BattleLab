@@ -1446,6 +1446,7 @@ export function NotesEditor({ value, onChange }: { value: string; onChange: (val
                 value={Math.round(colorHsv.h)}
                 onChange={(event) => setPickerColor({ ...colorHsv, h: Number(event.target.value) })}
                 aria-label="Hue"
+                style={{ '--picker-hue-color': hsvToHex({ h: colorHsv.h, s: 100, v: 100 }) } as CSSProperties}
               />
               <div className="bl-color-rgb">
                 {(['r', 'g', 'b'] as Array<keyof RgbColor>).map((channel) => (

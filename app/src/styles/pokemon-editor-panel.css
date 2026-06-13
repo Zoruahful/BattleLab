@@ -528,13 +528,25 @@
   background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
 }
 
+.bl-color-hue::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+}
+
+.bl-color-hue::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+}
+
 .bl-color-hue::-webkit-slider-thumb {
   width: 10px;
   height: 10px;
   border: 2px solid #ffffff;
   border-radius: 999px;
   appearance: none;
-  background: var(--accent);
+  background: var(--picker-hue-color, #ff0000);
   box-shadow: 0 0 0 1px rgba(22, 24, 22, 0.68);
 }
 
@@ -543,7 +555,7 @@
   height: 8px;
   border: 2px solid #ffffff;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--picker-hue-color, #ff0000);
   box-shadow: 0 0 0 1px rgba(22, 24, 22, 0.68);
 }
 
