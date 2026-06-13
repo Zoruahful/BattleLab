@@ -412,21 +412,23 @@ function MetricBar({
   return (
     <span
       aria-label={ariaLabel}
-      className={`bl-metric-track is-${tone}`}
+      className={`bl-metric-meter ${valueLabel ? 'has-value' : ''}`}
       role="meter"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clampPercent(value))}
     >
-      <span
-        className="bl-metric-fill"
-        style={
-          {
-            '--bar-width': `${Math.max(4, clampPercent(value))}%`,
-            '--bar-delay': `${index * 70}ms`,
-          } as CSSProperties
-        }
-      />
+      <span className={`bl-metric-track is-${tone}`}>
+        <span
+          className="bl-metric-fill"
+          style={
+            {
+              '--bar-width': `${Math.max(4, clampPercent(value))}%`,
+              '--bar-delay': `${index * 70}ms`,
+            } as CSSProperties
+          }
+        />
+      </span>
       {valueLabel ? <span className="bl-metric-value">{valueLabel}</span> : null}
     </span>
   )

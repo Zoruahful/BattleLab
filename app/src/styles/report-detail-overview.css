@@ -368,8 +368,18 @@
   line-height: 1.35;
 }
 
+.bl-metric-meter {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.bl-metric-meter.has-value {
+  grid-template-columns: minmax(120px, 1fr) auto;
+}
+
 .bl-metric-track {
-  position: relative;
   display: block;
   height: 10px;
   overflow: hidden;
@@ -396,12 +406,11 @@
 }
 
 .bl-metric-value {
-  position: absolute;
-  inset: -22px 0 auto auto;
   color: var(--text);
   font-size: 12px;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
+  text-align: right;
   white-space: nowrap;
 }
 
