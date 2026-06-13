@@ -29,6 +29,12 @@ export {
 } from "./catalogBundleValidation";
 
 export {
+  createSampleGeneratedPokeApiCatalogBundleWithHashes,
+  sampleGeneratedPokeApiCatalogBundle,
+  validateSampleGeneratedPokeApiCatalogBundle,
+} from "./catalogGeneratedBundleFixture";
+
+export {
   samplePokeApiCatalogGeneratorSnapshot,
   type PokeApiAbilityFixture,
   type PokeApiCatalogGeneratorSnapshot,
