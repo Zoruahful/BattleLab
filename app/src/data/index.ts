@@ -58,6 +58,16 @@ export {
 } from "./catalogFetchFixtureValidation";
 
 export {
+  validateCatalogDataFoundationPipeline,
+  type CatalogValidationPipelineIssue,
+  type CatalogValidationPipelineResult,
+  type CatalogValidationPipelineSeverity,
+  type CatalogValidationPipelineStage,
+  type CatalogValidationPipelineStageResult,
+  type CatalogValidationPipelineStageStatus,
+} from "./catalogValidationPipeline";
+
+export {
   samplePokeApiCatalogGeneratorSnapshot,
   type PokeApiAbilityFixture,
   type PokeApiCatalogGeneratorSnapshot,
