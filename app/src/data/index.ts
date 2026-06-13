@@ -58,6 +58,22 @@ export {
 } from "./catalogFetchFixtureValidation";
 
 export {
+  catalogLiveFetchPrototypeResourceIds,
+  runCatalogLiveFetchPrototype,
+  type CatalogLiveFetchPrototypeProgress,
+  type CatalogLiveFetchPrototypeResult,
+  type CatalogLiveFetchPrototypeSection,
+  type CatalogLiveFetchPrototypeStatus,
+} from "./catalogLiveFetchPrototype";
+
+export {
+  validateCatalogLiveFetchPrototype,
+  type CatalogLiveFetchPrototypeValidationIssue,
+  type CatalogLiveFetchPrototypeValidationResult,
+  type CatalogLiveFetchPrototypeValidationStage,
+} from "./catalogLiveFetchPrototypeValidation";
+
+export {
   validateCatalogDataFoundationPipeline,
   type CatalogValidationPipelineIssue,
   type CatalogValidationPipelineResult,
