@@ -38,6 +38,8 @@ type ShellPanelState = {
   editingSlot: number | null
 }
 
+const SAVED_TEAM_STORAGE_KEY = 'battlelab.savedTeam.v1'
+
 const navItems: NavItem[] = [
   { id: 'team', label: 'Team Builder', icon: 'team', kind: 'view', target: 'team' },
   { id: 'reports', label: 'Reports', icon: 'reports', kind: 'view', target: 'reports' },
@@ -73,6 +75,9 @@ function App() {
     useState<BattleLabSettings>(localBattleLabSettings)
   const [activeTeam, setActiveTeam] = useState<SubmittedTeam>(initialSubmittedTeam)
   const [teamSaved, setTeamSaved] = useState(false)
+  const [savedTeamAvailable, setSavedTeamAvailable] = useState(() =>
+    typeof window !== 'undefined' ? Boolean(window.localStorage.getItem(SAVED_TEAM_STORAGE_KEY)) : false,
+  )
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
 
   const { activeView, activePanel, editingSlot } = shellState
@@ -113,8 +118,25 @@ function App() {
   }
 
   const handleSaveTeam = () => {
+    window.localStorage.setItem(SAVED_TEAM_STORAGE_KEY, JSON.stringify(activeTeam))
+    setSavedTeamAvailable(true)
     setTeamSaved(true)
     window.setTimeout(() => setTeamSaved(false), 1600)
+  }
+
+  const handleLoadTeam = () => {
+    const storedTeam = window.localStorage.getItem(SAVED_TEAM_STORAGE_KEY)
+    if (!storedTeam) {
+      setSavedTeamAvailable(false)
+      return
+    }
+
+    try {
+      setActiveTeam(JSON.parse(storedTeam) as SubmittedTeam)
+    } catch {
+      window.localStorage.removeItem(SAVED_TEAM_STORAGE_KEY)
+      setSavedTeamAvailable(false)
+    }
   }
 
   useEffect(() => {
@@ -149,17 +171,20 @@ function App() {
                   {activeView === 'team' ? (
                     <>
                       <button className="secondary-action" type="button" onClick={handleSaveTeam}>
-                        {teamSaved ? 'Saved for this session' : 'Save team'}
+                        {teamSaved ? 'Saved' : 'Save team'}
                       </button>
                       <button
-                        className="secondary-action has-badge"
+                        className="secondary-action"
                         type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Saving and loading teams between sessions is coming soon."
+                        disabled={!savedTeamAvailable}
+                        title={
+                          savedTeamAvailable
+                            ? 'Load the last team saved on this device.'
+                            : 'No saved team on this device yet.'
+                        }
+                        onClick={handleLoadTeam}
                       >
-                        Load team{' '}
-                        <span className="action-soon-badge">Soon</span>
+                        Load team
                       </button>
                       <button className="primary-action" type="button" onClick={() => openPanel('simulate')}>
                         Run simulation

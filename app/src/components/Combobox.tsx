@@ -100,7 +100,7 @@ export function Combobox({
   )
 
   return (
-    <div className="bl-combo" ref={wrapRef}>
+    <div className={`bl-combo ${open ? 'is-open' : ''}`} ref={wrapRef}>
       {selected?.tooltip ? (
         <Tooltip content={selected.tooltip} className="bl-combo-trigger-tip">
           {triggerButton}
