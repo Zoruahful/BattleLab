@@ -255,6 +255,7 @@ export interface SimulationReport {
 export type * from "./catalog";
 export type * from "./catalogBundle";
 export type * from "./catalogFetch";
+export type * from "./catalogFetchExecution";
 export type * from "./catalogPipeline";
 export type * from "./pokeApiSource";
 export type * from "./reportArtifacts";
