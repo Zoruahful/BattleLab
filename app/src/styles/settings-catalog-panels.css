@@ -354,6 +354,68 @@
   gap: 10px;
 }
 
+.bl-catalog-progress-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bl-catalog-progress-overview div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 11px;
+}
+
+.bl-catalog-progress-overview span {
+  display: block;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bl-catalog-progress-overview strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-top: 5px;
+  color: var(--text-strong);
+  font-size: 17px;
+  line-height: 1.1;
+}
+
+.bl-catalog-progress-overview p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.bl-catalog-progress-state {
+  gap: 7px;
+}
+
+.bl-catalog-progress-state::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  content: "";
+}
+
+.bl-catalog-progress-state.is-checking::before,
+.bl-catalog-progress-state.is-fetching::before,
+.bl-catalog-progress-state.is-validating::before {
+  border: 2px solid rgba(74, 124, 126, 0.24);
+  border-top-color: currentColor;
+  background: transparent;
+  animation: bl-catalog-spin 700ms linear infinite;
+}
+
 .bl-catalog-category {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -368,11 +430,16 @@
   gap: 12px;
 }
 
+.bl-catalog-category-topline > div {
+  min-width: 0;
+}
+
 .bl-catalog-category strong {
   display: block;
   color: var(--text-strong);
   font-size: 13px;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .bl-catalog-category p {
@@ -389,6 +456,7 @@
   font-size: 11px;
   font-weight: 800;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .bl-catalog-status.is-current {
@@ -407,6 +475,74 @@
   color: var(--danger);
 }
 
+.bl-catalog-status.is-progress-idle,
+.bl-catalog-progress-state.is-idle::before,
+.bl-catalog-meter.is-idle span {
+  border-color: rgba(118, 112, 99, 0.22);
+  background: var(--text-3);
+  color: var(--text-muted);
+}
+
+.bl-catalog-status.is-progress-checking,
+.bl-catalog-progress-state.is-checking::before,
+.bl-catalog-meter.is-checking span {
+  border-color: rgba(74, 124, 126, 0.22);
+  background: #4a7c7e;
+  color: #4a7c7e;
+}
+
+.bl-catalog-status.is-progress-fetching,
+.bl-catalog-progress-state.is-fetching::before,
+.bl-catalog-meter.is-fetching span {
+  border-color: rgba(95, 127, 161, 0.24);
+  background: #5f7fa1;
+  color: #4f6d8e;
+}
+
+.bl-catalog-status.is-progress-using-cache,
+.bl-catalog-progress-state.is-using-cache::before,
+.bl-catalog-meter.is-using-cache span {
+  border-color: rgba(118, 112, 99, 0.24);
+  background: var(--text-3);
+  color: var(--text-muted);
+}
+
+.bl-catalog-status.is-progress-validating,
+.bl-catalog-progress-state.is-validating::before,
+.bl-catalog-meter.is-validating span {
+  border-color: rgba(154, 149, 80, 0.26);
+  background: #9a9550;
+  color: #7f7a3f;
+}
+
+.bl-catalog-status.is-progress-complete,
+.bl-catalog-progress-state.is-complete::before,
+.bl-catalog-meter.is-complete span {
+  border-color: rgba(63, 111, 90, 0.24);
+  background: #3f6f5a;
+  color: #3f6f5a;
+}
+
+.bl-catalog-status.is-progress-warning,
+.bl-catalog-progress-state.is-warning::before,
+.bl-catalog-meter.is-warning span {
+  border-color: rgba(192, 138, 62, 0.28);
+  background: #c08a3e;
+  color: #8b6d2e;
+}
+
+.bl-catalog-status.is-progress-failed,
+.bl-catalog-progress-state.is-failed::before,
+.bl-catalog-meter.is-failed span {
+  border-color: rgba(178, 102, 89, 0.28);
+  background: #b26659;
+  color: var(--danger);
+}
+
+.bl-catalog-status[class*="is-progress-"] {
+  background: var(--surface);
+}
+
 .bl-catalog-meter {
   height: 5px;
   margin-top: 10px;
@@ -420,6 +556,15 @@
   height: 100%;
   border-radius: inherit;
   background: var(--accent);
+  transition:
+    width var(--motion-slow, 320ms) var(--ease-out, cubic-bezier(.2, .7, .2, 1)),
+    background-color var(--motion-base, 200ms) ease;
+}
+
+@keyframes bl-catalog-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .bl-catalog-meta {
@@ -460,6 +605,7 @@
 
   .bl-settings-grid-2,
   .bl-catalog-hero,
+  .bl-catalog-progress-overview,
   .bl-catalog-source-card dl {
     grid-template-columns: 1fr;
   }
@@ -468,5 +614,15 @@
   .bl-catalog-category-topline {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-catalog-progress-state.is-checking::before,
+  .bl-catalog-progress-state.is-fetching::before,
+  .bl-catalog-progress-state.is-validating::before,
+  .bl-catalog-meter span {
+    animation: none;
+    transition: none;
   }
 }
