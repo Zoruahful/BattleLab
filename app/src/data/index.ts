@@ -27,6 +27,18 @@ export {
   validateBattleLabCatalogBundleFixture,
   type CatalogBundleFixtureValidationCode,
 } from "./catalogBundleValidation";
+export {
+  createSampleCatalogPipelineBundleEmissionSummary,
+  createSampleCatalogPipelineValidationResult,
+  sampleCatalogPipelineGeneratedCatalogSummary,
+  sampleCatalogPipelineGeneratedSectionSummaries,
+  sampleCatalogPipelineGenerationRequest,
+  sampleCatalogPipelineNormalizationWarnings,
+  sampleCatalogPipelinePickerSearchPlan,
+  sampleCatalogPipelineSectionProgress,
+  sampleCatalogPipelineSourceMismatches,
+  sampleCatalogPipelineSourceSnapshots,
+} from "./catalogPipelineFixtures";
 
 export {
   findCatalogAbilityByKey,
