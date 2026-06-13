@@ -91,8 +91,14 @@ export {
 } from "./catalogGeneratorPrototype";
 
 export {
+  sampleGeneratedPokeApiCatalogPipelineValidation,
   sampleGeneratedPokeApiCatalogValidation,
+  validateGeneratedPokeApiCatalogPipeline,
   validateGeneratedPokeApiCatalogPrototype,
+  type CatalogGeneratorPipelineValidationCode,
+  type CatalogGeneratorPipelineValidationIssue,
+  type CatalogGeneratorPipelineValidationResult,
+  type CatalogGeneratorPipelineValidationStage,
   type CatalogGeneratorPrototypeValidationCode,
   type CatalogGeneratorPrototypeValidationIssue,
   type CatalogGeneratorPrototypeValidationResult,

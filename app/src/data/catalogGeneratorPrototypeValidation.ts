@@ -6,7 +6,20 @@ import type {
   CatalogSearchIndexEntry,
   ShowdownId,
 } from "../types/catalog";
-import { sampleGeneratedPokeApiCatalog } from "./catalogGeneratorPrototype";
+import type {
+  PokeApiCatalogSourceSnapshot,
+} from "../types/pokeApiSource";
+import { samplePokeApiCatalogGeneratorSnapshot } from "./catalogGeneratorFixtures";
+import {
+  generateCatalogFromPokeApiSnapshot,
+  sampleGeneratedPokeApiCatalog,
+} from "./catalogGeneratorPrototype";
+import {
+  validatePokeApiSourceSnapshot,
+  type PokeApiSourceValidationCode,
+  type PokeApiSourceValidationIssue,
+  type PokeApiSourceValidationResult,
+} from "./pokeApiSourceValidation";
 
 export type CatalogGeneratorPrototypeValidationSeverity = "error" | "warning";
 
@@ -31,6 +44,28 @@ export interface CatalogGeneratorPrototypeValidationIssue {
 export interface CatalogGeneratorPrototypeValidationResult {
   isValid: boolean;
   issues: CatalogGeneratorPrototypeValidationIssue[];
+}
+
+export type CatalogGeneratorPipelineValidationStage = "source-snapshot" | "generated-catalog";
+
+export type CatalogGeneratorPipelineValidationCode =
+  | CatalogGeneratorPrototypeValidationCode
+  | PokeApiSourceValidationCode
+  | "generator-normalization-failed";
+
+export interface CatalogGeneratorPipelineValidationIssue {
+  code: CatalogGeneratorPipelineValidationCode;
+  severity: CatalogGeneratorPrototypeValidationSeverity;
+  message: string;
+  path: string;
+  stage: CatalogGeneratorPipelineValidationStage;
+}
+
+export interface CatalogGeneratorPipelineValidationResult {
+  isValid: boolean;
+  sourceValidation: PokeApiSourceValidationResult;
+  generatedCatalogValidation: CatalogGeneratorPrototypeValidationResult | null;
+  issues: CatalogGeneratorPipelineValidationIssue[];
 }
 
 type GeneratedRecord = CatalogRecordBase & {
@@ -297,3 +332,68 @@ export function validateGeneratedPokeApiCatalogPrototype(
 
 export const sampleGeneratedPokeApiCatalogValidation =
   validateGeneratedPokeApiCatalogPrototype(sampleGeneratedPokeApiCatalog);
+
+const toPipelineSourceIssue = (
+  issue: PokeApiSourceValidationIssue,
+): CatalogGeneratorPipelineValidationIssue => ({
+  ...issue,
+  stage: "source-snapshot",
+});
+
+const toPipelineGeneratedCatalogIssue = (
+  issue: CatalogGeneratorPrototypeValidationIssue,
+): CatalogGeneratorPipelineValidationIssue => ({
+  ...issue,
+  stage: "generated-catalog",
+});
+
+export function validateGeneratedPokeApiCatalogPipeline(
+  snapshot: PokeApiCatalogSourceSnapshot = samplePokeApiCatalogGeneratorSnapshot,
+): CatalogGeneratorPipelineValidationResult {
+  const sourceValidation = validatePokeApiSourceSnapshot(snapshot);
+  const sourceIssues = sourceValidation.issues.map(toPipelineSourceIssue);
+  const sourceHasErrors = sourceValidation.issues.some((issue) => issue.severity === "error");
+
+  if (sourceHasErrors) {
+    return {
+      isValid: false,
+      sourceValidation,
+      generatedCatalogValidation: null,
+      issues: sourceIssues,
+    };
+  }
+
+  try {
+    const generatedCatalogValidation = validateGeneratedPokeApiCatalogPrototype(
+      generateCatalogFromPokeApiSnapshot(snapshot),
+    );
+    const generatedIssues = generatedCatalogValidation.issues.map(toPipelineGeneratedCatalogIssue);
+    const issues = [...sourceIssues, ...generatedIssues];
+
+    return {
+      isValid: !issues.some((issue) => issue.severity === "error"),
+      sourceValidation,
+      generatedCatalogValidation,
+      issues,
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      sourceValidation,
+      generatedCatalogValidation: null,
+      issues: [
+        ...sourceIssues,
+        {
+          code: "generator-normalization-failed",
+          severity: "error",
+          path: "generateCatalogFromPokeApiSnapshot",
+          stage: "generated-catalog",
+          message: error instanceof Error ? error.message : "Catalog generation failed for the source snapshot.",
+        },
+      ],
+    };
+  }
+}
+
+export const sampleGeneratedPokeApiCatalogPipelineValidation =
+  validateGeneratedPokeApiCatalogPipeline(samplePokeApiCatalogGeneratorSnapshot);
