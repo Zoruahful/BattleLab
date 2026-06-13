@@ -91,6 +91,7 @@ const progressStatusLabels: Record<CatalogProgressRawStatus, string> = {
 const progressStateDescriptions: Record<CatalogProgressDisplayState, string> = {
   idle: 'Local preview is waiting. No network sync is running.',
   checking: 'Checking local preview state only. No live fetch is running.',
+  // Revise these temporary descriptions when live fetch wiring lands so they describe real download/validation state.
   fetching: 'This label is reserved for a future real fetch. No download runs in this checkpoint.',
   'using-cache': 'The app keeps working from the last saved or bundled catalog.',
   validating: 'Future validation will check downloaded or cached data before using it.',
@@ -158,6 +159,7 @@ export function CatalogUpdatePanel({
   onClose,
 }: CatalogUpdatePanelProps) {
   const [draftSnapshot, setDraftSnapshot] = useState<CatalogUpdateSnapshot>(snapshot)
+  const [helpOpen, setHelpOpen] = useState(false)
   const panelProgressState = normalizeProgressState(draftSnapshot.progress.status)
   const panelProgressLabel = getProgressStatusLabel(draftSnapshot.progress.status)
   const averageProgress = Math.round(
@@ -198,9 +200,38 @@ export function CatalogUpdatePanel({
             <h2 id="catalog-update-title">Catalog update progress</h2>
             <p>Local preview for future Pokemon, move, ability, item, type, nature, and picker data updates.</p>
           </div>
-          <button className="bl-panel-icon-button" type="button" aria-label="Close" onClick={onClose}>
-            <CloseIcon />
-          </button>
+          <div className="bl-catalog-header-actions">
+            <button
+              className={`bl-catalog-help-button ${helpOpen ? 'is-open' : ''}`}
+              type="button"
+              aria-label="About catalog updates"
+              aria-describedby="catalog-update-help"
+              aria-expanded={helpOpen}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setHelpOpen(false)
+                }
+              }}
+              onClick={() => setHelpOpen((current) => !current)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.stopPropagation()
+                  setHelpOpen(false)
+                  event.currentTarget.blur()
+                }
+              }}
+            >
+              ?
+              <span className="bl-catalog-help-popover" id="catalog-update-help" role="tooltip">
+                Catalog data fills names, picker options, descriptions, and visual metadata. Pokemon Showdown
+                remains the future source of truth for battle legality and simulation. Checking is a local preview
+                for now — no data is downloaded yet.
+              </span>
+            </button>
+            <button className="bl-panel-icon-button" type="button" aria-label="Close" onClick={onClose}>
+              <CloseIcon />
+            </button>
+          </div>
         </header>
 
         <div className="bl-settings-body">
@@ -273,7 +304,7 @@ export function CatalogUpdatePanel({
             Close
           </button>
           <button className="secondary-action" type="button" onClick={handleCheck}>
-            Check status
+            Check for updates
           </button>
         </footer>
       </div>
