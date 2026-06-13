@@ -16,7 +16,13 @@ import ReportDetailOverviewView from './screens/ReportDetailOverviewView'
 import ReportsListView from './screens/ReportsListView'
 import TeamBuilderView from './screens/TeamBuilderView'
 import TheaterView from './screens/TheaterView'
-import type { BattleLabSettings, ReportHistoryEntry, SimulationSettings, SubmittedTeam } from './types'
+import type {
+  BattleLabSettings,
+  PokemonMoveSlots,
+  ReportHistoryEntry,
+  SimulationSettings,
+  SubmittedTeam,
+} from './types'
 import './App.css'
 
 type MainViewId = 'team' | 'reports' | 'theater'
@@ -39,6 +45,20 @@ type ShellPanelState = {
 }
 
 const SAVED_TEAM_STORAGE_KEY = 'battlelab.savedTeam.v1'
+const SAVED_TEAM_PAYLOAD_SCHEMA = 'battlelab.savedTeam'
+const SAVED_TEAM_PAYLOAD_VERSION = 1
+
+type SavedTeamPayload = {
+  schema: typeof SAVED_TEAM_PAYLOAD_SCHEMA
+  version: typeof SAVED_TEAM_PAYLOAD_VERSION
+  savedAt: string
+  team: SubmittedTeam
+}
+
+type SavedTeamReadResult =
+  | { status: 'ready'; team: SubmittedTeam; shouldMigrate: boolean }
+  | { status: 'missing' }
+  | { status: 'invalid'; reason: string }
 
 const navItems: NavItem[] = [
   { id: 'team', label: 'Team Builder', icon: 'team', kind: 'view', target: 'team' },
@@ -78,6 +98,9 @@ function App() {
   const [savedTeamAvailable, setSavedTeamAvailable] = useState(() =>
     typeof window !== 'undefined' ? Boolean(window.localStorage.getItem(SAVED_TEAM_STORAGE_KEY)) : false,
   )
+  const [loadConfirmOpen, setLoadConfirmOpen] = useState(false)
+  const [pendingLoadTeam, setPendingLoadTeam] = useState<SubmittedTeam | null>(null)
+  const [loadTeamError, setLoadTeamError] = useState<string | null>(null)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
 
   const { activeView, activePanel, editingSlot } = shellState
@@ -118,25 +141,56 @@ function App() {
   }
 
   const handleSaveTeam = () => {
-    window.localStorage.setItem(SAVED_TEAM_STORAGE_KEY, JSON.stringify(activeTeam))
+    window.localStorage.setItem(SAVED_TEAM_STORAGE_KEY, JSON.stringify(createSavedTeamPayload(activeTeam)))
     setSavedTeamAvailable(true)
     setTeamSaved(true)
+    setLoadTeamError(null)
     window.setTimeout(() => setTeamSaved(false), 1600)
   }
 
   const handleLoadTeam = () => {
-    const storedTeam = window.localStorage.getItem(SAVED_TEAM_STORAGE_KEY)
-    if (!storedTeam) {
+    const savedTeam = readSavedTeam()
+
+    if (savedTeam.status === 'missing') {
       setSavedTeamAvailable(false)
+      setLoadTeamError('No saved team was found on this device.')
       return
     }
 
-    try {
-      setActiveTeam(JSON.parse(storedTeam) as SubmittedTeam)
-    } catch {
+    if (savedTeam.status === 'invalid') {
       window.localStorage.removeItem(SAVED_TEAM_STORAGE_KEY)
       setSavedTeamAvailable(false)
+      setLoadTeamError(savedTeam.reason)
+      return
     }
+
+    if (savedTeam.shouldMigrate) {
+      window.localStorage.setItem(SAVED_TEAM_STORAGE_KEY, JSON.stringify(createSavedTeamPayload(savedTeam.team)))
+    }
+
+    setPendingLoadTeam(savedTeam.team)
+    setLoadConfirmOpen(true)
+    setLoadTeamError(null)
+  }
+
+  const confirmLoadTeam = () => {
+    if (!pendingLoadTeam) {
+      setLoadConfirmOpen(false)
+      return
+    }
+
+    setActiveTeam(pendingLoadTeam)
+    setLoadConfirmOpen(false)
+    setPendingLoadTeam(null)
+  }
+
+  const cancelLoadTeam = () => {
+    setLoadConfirmOpen(false)
+    setPendingLoadTeam(null)
+  }
+
+  const dismissLoadTeamError = () => {
+    setLoadTeamError(null)
   }
 
   useEffect(() => {
@@ -225,6 +279,81 @@ function App() {
               onTeamChange={setActiveTeam}
               onSimulationSettingsChange={setSimulationSettings}
             />
+
+            {loadConfirmOpen ? (
+              <div className="bl-io-overlay" role="dialog" aria-modal="true" aria-label="Confirm load team">
+                <button
+                  className="bl-io-scrim"
+                  type="button"
+                  aria-label="Cancel load team"
+                  onClick={cancelLoadTeam}
+                />
+                <div className="bl-io-dialog bl-clear-confirm-dialog">
+                  <header className="bl-io-header">
+                    <div>
+                      <span className="eyebrow">Load team</span>
+                      <h3>Replace the current team?</h3>
+                    </div>
+                    <button
+                      className="bl-io-close"
+                      type="button"
+                      aria-label="Cancel load team"
+                      onClick={cancelLoadTeam}
+                    >
+                      x
+                    </button>
+                  </header>
+
+                  <p className="bl-io-note">
+                    Loading replaces the current in-session team with the team saved on this device.
+                  </p>
+
+                  <div className="bl-io-actions">
+                    <button className="secondary-action" type="button" onClick={cancelLoadTeam}>
+                      Cancel
+                    </button>
+                    <button className="primary-action" type="button" onClick={confirmLoadTeam}>
+                      Load team
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {loadTeamError ? (
+              <div className="bl-io-overlay" role="dialog" aria-modal="true" aria-label="Load team unavailable">
+                <button
+                  className="bl-io-scrim"
+                  type="button"
+                  aria-label="Close load team message"
+                  onClick={dismissLoadTeamError}
+                />
+                <div className="bl-io-dialog bl-clear-confirm-dialog">
+                  <header className="bl-io-header">
+                    <div>
+                      <span className="eyebrow">Load team</span>
+                      <h3>Saved team could not be loaded</h3>
+                    </div>
+                    <button
+                      className="bl-io-close"
+                      type="button"
+                      aria-label="Close load team message"
+                      onClick={dismissLoadTeamError}
+                    >
+                      x
+                    </button>
+                  </header>
+
+                  <p className="bl-io-note">{loadTeamError}</p>
+
+                  <div className="bl-io-actions">
+                    <button className="primary-action" type="button" onClick={dismissLoadTeamError}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -575,6 +704,150 @@ function upsertSubmittedTeamPokemon(
     ) as SubmittedTeam['slots'],
     updatedAt: new Date().toISOString(),
   }
+}
+
+function createSavedTeamPayload(team: SubmittedTeam): SavedTeamPayload {
+  return {
+    schema: SAVED_TEAM_PAYLOAD_SCHEMA,
+    version: SAVED_TEAM_PAYLOAD_VERSION,
+    savedAt: new Date().toISOString(),
+    team,
+  }
+}
+
+function readSavedTeam(): SavedTeamReadResult {
+  const storedTeam = window.localStorage.getItem(SAVED_TEAM_STORAGE_KEY)
+
+  if (!storedTeam) {
+    return { status: 'missing' }
+  }
+
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(storedTeam)
+  } catch {
+    return {
+      status: 'invalid',
+      reason: 'The saved team data is not readable. The current team was left unchanged.',
+    }
+  }
+
+  if (isSavedTeamPayload(parsed)) {
+    return { status: 'ready', team: parsed.team, shouldMigrate: false }
+  }
+
+  if (isSubmittedTeam(parsed)) {
+    return { status: 'ready', team: parsed, shouldMigrate: true }
+  }
+
+  return {
+    status: 'invalid',
+    reason: 'The saved team data is missing required team fields or uses an unsupported version. The current team was left unchanged.',
+  }
+}
+
+function isSavedTeamPayload(value: unknown): value is SavedTeamPayload {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    value.schema === SAVED_TEAM_PAYLOAD_SCHEMA &&
+    value.version === SAVED_TEAM_PAYLOAD_VERSION &&
+    typeof value.savedAt === 'string' &&
+    isSubmittedTeam(value.team)
+  )
+}
+
+function isSubmittedTeam(value: unknown): value is SubmittedTeam {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    isBattleFormat(value.format) &&
+    typeof value.description === 'string' &&
+    typeof value.createdAt === 'string' &&
+    typeof value.updatedAt === 'string' &&
+    Array.isArray(value.slots) &&
+    value.slots.length === 6 &&
+    value.slots.every((slot, index) => isTeamSlot(slot, index + 1))
+  )
+}
+
+function isTeamSlot(value: unknown, slotNumber: number): value is SubmittedTeam['slots'][number] {
+  return isRecord(value) && value.slot === slotNumber && (value.pokemon === null || isPokemonBuild(value.pokemon))
+}
+
+function isPokemonBuild(value: unknown): value is SubmittedTeam['slots'][number]['pokemon'] {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    isSlotNumber(value.slot) &&
+    typeof value.species === 'string' &&
+    typeof value.level === 'number' &&
+    isPokemonType(value.teraType) &&
+    typeof value.item === 'string' &&
+    typeof value.ability === 'string' &&
+    typeof value.nature === 'string' &&
+    isPokemonMoveSlots(value.moves) &&
+    isStatSpread(value.evs) &&
+    isStatSpread(value.ivs) &&
+    (value.notes === undefined || typeof value.notes === 'string')
+  )
+}
+
+function isBattleFormat(value: unknown): value is SubmittedTeam['format'] {
+  return value === 'vgc-regulation-h' || value === 'vgc-regulation-g' || value === 'custom'
+}
+
+function isSlotNumber(value: unknown): value is SubmittedTeam['slots'][number]['slot'] {
+  return [1, 2, 3, 4, 5, 6].includes(value as number)
+}
+
+function isPokemonType(value: unknown): boolean {
+  return [
+    'Normal',
+    'Fire',
+    'Water',
+    'Electric',
+    'Grass',
+    'Ice',
+    'Fighting',
+    'Poison',
+    'Ground',
+    'Flying',
+    'Psychic',
+    'Bug',
+    'Rock',
+    'Ghost',
+    'Dragon',
+    'Dark',
+    'Steel',
+    'Fairy',
+  ].includes(value as string)
+}
+
+function isPokemonMoveSlots(value: unknown): value is PokemonMoveSlots {
+  return Array.isArray(value) && value.length === 4 && value.every((move) => typeof move === 'string')
+}
+
+function isStatSpread(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return ['hp', 'atk', 'def', 'spa', 'spd', 'spe'].every((stat) => typeof value[stat] === 'number')
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 function getPanelContent(activePanel: ActivePanelId) {
