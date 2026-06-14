@@ -201,9 +201,10 @@ export function CatalogUpdatePanel({
     }, 0) /
       draftSnapshot.progress.categories.length,
   )
-  const completedCategories = draftSnapshot.progress.categories.filter(
-    (category) => normalizeProgressState(runtimeCategoryProgress?.[category.id]?.status ?? category.status) === 'complete',
-  ).length
+  const completedCategories = draftSnapshot.progress.categories.filter((category) => {
+    const categoryProgressState = normalizeProgressState(runtimeCategoryProgress?.[category.id]?.status ?? category.status)
+    return categoryProgressState === 'complete' || categoryProgressState === 'warning'
+  }).length
   const panelMessage = runtimeMessage ?? draftSnapshot.progress.message ?? progressStateDescriptions[panelProgressState]
 
   const handleCheck = () => {

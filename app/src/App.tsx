@@ -92,7 +92,11 @@ const viewCopy: Record<MainViewId, { title: string; subtitle: string }> = {
 
 const CATALOG_RUNTIME_PREVIEW_SEQUENCE: CatalogRuntimeStatus[] = [
   'local-preview',
+  'checking',
+  'fetching',
   'using-cache',
+  'validating-catalog',
+  'complete',
   'rate-limited',
   'complete-with-warnings',
   'failed',
@@ -749,12 +753,47 @@ function getCatalogRuntimePreviewScenario(
   status: CatalogRuntimeStatus
 } {
   switch (previewStatus) {
+    case 'checking':
+    case 'queued':
+      return {
+        categoryStatus: 'checking',
+        message: 'Checking preview. This is a local read-model display only; no live fetch or network sync is running.',
+        progressPercent: 18,
+        status: 'checking',
+      }
+    case 'fetching':
+      return {
+        categoryStatus: 'fetching',
+        message:
+          'Fetch progress preview. Future downloads would report here; this checkpoint does not download catalog data.',
+        progressPercent: 38,
+        status: 'fetching',
+      }
     case 'using-cache':
       return {
         categoryStatus: 'using-cache',
         message: 'Using cache preview. The app keeps working from bundled or saved catalog data; no network sync is running.',
         progressPercent: 72,
         status: 'using-cache',
+      }
+    case 'validating-catalog':
+    case 'validating-source':
+    case 'validating-bundle':
+    case 'normalizing':
+      return {
+        categoryStatus: 'validating-catalog',
+        message:
+          'Validation preview. Future catalog data checks would report here; Pokemon Showdown remains the battle authority.',
+        progressPercent: 86,
+        status: 'validating-catalog',
+      }
+    case 'complete':
+      return {
+        categoryStatus: 'complete',
+        message:
+          'Complete preview. The read-model display is ready, but no catalog update has run in this checkpoint.',
+        progressPercent: 100,
+        status: 'complete',
       }
     case 'rate-limited':
       return {
