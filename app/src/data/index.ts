@@ -210,6 +210,25 @@ export {
 } from "./catalogCacheReadModelBridgeValidation";
 
 export {
+  createCatalogFoundationStatusReadModel,
+  sampleCatalogFoundationStatusReadModel,
+  type CatalogFoundationCacheSummary,
+  type CatalogFoundationComparisonSummary,
+  type CatalogFoundationRuntimeSummary,
+  type CatalogFoundationSectionStatusSummary,
+  type CatalogFoundationStatusReadModel,
+} from "./catalogFoundationStatusReadModel";
+
+export {
+  sampleCatalogFoundationStatusReadModelValidation,
+  validateCatalogFoundationStatusReadModel,
+  type CatalogFoundationStatusReadModelValidationCode,
+  type CatalogFoundationStatusReadModelValidationIssue,
+  type CatalogFoundationStatusReadModelValidationResult,
+  type CatalogFoundationStatusReadModelValidationSeverity,
+} from "./catalogFoundationStatusReadModelValidation";
+
+export {
   catalogRuntimeAdapterCacheOfflinePolicy,
   catalogRuntimeAdapterCancellationPolicy,
   catalogRuntimeAdapterRetryRateLimitPolicy,
