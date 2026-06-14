@@ -116,6 +116,15 @@ export {
 } from "./catalogLiveFetchCacheFixtures";
 
 export {
+  sampleCatalogLiveFetchCacheFixtureValidation,
+  validateCatalogLiveFetchCacheFixtures,
+  type CatalogLiveFetchCacheFixtureValidationCode,
+  type CatalogLiveFetchCacheFixtureValidationIssue,
+  type CatalogLiveFetchCacheFixtureValidationResult,
+  type CatalogLiveFetchCacheFixtureValidationSeverity,
+} from "./catalogLiveFetchCacheFixtureValidation";
+
+export {
   catalogRuntimeAdapterCacheOfflinePolicy,
   catalogRuntimeAdapterCancellationPolicy,
   catalogRuntimeAdapterRetryRateLimitPolicy,
