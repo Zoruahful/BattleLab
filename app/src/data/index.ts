@@ -192,6 +192,24 @@ export {
 } from "./catalogCacheContractsValidation";
 
 export {
+  createCatalogCacheReadModelBridgeProps,
+  sampleCatalogCacheReadModelBridgeProps,
+  type CatalogCacheReadModelBridgeProps,
+  type CatalogCacheReadModelBridgeRow,
+  type CatalogCacheReadModelBridgeStatus,
+  type CatalogCacheReadModelBridgeValidationState,
+} from "./catalogCacheReadModelBridge";
+
+export {
+  sampleCatalogCacheReadModelBridgeValidation,
+  validateCatalogCacheReadModelBridge,
+  type CatalogCacheReadModelBridgeValidationCode,
+  type CatalogCacheReadModelBridgeValidationIssue,
+  type CatalogCacheReadModelBridgeValidationResult,
+  type CatalogCacheReadModelBridgeValidationSeverity,
+} from "./catalogCacheReadModelBridgeValidation";
+
+export {
   catalogRuntimeAdapterCacheOfflinePolicy,
   catalogRuntimeAdapterCancellationPolicy,
   catalogRuntimeAdapterRetryRateLimitPolicy,
