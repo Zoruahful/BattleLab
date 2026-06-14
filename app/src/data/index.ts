@@ -76,6 +76,15 @@ export {
 } from "./catalogSourceManifestValidation";
 
 export {
+  approvedCatalogLiveFetchSampleBridgeValidation,
+  validateCatalogSourceManifestLiveFetchBridge,
+  type CatalogSourceManifestBridgeValidationCode,
+  type CatalogSourceManifestBridgeValidationIssue,
+  type CatalogSourceManifestBridgeValidationResult,
+  type CatalogSourceManifestBridgeValidationSeverity,
+} from "./catalogSourceManifestBridgeValidation";
+
+export {
   catalogLiveFetchPrototypeResourceIds,
   runCatalogLiveFetchPrototype,
   type CatalogLiveFetchPrototypeProgress,
