@@ -218,6 +218,24 @@ export {
 } from "./catalogRuntimeOrchestratorPreviewValidation";
 
 export {
+  createCatalogUpdateReadModelProps,
+  sampleCatalogUpdateReadModelProps,
+  type CatalogUpdateReadModelProps,
+  type CatalogUpdateReadModelSafetyProps,
+  type CatalogUpdateReadModelSectionKey,
+  type CatalogUpdateReadModelSectionProps,
+} from "./catalogUpdateReadModelProps";
+
+export {
+  sampleCatalogUpdateReadModelPropsValidation,
+  validateCatalogUpdateReadModelProps,
+  type CatalogUpdateReadModelPropsValidationCode,
+  type CatalogUpdateReadModelPropsValidationIssue,
+  type CatalogUpdateReadModelPropsValidationResult,
+  type CatalogUpdateReadModelPropsValidationSeverity,
+} from "./catalogUpdateReadModelPropsValidation";
+
+export {
   validateCatalogDataFoundationPipeline,
   type CatalogValidationPipelineIssue,
   type CatalogValidationPipelineResult,
