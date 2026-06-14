@@ -85,6 +85,30 @@ export {
 } from "./catalogLiveFetchCacheFixtures";
 
 export {
+  catalogRuntimeAdapterCacheOfflinePolicy,
+  catalogRuntimeAdapterCancellationPolicy,
+  catalogRuntimeAdapterRetryRateLimitPolicy,
+  catalogRuntimeAdapterSafetyPolicy,
+  catalogRuntimeAdapterSingleFlightPolicy,
+  catalogRuntimeAdapterTargetSections,
+  catalogRuntimeAdapterValidationGate,
+  createCatalogRuntimeAdapterReadModel,
+  sampleCatalogRuntimeAdapterBoundaryPlan,
+  sampleCatalogRuntimeAdapterReadModel,
+  type CatalogRuntimeAdapterCacheOfflinePolicy,
+  type CatalogRuntimeAdapterCancellationPolicy,
+  type CatalogRuntimeAdapterCommand,
+  type CatalogRuntimeAdapterCommandKind,
+  type CatalogRuntimeAdapterFailureMode,
+  type CatalogRuntimeAdapterPhase,
+  type CatalogRuntimeAdapterReadModel,
+  type CatalogRuntimeAdapterRetryRateLimitPolicy,
+  type CatalogRuntimeAdapterSafetyStatus,
+  type CatalogRuntimeAdapterSingleFlightPolicy,
+  type CatalogRuntimeAdapterValidationGate,
+} from "./catalogRuntimeAdapterBoundary";
+
+export {
   validateCatalogDataFoundationPipeline,
   type CatalogValidationPipelineIssue,
   type CatalogValidationPipelineResult,
