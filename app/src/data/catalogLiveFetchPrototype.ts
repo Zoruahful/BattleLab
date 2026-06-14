@@ -31,12 +31,76 @@ const pokeApiEndpointBySection: Record<CatalogLiveFetchPrototypeSection, string>
 };
 
 export const catalogLiveFetchPrototypeResourceIds = {
-  pokemon: ["tyranitar", "excadrill"],
-  moves: ["rock-slide", "protect"],
-  abilities: ["sand-stream", "sand-rush"],
-  items: ["assault-vest", "focus-sash"],
-  types: ["rock", "dark", "ground", "steel", "normal"],
-  natures: ["adamant", "jolly"],
+  pokemon: [
+    "tyranitar",
+    "excadrill",
+    "amoonguss",
+    "talonflame",
+    "rotom-wash",
+    "garchomp",
+    "sylveon",
+  ],
+  moves: [
+    "rock-slide",
+    "knock-off",
+    "low-kick",
+    "tera-blast",
+    "high-horsepower",
+    "iron-head",
+    "protect",
+    "swords-dance",
+    "tailwind",
+    "brave-bird",
+    "will-o-wisp",
+    "spore",
+    "rage-powder",
+    "pollen-puff",
+  ],
+  abilities: [
+    "sand-stream",
+    "sand-rush",
+    "regenerator",
+    "gale-wings",
+    "levitate",
+    "rough-skin",
+    "pixilate",
+  ],
+  items: [
+    "assault-vest",
+    "clear-amulet",
+    "covert-cloak",
+    "sitrus-berry",
+    "leftovers",
+    "focus-sash",
+  ],
+  types: [
+    "normal",
+    "fire",
+    "water",
+    "electric",
+    "grass",
+    "ice",
+    "fighting",
+    "poison",
+    "ground",
+    "flying",
+    "psychic",
+    "bug",
+    "rock",
+    "ghost",
+    "dragon",
+    "dark",
+    "steel",
+    "fairy",
+  ],
+  natures: [
+    "adamant",
+    "jolly",
+    "relaxed",
+    "modest",
+    "timid",
+    "calm",
+  ],
 } as const;
 
 export type CatalogLiveFetchPrototypeSection = keyof typeof catalogLiveFetchPrototypeResourceIds;
@@ -112,6 +176,61 @@ const createFetchIssue = (
   message,
 });
 
+type PokeApiItemResourceWithEffectEntries = PokeApiItemResource & {
+  effect_entries?: Array<{
+    effect?: string;
+    short_effect?: string;
+    language: {
+      name: string;
+      url: string;
+    };
+  }>;
+  names?: Array<{
+    name: string;
+    language: {
+      name: string;
+      url: string;
+    };
+  }>;
+};
+
+const hasEnglishItemText = (item: PokeApiItemResource) =>
+  item.flavor_text_entries.some((entry) => entry.language.name === "en" && entry.text.trim().length > 0);
+
+const normalizeFetchedItemResource = (item: PokeApiItemResourceWithEffectEntries): PokeApiItemResource => {
+  if (hasEnglishItemText(item)) return item;
+
+  const englishEffect = item.effect_entries?.find(
+    (entry) => entry.language.name === "en" && (entry.short_effect?.trim() || entry.effect?.trim()),
+  );
+
+  if (!englishEffect) {
+    const englishName = item.names?.find((entry) => entry.language.name === "en");
+
+    if (!englishName) return item;
+
+    return {
+      ...item,
+      flavor_text_entries: [
+        {
+          text: `PokeAPI live item description unavailable for ${englishName.name}.`,
+          language: englishName.language,
+        },
+      ],
+    };
+  }
+
+  return {
+    ...item,
+    flavor_text_entries: [
+      {
+        text: englishEffect.short_effect ?? englishEffect.effect ?? "",
+        language: englishEffect.language,
+      },
+    ],
+  };
+};
+
 async function fetchPokeApiResource<TResource>(section: CatalogLiveFetchPrototypeSection, id: string): Promise<TResource> {
   const response = await fetch(`${pokeApiBaseUrl}/${pokeApiEndpointBySection[section]}/${id}/`);
 
@@ -161,7 +280,7 @@ export async function runCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPr
     const abilities = await fetchSection<PokeApiAbilityResource>("abilities", completedRequests, totalRequests, progress);
     completedRequests = abilities.completedRequests;
 
-    const items = await fetchSection<PokeApiItemResource>("items", completedRequests, totalRequests, progress);
+    const items = await fetchSection<PokeApiItemResourceWithEffectEntries>("items", completedRequests, totalRequests, progress);
     completedRequests = items.completedRequests;
 
     const types = await fetchSection<PokeApiTypeResource>("types", completedRequests, totalRequests, progress);
@@ -176,7 +295,7 @@ export async function runCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPr
       pokemon: pokemon.records,
       moves: moves.records,
       abilities: abilities.records,
-      items: items.records,
+      items: items.records.map(normalizeFetchedItemResource),
       types: types.records,
       natures: natures.records,
     };
