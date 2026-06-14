@@ -166,6 +166,32 @@ export {
 } from "./catalogLiveFetchCacheFixtureValidation";
 
 export {
+  sampleCatalogCacheContractFixture,
+  sampleCatalogCacheEntries,
+  sampleCatalogCacheFallbackDecisions,
+  sampleCatalogCacheNamespacePolicy,
+  sampleCatalogCacheValidationRequirements,
+  type CatalogCacheContractFixture,
+  type CatalogCacheEntryKind,
+  type CatalogCacheEntryMetadata,
+  type CatalogCacheFallbackDecision,
+  type CatalogCacheFallbackDecisionKind,
+  type CatalogCacheFreshnessStatus,
+  type CatalogCacheNamespacePolicy,
+  type CatalogCacheTrustLevel,
+  type CatalogCacheValidationRequirements,
+} from "./catalogCacheContracts";
+
+export {
+  sampleCatalogCacheContractsValidation,
+  validateCatalogCacheContracts,
+  type CatalogCacheContractsValidationCode,
+  type CatalogCacheContractsValidationIssue,
+  type CatalogCacheContractsValidationResult,
+  type CatalogCacheContractsValidationSeverity,
+} from "./catalogCacheContractsValidation";
+
+export {
   catalogRuntimeAdapterCacheOfflinePolicy,
   catalogRuntimeAdapterCancellationPolicy,
   catalogRuntimeAdapterRetryRateLimitPolicy,
