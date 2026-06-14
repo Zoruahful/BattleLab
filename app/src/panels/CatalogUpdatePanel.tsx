@@ -1,11 +1,27 @@
 import { useState } from 'react'
 import { fakeCatalogUpdateSnapshot } from '../data'
-import type { CatalogUpdateCategoryStatus, CatalogUpdateSnapshot } from '../types'
+import type {
+  CatalogFetchExecutionStatus,
+  CatalogSourceFetchStatus,
+  CatalogUpdateCategory,
+  CatalogUpdateCategoryStatus,
+  CatalogUpdateSnapshot,
+} from '../types'
 import '../styles/settings-catalog-panels.css'
+
+type CatalogRuntimeStatus = CatalogFetchExecutionStatus | CatalogSourceFetchStatus | CatalogUpdateSnapshot['progress']['status']
+
+type CatalogRuntimeCategoryProgress = Partial<Record<CatalogUpdateCategory['id'], {
+  progressPercent?: number
+  status?: CatalogRuntimeStatus
+}>>
 
 export type CatalogUpdatePanelProps = {
   open?: boolean
   snapshot?: CatalogUpdateSnapshot
+  runtimeCategoryProgress?: CatalogRuntimeCategoryProgress
+  runtimeMessage?: string
+  runtimeStatus?: CatalogRuntimeStatus
   onClose?: () => void
 }
 
@@ -16,7 +32,8 @@ const categoryStatusLabels: Record<CatalogUpdateCategoryStatus, string> = {
 }
 
 type CatalogProgressDisplayState =
-  | 'idle'
+  | 'disabled'
+  | 'preview'
   | 'checking'
   | 'fetching'
   | 'using-cache'
@@ -24,9 +41,12 @@ type CatalogProgressDisplayState =
   | 'complete'
   | 'warning'
   | 'failed'
+  | 'cancelled'
+  | 'blocked'
 
 type CatalogProgressRawStatus =
   | 'idle'
+  | 'disabled'
   | 'planned'
   | 'blocked'
   | 'queued'
@@ -57,7 +77,8 @@ type CatalogProgressRawStatus =
   | 'fetched'
 
 const progressStatusLabels: Record<CatalogProgressRawStatus, string> = {
-  idle: 'Ready to check catalog status',
+  idle: 'Local preview ready',
+  disabled: 'Catalog updates are off in this build',
   planned: 'Checking for updates…',
   queued: 'Checking for updates…',
   checking: 'Checking for updates…',
@@ -83,13 +104,13 @@ const progressStatusLabels: Record<CatalogProgressRawStatus, string> = {
   blocked: 'Catalog updates are off in this build',
   'production-disabled': 'Catalog updates are off in this build',
   cancelled: 'Update cancelled',
-  development: 'Ready to check catalog status',
-  test: 'Ready to check catalog status',
-  'local-preview': 'Ready to check catalog status',
+  development: 'Local preview ready',
+  test: 'Local preview ready',
+  'local-preview': 'Local preview ready',
 }
 
 const progressStateDescriptions: Record<CatalogProgressDisplayState, string> = {
-  idle: 'Local preview is waiting. No network sync is running.',
+  preview: 'Local preview is waiting. No network sync is running.',
   checking: 'Checking local preview state only. No live fetch is running.',
   // Revise these temporary descriptions when live fetch wiring lands so they describe real download/validation state.
   fetching: 'This label is reserved for a future real fetch. No download runs in this checkpoint.',
@@ -98,6 +119,9 @@ const progressStateDescriptions: Record<CatalogProgressDisplayState, string> = {
   complete: 'Preview data is prepared for the current local snapshot.',
   warning: 'Some catalog items may need review; the app keeps using safe local catalog data.',
   failed: 'The app keeps working from the last saved or bundled catalog.',
+  cancelled: 'The update was cancelled. The app keeps using the last saved or bundled catalog.',
+  blocked: 'Catalog updates are disabled for this build. The bundled catalog remains available.',
+  disabled: 'Catalog updates are disabled for this build. The bundled catalog remains available.',
 }
 
 function formatCount(value: number) {
@@ -105,6 +129,8 @@ function formatCount(value: number) {
 }
 
 function normalizeProgressState(status?: string): CatalogProgressDisplayState {
+  if (status === 'blocked') return 'blocked'
+  if (status === 'production-disabled' || status === 'disabled') return 'disabled'
   if (status === 'planned' || status === 'queued' || status === 'checking') return 'checking'
   if (status === 'fetching' || status === 'downloading' || status === 'running') return 'fetching'
   if (status === 'using-cache' || status === 'offline') return 'using-cache'
@@ -123,15 +149,9 @@ function normalizeProgressState(status?: string): CatalogProgressDisplayState {
   if (status === 'complete-with-warnings' || status === 'warning') {
     return 'warning'
   }
-  if (status === 'blocked' || status === 'production-disabled') return 'using-cache'
-  if (
-    status === 'failed' ||
-    status === 'error' ||
-    status === 'cancelled'
-  ) {
-    return 'failed'
-  }
-  return 'idle'
+  if (status === 'cancelled') return 'cancelled'
+  if (status === 'failed' || status === 'error') return 'failed'
+  return 'preview'
 }
 
 function getProgressStatusLabel(status?: string) {
@@ -156,19 +176,27 @@ function getCategoryProgressStatus(categoryStatus: CatalogUpdateCategoryStatus, 
 export function CatalogUpdatePanel({
   open = true,
   snapshot = fakeCatalogUpdateSnapshot,
+  runtimeCategoryProgress,
+  runtimeMessage,
+  runtimeStatus,
   onClose,
 }: CatalogUpdatePanelProps) {
   const [draftSnapshot, setDraftSnapshot] = useState<CatalogUpdateSnapshot>(snapshot)
   const [helpOpen, setHelpOpen] = useState(false)
-  const panelProgressState = normalizeProgressState(draftSnapshot.progress.status)
-  const panelProgressLabel = getProgressStatusLabel(draftSnapshot.progress.status)
+  const panelStatus = runtimeStatus ?? draftSnapshot.progress.status
+  const panelProgressState = normalizeProgressState(panelStatus)
+  const panelProgressLabel = getProgressStatusLabel(panelStatus)
   const averageProgress = Math.round(
-    draftSnapshot.progress.categories.reduce((total, category) => total + category.progressPercent, 0) /
+    draftSnapshot.progress.categories.reduce((total, category) => {
+      const runtimeProgress = runtimeCategoryProgress?.[category.id]?.progressPercent
+      return total + (runtimeProgress ?? category.progressPercent)
+    }, 0) /
       draftSnapshot.progress.categories.length,
   )
   const completedCategories = draftSnapshot.progress.categories.filter(
-    (category) => normalizeProgressState(category.status) === 'complete',
+    (category) => normalizeProgressState(runtimeCategoryProgress?.[category.id]?.status ?? category.status) === 'complete',
   ).length
+  const panelMessage = runtimeMessage ?? draftSnapshot.progress.message ?? progressStateDescriptions[panelProgressState]
 
   const handleCheck = () => {
     setDraftSnapshot((current) => ({
@@ -247,7 +275,7 @@ export function CatalogUpdatePanel({
                 <strong className={`bl-catalog-progress-state is-${panelProgressState}`}>
                   {panelProgressLabel}
                 </strong>
-                <p>{draftSnapshot.progress.message ?? progressStateDescriptions[panelProgressState]}</p>
+                <p>{panelMessage}</p>
               </div>
               <div>
                 <span>Prepared</span>
@@ -261,8 +289,9 @@ export function CatalogUpdatePanel({
             <div className="bl-catalog-category-list">
               {draftSnapshot.categories.map((category) => {
                 const progress = draftSnapshot.progress.categories.find((item) => item.id === category.id)
-                const progressPercent = progress?.progressPercent ?? 0
-                const progressStatus = getCategoryProgressStatus(category.status, progress?.status)
+                const runtimeProgress = runtimeCategoryProgress?.[category.id]
+                const progressPercent = runtimeProgress?.progressPercent ?? progress?.progressPercent ?? 0
+                const progressStatus = getCategoryProgressStatus(category.status, runtimeProgress?.status ?? progress?.status)
                 const progressState = getCategoryProgressState(category.status, progressStatus)
                 const progressLabel = getProgressStatusLabel(progressStatus)
 

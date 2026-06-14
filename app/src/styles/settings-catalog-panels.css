@@ -539,10 +539,21 @@
   color: var(--danger);
 }
 
-.bl-catalog-status.is-progress-idle,
-.bl-catalog-progress-state.is-idle::before,
-.bl-catalog-meter.is-idle span {
+.bl-catalog-status.is-progress-preview,
+.bl-catalog-progress-state.is-preview::before,
+.bl-catalog-meter.is-preview span {
   border-color: rgba(118, 112, 99, 0.22);
+  background: var(--text-3);
+  color: var(--text-muted);
+}
+
+.bl-catalog-status.is-progress-disabled,
+.bl-catalog-status.is-progress-blocked,
+.bl-catalog-progress-state.is-disabled::before,
+.bl-catalog-progress-state.is-blocked::before,
+.bl-catalog-meter.is-disabled span,
+.bl-catalog-meter.is-blocked span {
+  border-color: rgba(118, 112, 99, 0.24);
   background: var(--text-3);
   color: var(--text-muted);
 }
@@ -596,8 +607,11 @@
 }
 
 .bl-catalog-status.is-progress-failed,
+.bl-catalog-status.is-progress-cancelled,
 .bl-catalog-progress-state.is-failed::before,
-.bl-catalog-meter.is-failed span {
+.bl-catalog-progress-state.is-cancelled::before,
+.bl-catalog-meter.is-failed span,
+.bl-catalog-meter.is-cancelled span {
   border-color: rgba(178, 102, 89, 0.28);
   background: #b26659;
   color: var(--danger);
