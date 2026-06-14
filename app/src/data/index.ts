@@ -105,6 +105,27 @@ export {
 } from "./catalogLiveFetchPrototypeValidation";
 
 export {
+  collectCatalogLiveFetchReadModelIssues,
+  createCatalogLiveFetchReadModel,
+  getCatalogLiveFetchReadModelStatus,
+  type CatalogLiveFetchReadModelAdapterOptions,
+} from "./catalogLiveFetchReadModelAdapter";
+
+export {
+  sampleCatalogLiveFetchReadModelAdapterValidation,
+  sampleCatalogLiveFetchReadModelFailedResult,
+  sampleCatalogLiveFetchReadModels,
+  sampleCatalogLiveFetchReadModelSourceBlockedResult,
+  sampleCatalogLiveFetchReadModelSuccessResult,
+  sampleCatalogLiveFetchReadModelWarningResult,
+  validateCatalogLiveFetchReadModelAdapter,
+  type CatalogLiveFetchReadModelAdapterValidationCode,
+  type CatalogLiveFetchReadModelAdapterValidationIssue,
+  type CatalogLiveFetchReadModelAdapterValidationResult,
+  type CatalogLiveFetchReadModelAdapterValidationSeverity,
+} from "./catalogLiveFetchReadModelAdapterValidation";
+
+export {
   sampleCatalogLiveFetchCacheFallbackResponses,
   sampleCatalogLiveFetchCacheHandoffScenarios,
   sampleCatalogLiveFetchOfflineCacheHandoff,
