@@ -35,6 +35,26 @@ export {
 } from "./catalogGeneratedBundleFixture";
 
 export {
+  compareCatalogGeneratedSnapshots,
+  sampleCatalogGeneratedSnapshotComparison,
+  type CatalogGeneratedSnapshotAssetReviewStatus,
+  type CatalogGeneratedSnapshotAssetReviewSummary,
+  type CatalogGeneratedSnapshotComparison,
+  type CatalogGeneratedSnapshotComparisonSectionName,
+  type CatalogGeneratedSnapshotSectionComparison,
+  type CatalogGeneratedSnapshotSourceAlignment,
+} from "./catalogGeneratedSnapshotComparison";
+
+export {
+  sampleCatalogGeneratedSnapshotComparisonValidation,
+  validateCatalogGeneratedSnapshotComparison,
+  type CatalogGeneratedSnapshotComparisonValidationCode,
+  type CatalogGeneratedSnapshotComparisonValidationIssue,
+  type CatalogGeneratedSnapshotComparisonValidationResult,
+  type CatalogGeneratedSnapshotComparisonValidationSeverity,
+} from "./catalogGeneratedSnapshotComparisonValidation";
+
+export {
   sampleCatalogFetchGenerationRequest,
   sampleCatalogFetchNormalizationHandoff,
   sampleCatalogFetchPipelineSnapshot,
