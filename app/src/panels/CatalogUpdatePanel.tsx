@@ -9,9 +9,13 @@ import type {
 } from '../types'
 import '../styles/settings-catalog-panels.css'
 
-type CatalogRuntimeStatus = CatalogFetchExecutionStatus | CatalogSourceFetchStatus | CatalogUpdateSnapshot['progress']['status']
+export type CatalogRuntimeStatus =
+  | CatalogFetchExecutionStatus
+  | CatalogSourceFetchStatus
+  | CatalogUpdateSnapshot['progress']['status']
+  | 'local-preview'
 
-type CatalogRuntimeCategoryProgress = Partial<Record<CatalogUpdateCategory['id'], {
+export type CatalogRuntimeCategoryProgress = Partial<Record<CatalogUpdateCategory['id'], {
   progressPercent?: number
   status?: CatalogRuntimeStatus
 }>>

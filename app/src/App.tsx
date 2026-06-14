@@ -5,10 +5,15 @@ import {
   opponentPools,
   performanceProfiles,
   reportHistoryEntries,
+  sampleCatalogRuntimeAdapterReadModel,
   simulationReportsById,
   submittedTeam as initialSubmittedTeam,
 } from './data'
-import CatalogUpdatePanel from './panels/CatalogUpdatePanel'
+import type { CatalogRuntimeAdapterReadModel } from './data'
+import CatalogUpdatePanel, {
+  type CatalogRuntimeCategoryProgress,
+  type CatalogRuntimeStatus,
+} from './panels/CatalogUpdatePanel'
 import PokemonEditorPanel, { type PokemonEditorDraft } from './panels/PokemonEditorPanel'
 import SettingsPanel from './panels/SettingsPanel'
 import SimulationSettingsPanel from './panels/SimulationSettingsPanel'
@@ -18,6 +23,8 @@ import TeamBuilderView from './screens/TeamBuilderView'
 import TheaterView from './screens/TheaterView'
 import type {
   BattleLabSettings,
+  CatalogUpdateCategory,
+  CatalogPipelineSectionProgress,
   PokemonMoveSlots,
   ReportHistoryEntry,
   SimulationSettings,
@@ -640,7 +647,17 @@ function ActivePanelHost({
   }
 
   if (activePanel === 'sync') {
-    return <CatalogUpdatePanel open onClose={onClose} />
+    const catalogRuntimePreview = createCatalogRuntimePreview(sampleCatalogRuntimeAdapterReadModel)
+
+    return (
+      <CatalogUpdatePanel
+        open
+        runtimeCategoryProgress={catalogRuntimePreview.categoryProgress}
+        runtimeMessage={catalogRuntimePreview.message}
+        runtimeStatus={catalogRuntimePreview.status}
+        onClose={onClose}
+      />
+    )
   }
 
   const panel = getPanelContent(activePanel)
@@ -675,6 +692,76 @@ function ActivePanelHost({
       </footer>
     </aside>
   )
+}
+
+function createCatalogRuntimePreview(readModel: CatalogRuntimeAdapterReadModel): {
+  categoryProgress: CatalogRuntimeCategoryProgress
+  message: string
+  status: CatalogRuntimeStatus
+} {
+  return {
+    categoryProgress: readModel.progress.sections.reduce<CatalogRuntimeCategoryProgress>((progressByCategory, section) => {
+      for (const categoryId of getCatalogCategoryIdsForSection(section.section)) {
+        progressByCategory[categoryId] = {
+          progressPercent: section.progressPercent,
+          status: mapPipelineSectionStatusToCatalogRuntimeStatus(section.status),
+        }
+      }
+
+      return progressByCategory
+    }, {}),
+    message: `${readModel.statusLabel}. Runtime adapter preview only; no download, live fetch, or network sync is running.`,
+    status: readModel.status === 'planned' ? 'local-preview' : readModel.status,
+  }
+}
+
+function getCatalogCategoryIdsForSection(
+  section: CatalogPipelineSectionProgress['section'],
+): CatalogUpdateCategory['id'][] {
+  switch (section) {
+    case 'pokemon':
+      return ['pokemon']
+    case 'moves':
+      return ['move']
+    case 'abilities':
+      return ['ability']
+    case 'items':
+      return ['item']
+    case 'types':
+      return ['type']
+    case 'natures':
+      return ['nature']
+    case 'assets':
+      return ['picker-assets', 'visual-assets']
+    case 'searchIndex':
+      return ['search-index']
+    default:
+      return []
+  }
+}
+
+function mapPipelineSectionStatusToCatalogRuntimeStatus(
+  status: CatalogPipelineSectionProgress['status'],
+): CatalogRuntimeStatus {
+  switch (status) {
+    case 'reading':
+      return 'fetching'
+    case 'normalizing':
+      return 'normalizing'
+    case 'validating':
+      return 'validating-catalog'
+    case 'complete':
+      return 'complete'
+    case 'warning':
+      return 'complete-with-warnings'
+    case 'failed':
+      return 'failed'
+    case 'skipped':
+      return 'blocked'
+    case 'pending':
+    default:
+      return 'local-preview'
+  }
 }
 
 function AppCloseIcon() {
