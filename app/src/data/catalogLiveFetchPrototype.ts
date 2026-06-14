@@ -19,6 +19,7 @@ import {
   validatePokeApiSourceSnapshot,
   type PokeApiSourceValidationResult,
 } from "./pokeApiSourceValidation";
+import { approvedCatalogLiveFetchSampleResourceIds } from "./catalogSourceManifest";
 
 const pokeApiBaseUrl = "https://pokeapi.co/api/v2";
 const pokeApiEndpointBySection: Record<CatalogLiveFetchPrototypeSection, string> = {
@@ -30,78 +31,7 @@ const pokeApiEndpointBySection: Record<CatalogLiveFetchPrototypeSection, string>
   natures: "nature",
 };
 
-export const catalogLiveFetchPrototypeResourceIds = {
-  pokemon: [
-    "tyranitar",
-    "excadrill",
-    "amoonguss",
-    "talonflame",
-    "rotom-wash",
-    "garchomp",
-    "sylveon",
-  ],
-  moves: [
-    "rock-slide",
-    "knock-off",
-    "low-kick",
-    "tera-blast",
-    "high-horsepower",
-    "iron-head",
-    "protect",
-    "swords-dance",
-    "tailwind",
-    "brave-bird",
-    "will-o-wisp",
-    "spore",
-    "rage-powder",
-    "pollen-puff",
-  ],
-  abilities: [
-    "sand-stream",
-    "sand-rush",
-    "regenerator",
-    "gale-wings",
-    "levitate",
-    "rough-skin",
-    "pixilate",
-  ],
-  items: [
-    "assault-vest",
-    "clear-amulet",
-    "covert-cloak",
-    "sitrus-berry",
-    "leftovers",
-    "focus-sash",
-  ],
-  types: [
-    "normal",
-    "fire",
-    "water",
-    "electric",
-    "grass",
-    "ice",
-    "fighting",
-    "poison",
-    "ground",
-    "flying",
-    "psychic",
-    "bug",
-    "rock",
-    "ghost",
-    "dragon",
-    "dark",
-    "steel",
-    "fairy",
-  ],
-  natures: [
-    "adamant",
-    "jolly",
-    "relaxed",
-    "modest",
-    "timid",
-    "calm",
-  ],
-} as const;
+export const catalogLiveFetchPrototypeResourceIds = approvedCatalogLiveFetchSampleResourceIds;
 
 export type CatalogLiveFetchPrototypeSection = keyof typeof catalogLiveFetchPrototypeResourceIds;
 

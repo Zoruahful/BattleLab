@@ -6,6 +6,7 @@ import {
   type CatalogLiveFetchPrototypeResult,
   type PokeApiItemResourceWithEffectEntries,
 } from "./catalogLiveFetchPrototype";
+import { approvedCatalogLiveFetchSampleManifest } from "./catalogSourceManifest";
 
 export type CatalogLiveFetchPrototypeValidationStage =
   | "fetch"
@@ -32,88 +33,6 @@ export interface CatalogLiveFetchPrototypeCoverageValidationResult {
 }
 
 type CatalogLiveFetchPrototypeResourceSection = keyof typeof catalogLiveFetchPrototypeResourceIds;
-
-const expectedLiveFetchPrototypeCounts = {
-  pokemon: 7,
-  moves: 14,
-  abilities: 7,
-  items: 6,
-  types: 18,
-  natures: 6,
-} satisfies Record<CatalogLiveFetchPrototypeResourceSection, number>;
-
-const requiredLiveFetchPrototypeResourceIds = {
-  pokemon: [
-    "tyranitar",
-    "excadrill",
-    "amoonguss",
-    "talonflame",
-    "rotom-wash",
-    "garchomp",
-    "sylveon",
-  ],
-  moves: [
-    "rock-slide",
-    "knock-off",
-    "low-kick",
-    "tera-blast",
-    "high-horsepower",
-    "iron-head",
-    "protect",
-    "swords-dance",
-    "tailwind",
-    "brave-bird",
-    "will-o-wisp",
-    "spore",
-    "rage-powder",
-    "pollen-puff",
-  ],
-  abilities: [
-    "sand-stream",
-    "sand-rush",
-    "regenerator",
-    "gale-wings",
-    "levitate",
-    "rough-skin",
-    "pixilate",
-  ],
-  items: [
-    "assault-vest",
-    "clear-amulet",
-    "covert-cloak",
-    "sitrus-berry",
-    "leftovers",
-    "focus-sash",
-  ],
-  types: [
-    "normal",
-    "fire",
-    "water",
-    "electric",
-    "grass",
-    "ice",
-    "fighting",
-    "poison",
-    "ground",
-    "flying",
-    "psychic",
-    "bug",
-    "rock",
-    "ghost",
-    "dragon",
-    "dark",
-    "steel",
-    "fairy",
-  ],
-  natures: [
-    "adamant",
-    "jolly",
-    "relaxed",
-    "modest",
-    "timid",
-    "calm",
-  ],
-} satisfies Record<CatalogLiveFetchPrototypeResourceSection, readonly string[]>;
 
 export interface CatalogLiveFetchPrototypeValidationIssue {
   stage: CatalogLiveFetchPrototypeValidationStage;
@@ -190,17 +109,17 @@ export function validateCatalogLiveFetchPrototypeCoverage(): CatalogLiveFetchPro
     Object.entries(catalogLiveFetchPrototypeResourceIds).map(([section, ids]) => [section, ids.length]),
   ) as Record<CatalogLiveFetchPrototypeResourceSection, number>;
 
-  Object.entries(expectedLiveFetchPrototypeCounts).forEach(([section, expectedCount]) => {
+  Object.entries(approvedCatalogLiveFetchSampleManifest.sections).forEach(([section, sectionManifest]) => {
     const typedSection = section as CatalogLiveFetchPrototypeResourceSection;
     const actualIds: readonly string[] = catalogLiveFetchPrototypeResourceIds[typedSection];
     const duplicateIds = actualIds.filter((id, index) => actualIds.indexOf(id) !== index);
 
-    if (actualIds.length !== expectedCount) {
+    if (actualIds.length !== sectionManifest.expectedCount) {
       issues.push(
         createCoverageIssue(
           "section-count-mismatch",
           `resourceIds.${section}`,
-          `Expected ${expectedCount} ${section} resources, but found ${actualIds.length}.`,
+          `Expected ${sectionManifest.expectedCount} ${section} resources, but found ${actualIds.length}.`,
         ),
       );
     }
@@ -215,7 +134,7 @@ export function validateCatalogLiveFetchPrototypeCoverage(): CatalogLiveFetchPro
       );
     });
 
-    requiredLiveFetchPrototypeResourceIds[typedSection].forEach((id) => {
+    sectionManifest.resourceIds.forEach((id) => {
       if (!actualIds.includes(id)) {
         issues.push(
           createCoverageIssue(

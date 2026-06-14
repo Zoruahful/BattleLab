@@ -58,6 +58,15 @@ export {
 } from "./catalogFetchFixtureValidation";
 
 export {
+  approvedCatalogLiveFetchSampleManifest,
+  approvedCatalogLiveFetchSampleResourceIds,
+  type CatalogSourceCoverageTier,
+  type CatalogSourceManifest,
+  type CatalogSourceManifestSection,
+  type CatalogSourceManifestSectionEntry,
+} from "./catalogSourceManifest";
+
+export {
   catalogLiveFetchPrototypeResourceIds,
   runCatalogLiveFetchPrototype,
   type CatalogLiveFetchPrototypeProgress,
