@@ -109,6 +109,15 @@ export {
 } from "./catalogRuntimeAdapterBoundary";
 
 export {
+  sampleCatalogRuntimeAdapterBoundaryValidation,
+  validateCatalogRuntimeAdapterBoundaryHardening,
+  type CatalogRuntimeAdapterBoundaryValidationCode,
+  type CatalogRuntimeAdapterBoundaryValidationIssue,
+  type CatalogRuntimeAdapterBoundaryValidationResult,
+  type CatalogRuntimeAdapterBoundaryValidationSeverity,
+} from "./catalogRuntimeAdapterBoundaryValidation";
+
+export {
   validateCatalogDataFoundationPipeline,
   type CatalogValidationPipelineIssue,
   type CatalogValidationPipelineResult,
