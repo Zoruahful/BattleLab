@@ -332,11 +332,20 @@
 
 .bl-settings-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   margin-top: auto;
   border-top: 1px solid var(--border);
   padding: 14px 22px;
+}
+
+.bl-catalog-footer-copy {
+  margin-right: auto;
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .bl-catalog-hero {
@@ -615,14 +624,19 @@
 }
 
 .bl-catalog-status.is-progress-failed,
-.bl-catalog-status.is-progress-cancelled,
 .bl-catalog-progress-state.is-failed::before,
-.bl-catalog-progress-state.is-cancelled::before,
-.bl-catalog-meter.is-failed span,
-.bl-catalog-meter.is-cancelled span {
+.bl-catalog-meter.is-failed span {
   border-color: rgba(178, 102, 89, 0.28);
   background: #b26659;
   color: var(--danger);
+}
+
+.bl-catalog-status.is-progress-cancelled,
+.bl-catalog-progress-state.is-cancelled::before,
+.bl-catalog-meter.is-cancelled span {
+  border-color: rgba(118, 112, 99, 0.28);
+  background: #8f8879;
+  color: var(--text-muted);
 }
 
 .bl-catalog-status[class*="is-progress-"] {
@@ -630,7 +644,7 @@
 }
 
 .bl-catalog-meter {
-  height: 5px;
+  height: 6px;
   margin-top: 10px;
   overflow: hidden;
   border-radius: 999px;
@@ -643,6 +657,7 @@
   border-radius: inherit;
   background: var(--accent);
   background-size: 180% 100%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
   transition:
     width var(--motion-slow, 320ms) var(--ease-out, cubic-bezier(.2, .7, .2, 1)),
     background-color var(--motion-base, 200ms) ease;
@@ -722,9 +737,14 @@
   }
 
   .bl-settings-section-heading,
-  .bl-catalog-category-topline {
+  .bl-catalog-category-topline,
+  .bl-settings-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .bl-catalog-footer-copy {
+    margin-right: 0;
   }
 }
 

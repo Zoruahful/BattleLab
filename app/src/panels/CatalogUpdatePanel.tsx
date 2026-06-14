@@ -85,25 +85,25 @@ type CatalogProgressRawStatus =
 const progressStatusLabels: Record<CatalogProgressRawStatus, string> = {
   idle: 'Local preview ready',
   disabled: 'Catalog updates are off in this build',
-  planned: 'Checking for updates…',
-  queued: 'Checking for updates…',
-  checking: 'Checking for updates…',
-  fetching: 'Downloading catalog data…',
-  downloading: 'Downloading catalog data…',
-  running: 'Downloading catalog data…',
+  planned: 'Checking preview…',
+  queued: 'Checking preview…',
+  checking: 'Checking preview…',
+  fetching: 'Download progress preview',
+  downloading: 'Download progress preview',
+  running: 'Download progress preview',
   'using-cache': 'Using your saved copy',
-  fetched: 'Checking downloaded data…',
-  'validating-source': 'Checking downloaded data…',
-  normalizing: 'Checking downloaded data…',
-  'validating-catalog': 'Checking downloaded data…',
-  'validating-bundle': 'Checking downloaded data…',
-  applying: 'Checking downloaded data…',
-  validating: 'Checking downloaded data…',
-  complete: 'Catalog up to date',
+  fetched: 'Validation preview',
+  'validating-source': 'Validation preview',
+  normalizing: 'Validation preview',
+  'validating-catalog': 'Validation preview',
+  'validating-bundle': 'Validation preview',
+  applying: 'Validation preview',
+  validating: 'Validation preview',
+  complete: 'Complete preview',
   'complete-with-warnings': 'Updated — some items need review',
   warning: 'Updated — some items need review',
-  failed: 'Update failed — kept your last saved catalog',
-  error: 'Update failed — kept your last saved catalog',
+  failed: 'Failed safely — kept your saved catalog',
+  error: 'Failed safely — kept your saved catalog',
   offline: 'Offline — using your saved copy',
   'rate-limited': 'Source busy — retrying…',
   retrying: 'Source busy — retrying…',
@@ -338,6 +338,7 @@ export function CatalogUpdatePanel({
         </div>
 
         <footer className="bl-settings-footer">
+          <span className="bl-catalog-footer-copy">Preview only. No catalog data is downloaded or written.</span>
           <button className="secondary-action" type="button" onClick={onClose}>
             Close
           </button>

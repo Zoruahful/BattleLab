@@ -757,7 +757,7 @@ function getCatalogRuntimePreviewScenario(
     case 'queued':
       return {
         categoryStatus: 'checking',
-        message: 'Checking preview. This is a local read-model display only; no live fetch or network sync is running.',
+        message: 'Checking preview. This local read-model display does not contact any update source.',
         progressPercent: 18,
         status: 'checking',
       }
@@ -765,7 +765,7 @@ function getCatalogRuntimePreviewScenario(
       return {
         categoryStatus: 'fetching',
         message:
-          'Fetch progress preview. Future downloads would report here; this checkpoint does not download catalog data.',
+          'Download progress preview. Future real progress would report here; this checkpoint does not download catalog data.',
         progressPercent: 38,
         status: 'fetching',
       }
@@ -783,7 +783,7 @@ function getCatalogRuntimePreviewScenario(
       return {
         categoryStatus: 'validating-catalog',
         message:
-          'Validation preview. Future catalog data checks would report here; Pokemon Showdown remains the battle authority.',
+          'Validation preview. Future catalog checks would report here; Pokemon Showdown remains the battle authority.',
         progressPercent: 86,
         status: 'validating-catalog',
       }
@@ -791,7 +791,7 @@ function getCatalogRuntimePreviewScenario(
       return {
         categoryStatus: 'complete',
         message:
-          'Complete preview. The read-model display is ready, but no catalog update has run in this checkpoint.',
+          'Complete preview. This shows the final state shape only; no catalog update has run in this checkpoint.',
         progressPercent: 100,
         status: 'complete',
       }
