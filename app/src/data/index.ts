@@ -68,6 +68,10 @@ export {
 
 export {
   validateCatalogLiveFetchPrototype,
+  validateCatalogLiveFetchPrototypeCoverage,
+  type CatalogLiveFetchPrototypeCoverageValidationCode,
+  type CatalogLiveFetchPrototypeCoverageValidationIssue,
+  type CatalogLiveFetchPrototypeCoverageValidationResult,
   type CatalogLiveFetchPrototypeValidationIssue,
   type CatalogLiveFetchPrototypeValidationResult,
   type CatalogLiveFetchPrototypeValidationStage,

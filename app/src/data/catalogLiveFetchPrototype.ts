@@ -176,7 +176,7 @@ const createFetchIssue = (
   message,
 });
 
-type PokeApiItemResourceWithEffectEntries = PokeApiItemResource & {
+export type PokeApiItemResourceWithEffectEntries = PokeApiItemResource & {
   effect_entries?: Array<{
     effect?: string;
     short_effect?: string;
@@ -197,7 +197,9 @@ type PokeApiItemResourceWithEffectEntries = PokeApiItemResource & {
 const hasEnglishItemText = (item: PokeApiItemResource) =>
   item.flavor_text_entries.some((entry) => entry.language.name === "en" && entry.text.trim().length > 0);
 
-const normalizeFetchedItemResource = (item: PokeApiItemResourceWithEffectEntries): PokeApiItemResource => {
+export const normalizeFetchedPokeApiItemResourceForPrototype = (
+  item: PokeApiItemResourceWithEffectEntries,
+): PokeApiItemResource => {
   if (hasEnglishItemText(item)) return item;
 
   const englishEffect = item.effect_entries?.find(
@@ -295,7 +297,7 @@ export async function runCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPr
       pokemon: pokemon.records,
       moves: moves.records,
       abilities: abilities.records,
-      items: items.records.map(normalizeFetchedItemResource),
+      items: items.records.map(normalizeFetchedPokeApiItemResourceForPrototype),
       types: types.records,
       natures: natures.records,
     };

@@ -1,13 +1,119 @@
 import type { CatalogSourceFetchIssue } from "../types/catalogFetch";
 import {
+  catalogLiveFetchPrototypeResourceIds,
+  normalizeFetchedPokeApiItemResourceForPrototype,
   runCatalogLiveFetchPrototype,
   type CatalogLiveFetchPrototypeResult,
+  type PokeApiItemResourceWithEffectEntries,
 } from "./catalogLiveFetchPrototype";
 
 export type CatalogLiveFetchPrototypeValidationStage =
   | "fetch"
   | "source-validation"
   | "generated-catalog-validation";
+
+export type CatalogLiveFetchPrototypeCoverageValidationCode =
+  | "section-count-mismatch"
+  | "required-resource-missing"
+  | "duplicate-resource-id"
+  | "item-fallback-missing";
+
+export interface CatalogLiveFetchPrototypeCoverageValidationIssue {
+  code: CatalogLiveFetchPrototypeCoverageValidationCode;
+  severity: "error";
+  path: string;
+  message: string;
+}
+
+export interface CatalogLiveFetchPrototypeCoverageValidationResult {
+  isValid: boolean;
+  issues: CatalogLiveFetchPrototypeCoverageValidationIssue[];
+  coverage: Record<CatalogLiveFetchPrototypeResourceSection, number>;
+}
+
+type CatalogLiveFetchPrototypeResourceSection = keyof typeof catalogLiveFetchPrototypeResourceIds;
+
+const expectedLiveFetchPrototypeCounts = {
+  pokemon: 7,
+  moves: 14,
+  abilities: 7,
+  items: 6,
+  types: 18,
+  natures: 6,
+} satisfies Record<CatalogLiveFetchPrototypeResourceSection, number>;
+
+const requiredLiveFetchPrototypeResourceIds = {
+  pokemon: [
+    "tyranitar",
+    "excadrill",
+    "amoonguss",
+    "talonflame",
+    "rotom-wash",
+    "garchomp",
+    "sylveon",
+  ],
+  moves: [
+    "rock-slide",
+    "knock-off",
+    "low-kick",
+    "tera-blast",
+    "high-horsepower",
+    "iron-head",
+    "protect",
+    "swords-dance",
+    "tailwind",
+    "brave-bird",
+    "will-o-wisp",
+    "spore",
+    "rage-powder",
+    "pollen-puff",
+  ],
+  abilities: [
+    "sand-stream",
+    "sand-rush",
+    "regenerator",
+    "gale-wings",
+    "levitate",
+    "rough-skin",
+    "pixilate",
+  ],
+  items: [
+    "assault-vest",
+    "clear-amulet",
+    "covert-cloak",
+    "sitrus-berry",
+    "leftovers",
+    "focus-sash",
+  ],
+  types: [
+    "normal",
+    "fire",
+    "water",
+    "electric",
+    "grass",
+    "ice",
+    "fighting",
+    "poison",
+    "ground",
+    "flying",
+    "psychic",
+    "bug",
+    "rock",
+    "ghost",
+    "dragon",
+    "dark",
+    "steel",
+    "fairy",
+  ],
+  natures: [
+    "adamant",
+    "jolly",
+    "relaxed",
+    "modest",
+    "timid",
+    "calm",
+  ],
+} satisfies Record<CatalogLiveFetchPrototypeResourceSection, readonly string[]>;
 
 export interface CatalogLiveFetchPrototypeValidationIssue {
   stage: CatalogLiveFetchPrototypeValidationStage;
@@ -48,6 +154,99 @@ const toFetchValidationIssue = (
   path: issue.path ?? issue.resourceId ?? "fetch",
   message: issue.message,
 });
+
+const createCoverageIssue = (
+  code: CatalogLiveFetchPrototypeCoverageValidationCode,
+  path: string,
+  message: string,
+): CatalogLiveFetchPrototypeCoverageValidationIssue => ({
+  code,
+  severity: "error",
+  path,
+  message,
+});
+
+const createFallbackOnlyItem = (): PokeApiItemResourceWithEffectEntries => ({
+  id: 999_001,
+  name: "battlelab-fallback-test-item",
+  flavor_text_entries: [],
+  sprites: {
+    default: null,
+  },
+  names: [
+    {
+      name: "BattleLab Fallback Test Item",
+      language: {
+        name: "en",
+        url: "https://pokeapi.co/api/v2/language/9/",
+      },
+    },
+  ],
+});
+
+export function validateCatalogLiveFetchPrototypeCoverage(): CatalogLiveFetchPrototypeCoverageValidationResult {
+  const issues: CatalogLiveFetchPrototypeCoverageValidationIssue[] = [];
+  const coverage = Object.fromEntries(
+    Object.entries(catalogLiveFetchPrototypeResourceIds).map(([section, ids]) => [section, ids.length]),
+  ) as Record<CatalogLiveFetchPrototypeResourceSection, number>;
+
+  Object.entries(expectedLiveFetchPrototypeCounts).forEach(([section, expectedCount]) => {
+    const typedSection = section as CatalogLiveFetchPrototypeResourceSection;
+    const actualIds: readonly string[] = catalogLiveFetchPrototypeResourceIds[typedSection];
+    const duplicateIds = actualIds.filter((id, index) => actualIds.indexOf(id) !== index);
+
+    if (actualIds.length !== expectedCount) {
+      issues.push(
+        createCoverageIssue(
+          "section-count-mismatch",
+          `resourceIds.${section}`,
+          `Expected ${expectedCount} ${section} resources, but found ${actualIds.length}.`,
+        ),
+      );
+    }
+
+    duplicateIds.forEach((id) => {
+      issues.push(
+        createCoverageIssue(
+          "duplicate-resource-id",
+          `resourceIds.${section}.${id}`,
+          `Duplicate ${section} resource id '${id}' is not allowed in the live-fetch prototype set.`,
+        ),
+      );
+    });
+
+    requiredLiveFetchPrototypeResourceIds[typedSection].forEach((id) => {
+      if (!actualIds.includes(id)) {
+        issues.push(
+          createCoverageIssue(
+            "required-resource-missing",
+            `resourceIds.${section}.${id}`,
+            `Required ${section} resource id '${id}' is missing from the live-fetch prototype set.`,
+          ),
+        );
+      }
+    });
+  });
+
+  const normalizedFallbackItem = normalizeFetchedPokeApiItemResourceForPrototype(createFallbackOnlyItem());
+  const fallbackText = normalizedFallbackItem.flavor_text_entries.find((entry) => entry.language.name === "en")?.text;
+
+  if (fallbackText !== "PokeAPI live item description unavailable for BattleLab Fallback Test Item.") {
+    issues.push(
+      createCoverageIssue(
+        "item-fallback-missing",
+        "itemFallback.flavorText",
+        "PokeAPI item fallback text is not represented for English names without flavor or effect text.",
+      ),
+    );
+  }
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+    coverage,
+  };
+}
 
 export async function validateCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPrototypeValidationResult> {
   const result = await runCatalogLiveFetchPrototype();
