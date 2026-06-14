@@ -26,6 +26,7 @@ export type CatalogUpdatePanelProps = {
   runtimeCategoryProgress?: CatalogRuntimeCategoryProgress
   runtimeMessage?: string
   runtimeStatus?: CatalogRuntimeStatus
+  onPreviewCheck?: () => void
   onClose?: () => void
 }
 
@@ -41,6 +42,7 @@ type CatalogProgressDisplayState =
   | 'checking'
   | 'fetching'
   | 'using-cache'
+  | 'rate-limited'
   | 'validating'
   | 'complete'
   | 'warning'
@@ -119,6 +121,7 @@ const progressStateDescriptions: Record<CatalogProgressDisplayState, string> = {
   // Revise these temporary descriptions when live fetch wiring lands so they describe real download/validation state.
   fetching: 'This label is reserved for a future real fetch. No download runs in this checkpoint.',
   'using-cache': 'The app keeps working from the last saved or bundled catalog.',
+  'rate-limited': 'Future updates would wait or use cache. No request is being sent in this preview.',
   validating: 'Future validation will check downloaded or cached data before using it.',
   complete: 'Preview data is prepared for the current local snapshot.',
   warning: 'Some catalog items may need review; the app keeps using safe local catalog data.',
@@ -138,6 +141,7 @@ function normalizeProgressState(status?: string): CatalogProgressDisplayState {
   if (status === 'planned' || status === 'queued' || status === 'checking') return 'checking'
   if (status === 'fetching' || status === 'downloading' || status === 'running') return 'fetching'
   if (status === 'using-cache' || status === 'offline') return 'using-cache'
+  if (status === 'rate-limited' || status === 'retrying') return 'rate-limited'
   if (
     status === 'fetched' ||
     status === 'validating-source' ||
@@ -149,7 +153,6 @@ function normalizeProgressState(status?: string): CatalogProgressDisplayState {
     return 'validating'
   }
   if (status === 'complete') return 'complete'
-  if (status === 'rate-limited' || status === 'retrying') return 'checking'
   if (status === 'complete-with-warnings' || status === 'warning') {
     return 'warning'
   }
@@ -183,6 +186,7 @@ export function CatalogUpdatePanel({
   runtimeCategoryProgress,
   runtimeMessage,
   runtimeStatus,
+  onPreviewCheck,
   onClose,
 }: CatalogUpdatePanelProps) {
   const [draftSnapshot, setDraftSnapshot] = useState<CatalogUpdateSnapshot>(snapshot)
@@ -336,7 +340,7 @@ export function CatalogUpdatePanel({
           <button className="secondary-action" type="button" onClick={onClose}>
             Close
           </button>
-          <button className="secondary-action" type="button" onClick={handleCheck}>
+          <button className="secondary-action" type="button" onClick={onPreviewCheck ?? handleCheck}>
             Check preview status
           </button>
         </footer>

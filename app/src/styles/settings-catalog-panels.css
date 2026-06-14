@@ -582,6 +582,14 @@
   color: var(--text-muted);
 }
 
+.bl-catalog-status.is-progress-rate-limited,
+.bl-catalog-progress-state.is-rate-limited::before,
+.bl-catalog-meter.is-rate-limited span {
+  border-color: rgba(192, 138, 62, 0.28);
+  background: #c08a3e;
+  color: #8b6d2e;
+}
+
 .bl-catalog-status.is-progress-validating,
 .bl-catalog-progress-state.is-validating::before,
 .bl-catalog-meter.is-validating span {
