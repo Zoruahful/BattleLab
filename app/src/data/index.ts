@@ -1,4 +1,6 @@
 export {
+  catalogBulkIngestionBoundedLimits,
+  catalogBulkIngestionExpandedLimits,
   runCatalogBulkIngestion,
   type CatalogBulkIngestionLimits,
   type CatalogBulkIngestionMode,

@@ -1,4 +1,5 @@
 import {
+  catalogBulkIngestionExpandedLimits,
   runCatalogBulkIngestion,
   type CatalogBulkIngestionLimits,
   type CatalogBulkIngestionOptions,
@@ -48,12 +49,8 @@ export interface CatalogBulkIngestionValidationResult {
 }
 
 const minimumBroadCoverage: Pick<CatalogBulkIngestionLimits, CatalogBulkIngestionSection> = {
-  pokemon: 50,
-  moves: 75,
-  abilities: 50,
-  items: 50,
-  types: 18,
-  natures: 25,
+  ...catalogBulkIngestionExpandedLimits,
+  moves: 450,
 };
 
 const requiredBoundaryNoteFragments = [
@@ -235,4 +232,3 @@ export async function validateCatalogBulkIngestion(
     issues,
   };
 }
-

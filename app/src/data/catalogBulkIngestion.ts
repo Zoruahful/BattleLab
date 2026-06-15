@@ -35,7 +35,7 @@ export type CatalogBulkIngestionSection =
   | "types"
   | "natures";
 
-export type CatalogBulkIngestionMode = "bounded" | "full";
+export type CatalogBulkIngestionMode = "bounded" | "expanded" | "full";
 
 export type CatalogBulkIngestionStatus =
   | "idle"
@@ -153,11 +153,20 @@ interface SectionPreparedRecords<TResource> {
 
 const pokeApiBaseUrl = "https://pokeapi.co/api/v2";
 
-const defaultBoundedLimits: CatalogBulkIngestionLimits = {
+export const catalogBulkIngestionBoundedLimits: CatalogBulkIngestionLimits = {
   pokemon: 60,
   moves: 80,
   abilities: 65,
   items: 60,
+  types: 18,
+  natures: 25,
+};
+
+export const catalogBulkIngestionExpandedLimits: CatalogBulkIngestionLimits = {
+  pokemon: 300,
+  moves: 500,
+  abilities: 250,
+  items: 500,
   types: 18,
   natures: 25,
 };
@@ -296,8 +305,14 @@ const createIssue = (
 
 const isIndexedDbAvailable = () => typeof indexedDB !== "undefined";
 
-const mergeLimits = (limits: Partial<CatalogBulkIngestionLimits> = {}): CatalogBulkIngestionLimits => ({
-  ...defaultBoundedLimits,
+const getDefaultLimits = (mode: Exclude<CatalogBulkIngestionMode, "full">) =>
+  mode === "expanded" ? catalogBulkIngestionExpandedLimits : catalogBulkIngestionBoundedLimits;
+
+const mergeLimits = (
+  mode: Exclude<CatalogBulkIngestionMode, "full">,
+  limits: Partial<CatalogBulkIngestionLimits> = {},
+): CatalogBulkIngestionLimits => ({
+  ...getDefaultLimits(mode),
   ...limits,
 });
 
@@ -585,8 +600,8 @@ function createSectionCachePayload(
 export async function runCatalogBulkIngestion(
   options: CatalogBulkIngestionOptions = {},
 ): Promise<CatalogBulkIngestionResult> {
-  const mode = options.mode ?? "bounded";
-  const limits = mode === "bounded" ? mergeLimits(options.limits) : mergeLimits();
+  const mode = options.mode ?? "expanded";
+  const limits = mode === "full" ? catalogBulkIngestionExpandedLimits : mergeLimits(mode, options.limits);
   const concurrency = options.concurrency ?? 6;
   const signal = options.signal;
   const fetchedAt = new Date().toISOString();
@@ -802,7 +817,7 @@ export async function runCatalogBulkIngestion(
       mode,
       fetchedAt,
       sourceVersion,
-      limits: mode === "bounded" ? limits : null,
+      limits: mode === "full" ? null : limits,
       fullModeAvailable: true,
       progress,
       snapshot,
@@ -811,7 +826,7 @@ export async function runCatalogBulkIngestion(
       issues,
       notes: [
         "Bulk ingestion uses PokeAPI list endpoints and detail resource URLs.",
-        "Bounded mode is the default validation path; full mode is available through an explicit async option.",
+        "Expanded mode is the default validation path; bounded smoke mode and full endpoint-list mode are available through explicit async options.",
         "PokeAPI/catalog data remains enrichment-only.",
         "Pokemon Showdown remains legality and simulation source of truth.",
         "Sprite metadata remains candidate-review-gated only.",
@@ -828,7 +843,7 @@ export async function runCatalogBulkIngestion(
         mode,
         fetchedAt,
         sourceVersion,
-        limits: mode === "bounded" ? limits : null,
+        limits: mode === "full" ? null : limits,
         fullModeAvailable: true,
         progress,
         snapshot: null,
@@ -857,7 +872,7 @@ export async function runCatalogBulkIngestion(
       mode,
       fetchedAt,
       sourceVersion,
-      limits: mode === "bounded" ? limits : null,
+      limits: mode === "full" ? null : limits,
       fullModeAvailable: true,
       progress,
       snapshot: null,
