@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import {
   getAbilityPickerOptions,
+  getCatalogPickerSearchText,
   getItemPickerOptions,
   getMovePickerOptions,
   getNaturePickerOptions,
@@ -76,12 +77,63 @@ const toBuildRef = (option?: CatalogPickerOption): BuildCatalogReference | undef
   }
 }
 
-const findOptionByLabel = (options: CatalogPickerOption[], label: string) =>
+const findOptionByBuildValue = (
+  options: CatalogPickerOption[],
+  value: string,
+  ref?: BuildCatalogReference | null,
+) =>
   options.find(
     (option) =>
-      option.displayName === label ||
-      option.showdownId === label.toLowerCase().replace(/[^a-z0-9]+/g, ''),
+      option.catalogKey === ref?.catalogKey ||
+      option.showdownId === ref?.showdownId ||
+      option.catalogKey === value ||
+      option.displayName === value ||
+      option.showdownId === value.toLowerCase().replace(/[^a-z0-9]+/g, ''),
   )
+
+const findOptionKeyByBuildValue = (
+  options: CatalogPickerOption[],
+  value: string,
+  ref?: BuildCatalogReference | null,
+) => findOptionByBuildValue(options, value, ref)?.catalogKey ?? ''
+
+const isUnavailableOption = (option: CatalogPickerOption) =>
+  option.availability === 'disabled' || option.availability === 'hidden'
+
+const getCatalogOptionGroup = (option: CatalogPickerOption, fallback: string) => {
+  if (option.kind === 'pokemon' && option.primaryType) return option.primaryType
+  if (option.kind === 'move' && option.primaryType) return option.primaryType
+  if (option.kind === 'type') return 'Type'
+  if (option.kind === 'nature') return 'Nature'
+  if (option.kind === 'ability') return 'Ability'
+  if (option.kind === 'item') return 'Item'
+  return fallback
+}
+
+const withSavedCatalogValue = (
+  options: ComboOption[],
+  selectedKey: string,
+  savedValue: string | undefined,
+  group = 'Selected',
+) => {
+  if (!savedValue || selectedKey || options.some((option) => option.label === savedValue)) {
+    return options
+  }
+
+  return [
+    {
+      value: savedValue,
+      label: savedValue,
+      searchText: savedValue,
+      group,
+      disabled: true,
+      disabledReason: 'Saved value is not available in the current local catalog.',
+      meta: <span className="bl-combo-warning">Unavailable</span>,
+      selectedMeta: <span className="bl-combo-warning">Unavailable</span>,
+    },
+    ...options,
+  ]
+}
 
 const moveIdByName: Record<string, string> = Object.fromEntries(
   editorMoves.map((move) => [move.name, move.showdownId]),
@@ -111,6 +163,7 @@ const EMPTY_OPTION: ComboOption = {
   value: '',
   label: 'None',
   searchText: 'none empty not set clear',
+  group: 'Selected',
 }
 
 const spreadTotal = (spread: StatSpread) => statKeys.reduce((total, key) => total + spread[key], 0)
@@ -312,6 +365,22 @@ export function PokemonEditorPanel({
   const selectedPokemonOption = pokemonPickerOptions.find(
     (candidate) => candidate.catalogKey === selectedPokemonOptionKey,
   )
+  const selectedItemOptionKey = draftPokemon
+    ? findOptionKeyByBuildValue(itemPickerOptions, draftPokemon.item, draftPokemon.itemRef)
+    : ''
+  const selectedAbilityOptionKey = draftPokemon
+    ? findOptionKeyByBuildValue(abilityPickerOptions, draftPokemon.ability, draftPokemon.abilityRef)
+    : ''
+  const selectedNatureOptionKey = draftPokemon
+    ? findOptionKeyByBuildValue(naturePickerOptions, draftPokemon.nature, draftPokemon.natureRef)
+    : ''
+  const selectedTeraOptionKey = draftPokemon
+    ? findOptionKeyByBuildValue(typePickerOptions, draftPokemon.teraType, draftPokemon.teraTypeRef)
+    : ''
+  const selectedItemValue = selectedItemOptionKey || draftPokemon?.item || ''
+  const selectedAbilityValue = selectedAbilityOptionKey || draftPokemon?.ability || ''
+  const selectedNatureValue = selectedNatureOptionKey || draftPokemon?.nature || ''
+  const selectedTeraValue = selectedTeraOptionKey || draftPokemon?.teraType || ''
   const speciesShowdownId = selectedPokemonOption?.showdownId ?? draftPokemon?.species.toLowerCase() ?? ''
 
   const updateDraft = (updates: Partial<PokemonBuild>) => {
@@ -426,7 +495,10 @@ export function PokemonEditorPanel({
         return {
           value: option.catalogKey,
           label: option.displayName,
-          searchText: `${option.displayName} ${option.aliases.join(' ')} ${types.join(' ')}`,
+          searchText: getCatalogPickerSearchText(option),
+          group: getCatalogOptionGroup(option, 'Pokemon'),
+          disabled: isUnavailableOption(option),
+          disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
           leading: (
             <span className="bl-combo-types">
               {types.map((type) => (
@@ -444,51 +516,85 @@ export function PokemonEditorPanel({
     [
       EMPTY_OPTION,
       ...options.map((option) => ({
-        value: option.displayName,
+        value: option.catalogKey,
         label: option.displayName,
-        searchText: `${option.displayName} ${option.aliases.join(' ')} ${option.description ?? ''}`,
+        searchText: getCatalogPickerSearchText(option),
+        group: getCatalogOptionGroup(option, kindLabel),
+        disabled: isUnavailableOption(option),
+        disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
         tooltip: optionTooltip(option, kindLabel),
       })),
     ]
 
   const itemOptions = useMemo(
-    () => [
-      EMPTY_OPTION,
-      ...itemPickerOptions.map((option) => ({
-        value: option.displayName,
-        label: option.displayName,
-        searchText: `${option.displayName} ${option.aliases.join(' ')} ${option.description ?? ''}`,
-        leading: <ItemIconSlot option={option} />,
-        tooltip: optionTooltip(option, 'Held item'),
-      })),
-    ],
-    [itemPickerOptions],
+    () =>
+      withSavedCatalogValue(
+        [
+          EMPTY_OPTION,
+          ...itemPickerOptions.map((option) => ({
+            value: option.catalogKey,
+            label: option.displayName,
+            searchText: getCatalogPickerSearchText(option),
+            group: getCatalogOptionGroup(option, 'Item'),
+            disabled: isUnavailableOption(option),
+            disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
+            leading: <ItemIconSlot option={option} />,
+            tooltip: optionTooltip(option, 'Held item'),
+          })),
+        ],
+        selectedItemOptionKey,
+        draftPokemon?.item,
+      ),
+    [draftPokemon?.item, itemPickerOptions, selectedItemOptionKey],
   )
-  const abilityOptions = useMemo(() => buildSimpleOptions(abilityPickerOptions, 'Ability'), [abilityPickerOptions])
+  const abilityOptions = useMemo(
+    () =>
+      withSavedCatalogValue(
+        buildSimpleOptions(abilityPickerOptions, 'Ability'),
+        selectedAbilityOptionKey,
+        draftPokemon?.ability,
+      ),
+    [abilityPickerOptions, draftPokemon?.ability, selectedAbilityOptionKey],
+  )
   const natureOptions = useMemo(
-    () => [
-      EMPTY_OPTION,
-      ...naturePickerOptions.map((option) => ({
-        value: option.displayName,
-        label: option.displayName,
-        searchText: `${option.displayName} ${option.aliases.join(' ')} ${option.description ?? ''}`,
-        meta: <NatureModChip showdownId={option.showdownId} />,
-        selectedMeta: <NatureModChip showdownId={option.showdownId} />,
-        tooltip: natureTooltip(option),
-      })),
-    ],
-    [naturePickerOptions],
+    () =>
+      withSavedCatalogValue(
+        [
+          EMPTY_OPTION,
+          ...naturePickerOptions.map((option) => ({
+            value: option.catalogKey,
+            label: option.displayName,
+            searchText: getCatalogPickerSearchText(option),
+            group: getCatalogOptionGroup(option, 'Nature'),
+            disabled: isUnavailableOption(option),
+            disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
+            meta: <NatureModChip showdownId={option.showdownId} />,
+            selectedMeta: <NatureModChip showdownId={option.showdownId} />,
+            tooltip: natureTooltip(option),
+          })),
+        ],
+        selectedNatureOptionKey,
+        draftPokemon?.nature,
+      ),
+    [draftPokemon?.nature, naturePickerOptions, selectedNatureOptionKey],
   )
   const teraOptions: ComboOption[] = useMemo(
     () =>
-      typePickerOptions.map((option) => ({
-        value: option.displayName,
-        label: option.displayName,
-        searchText: option.displayName,
-        leading: option.primaryType ? <TypeGem type={option.primaryType} /> : undefined,
-        tooltip: optionTooltip(option, 'Tera type'),
-      })),
-    [typePickerOptions],
+      withSavedCatalogValue(
+        typePickerOptions.map((option) => ({
+          value: option.catalogKey,
+          label: option.displayName,
+          searchText: getCatalogPickerSearchText(option),
+          group: getCatalogOptionGroup(option, 'Type'),
+          disabled: isUnavailableOption(option),
+          disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
+          leading: option.primaryType ? <TypeGem type={option.primaryType} /> : undefined,
+          tooltip: optionTooltip(option, 'Tera type'),
+        })),
+        selectedTeraOptionKey,
+        draftPokemon?.teraType,
+      ),
+    [draftPokemon?.teraType, selectedTeraOptionKey, typePickerOptions],
   )
 
   const moveOptions: ComboOption[] = useMemo(() => {
@@ -502,6 +608,7 @@ export function PokemonEditorPanel({
       value: '__none__',
       label: '— None —',
       searchText: 'none empty clear',
+      group: 'Selected',
     }
     return [
       noneOption,
@@ -511,7 +618,14 @@ export function PokemonEditorPanel({
         return {
           value: move.showdownId,
           label: catalogOption?.displayName ?? move.name,
-          searchText: `${catalogOption?.displayName ?? move.name} ${catalogOption?.aliases.join(' ') ?? ''} ${move.type} ${CATEGORY_META[move.category].label} ${catalogOption?.description ?? ''}`,
+          searchText: catalogOption
+            ? getCatalogPickerSearchText(catalogOption)
+            : `${move.name} ${move.showdownId} ${move.type} ${CATEGORY_META[move.category].label} ${move.description}`,
+          group: move.type,
+          disabled: catalogOption ? isUnavailableOption(catalogOption) : false,
+          disabledReason: catalogOption && isUnavailableOption(catalogOption)
+            ? 'Catalog entry is not selectable yet.'
+            : undefined,
           leading: (
             <span className="bl-move-lead">
               <TypeGem type={move.type} />
@@ -598,6 +712,7 @@ export function PokemonEditorPanel({
                     ariaLabel="Pokemon"
                     value={selectedPokemonOptionKey}
                     options={pokemonOptions}
+                    maxVisibleOptions={40}
                     onChange={handleSelectPokemon}
                   />
                 </label>
@@ -607,11 +722,15 @@ export function PokemonEditorPanel({
                     <span>Item</span>
                     <Combobox
                       ariaLabel="Held item"
-                      value={draftPokemon.item}
+                      value={selectedItemValue}
                       options={itemOptions}
-                      onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(itemPickerOptions, displayName))
-                        updateDraft({ item: displayName, itemRef: ref })
+                      maxVisibleOptions={50}
+                      onChange={(catalogKey) => {
+                        const option = itemPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
+                        updateDraft({
+                          item: option?.displayName ?? '',
+                          itemRef: toBuildRef(option),
+                        })
                       }}
                     />
                   </label>
@@ -619,11 +738,15 @@ export function PokemonEditorPanel({
                     <span>Ability</span>
                     <Combobox
                       ariaLabel="Ability"
-                      value={draftPokemon.ability}
+                      value={selectedAbilityValue}
                       options={abilityOptions}
-                      onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(abilityPickerOptions, displayName))
-                        updateDraft({ ability: displayName, abilityRef: ref })
+                      maxVisibleOptions={50}
+                      onChange={(catalogKey) => {
+                        const option = abilityPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
+                        updateDraft({
+                          ability: option?.displayName ?? '',
+                          abilityRef: toBuildRef(option),
+                        })
                       }}
                     />
                   </label>
@@ -631,11 +754,15 @@ export function PokemonEditorPanel({
                     <span>Nature</span>
                     <Combobox
                       ariaLabel="Nature"
-                      value={draftPokemon.nature}
+                      value={selectedNatureValue}
                       options={natureOptions}
-                      onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(naturePickerOptions, displayName))
-                        updateDraft({ nature: displayName, natureRef: ref })
+                      maxVisibleOptions={30}
+                      onChange={(catalogKey) => {
+                        const option = naturePickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
+                        updateDraft({
+                          nature: option?.displayName ?? '',
+                          natureRef: toBuildRef(option),
+                        })
                       }}
                     />
                   </label>
@@ -643,11 +770,16 @@ export function PokemonEditorPanel({
                     <span>Tera type</span>
                     <Combobox
                       ariaLabel="Tera type"
-                      value={draftPokemon.teraType}
+                      value={selectedTeraValue}
                       options={teraOptions}
-                      onChange={(displayName) => {
-                        const ref = toBuildRef(findOptionByLabel(typePickerOptions, displayName))
-                        updateDraft({ teraType: displayName as PokemonType, ...(ref ? { teraTypeRef: ref } : {}) })
+                      maxVisibleOptions={12}
+                      onChange={(catalogKey) => {
+                        const option = typePickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
+                        if (!option) return
+                        updateDraft({
+                          teraType: option.displayName as PokemonType,
+                          teraTypeRef: toBuildRef(option),
+                        })
                       }}
                     />
                   </label>
@@ -671,6 +803,7 @@ export function PokemonEditorPanel({
                           options={moveOptions}
                           placeholder="Add a move"
                           emptyText="No learnable moves match"
+                          maxVisibleOptions={40}
                           onChange={(moveId) => handleMoveChange(index, moveId)}
                         />
                       </label>
@@ -715,6 +848,7 @@ export function PokemonEditorPanel({
                   value=""
                   options={pokemonOptions}
                   placeholder="Choose a Pokemon"
+                  maxVisibleOptions={40}
                   onChange={handleSelectPokemon}
                 />
               </label>

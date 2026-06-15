@@ -425,6 +425,7 @@ export {
   findCatalogRecordByShowdownId,
   findCatalogTypeByKey,
   findCatalogTypeByShowdownId,
+  getCatalogPickerSearchText,
   getAbilityPickerOptions,
   getCatalogPickerOptions,
   getItemPickerOptions,

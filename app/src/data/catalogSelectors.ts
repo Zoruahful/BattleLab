@@ -309,6 +309,20 @@ export function getCatalogPickerOptions(kind: CatalogPickerKind): CatalogPickerO
   return getNaturePickerOptions()
 }
 
+export function getCatalogPickerSearchText(option: CatalogPickerOption) {
+  return [
+    option.displayName,
+    option.showdownId,
+    ...option.aliases,
+    option.description,
+    option.primaryType,
+    option.secondaryType,
+    ...option.tags,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+}
+
 export function searchLocalCatalog(query: LocalCatalogSearchQuery): CatalogSearchIndexEntry[] {
   const limit = query.limit ?? 20
   const scoredEntries = localCatalogSeedSearchIndex

@@ -5,6 +5,9 @@ export interface ComboOption {
   value: string
   label: string
   searchText: string
+  group?: string
+  disabled?: boolean
+  disabledReason?: string
   leading?: ReactNode
   meta?: ReactNode
   selectedMeta?: ReactNode
@@ -18,6 +21,10 @@ export function Combobox({
   placeholder,
   ariaLabel,
   emptyText,
+  loading = false,
+  errorText,
+  maxVisibleOptions = 50,
+  resultLimitLabel = 'Showing',
 }: {
   value: string
   options: ComboOption[]
@@ -25,6 +32,10 @@ export function Combobox({
   placeholder?: string
   ariaLabel?: string
   emptyText?: string
+  loading?: boolean
+  errorText?: string
+  maxVisibleOptions?: number
+  resultLimitLabel?: string
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -39,7 +50,22 @@ export function Combobox({
     return options.filter((option) => option.searchText.toLowerCase().includes(term))
   }, [query, options])
 
-  const activeIndex = filtered.length > 0 ? Math.min(active, filtered.length - 1) : 0
+  const visibleOptions = useMemo(() => {
+    const limited = filtered.slice(0, maxVisibleOptions)
+    const selectedInVisible = selected ? limited.some((option) => option.value === selected.value) : true
+
+    if (!selected || selectedInVisible) return limited
+
+    return [{ ...selected, group: selected.group ?? 'Selected' }, ...limited]
+  }, [filtered, maxVisibleOptions, selected])
+
+  const enabledVisibleOptions = visibleOptions.filter((option) => !option.disabled)
+  const activeIndex = enabledVisibleOptions.length > 0 ? Math.min(active, enabledVisibleOptions.length - 1) : 0
+  const visibleActiveOption = enabledVisibleOptions[activeIndex]
+  const limited = filtered.length > visibleOptions.length
+  const footerText = limited
+    ? `${resultLimitLabel} ${Math.min(filtered.length, visibleOptions.length)} of ${filtered.length} matches`
+    : `${filtered.length} ${filtered.length === 1 ? 'match' : 'matches'}`
 
   useEffect(() => {
     if (!open) return
@@ -51,6 +77,8 @@ export function Combobox({
   }, [open])
 
   const choose = (next: string) => {
+    const option = options.find((candidate) => candidate.value === next)
+    if (option?.disabled) return
     onChange(next)
     setOpen(false)
     setQuery('')
@@ -59,15 +87,23 @@ export function Combobox({
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault()
-      setActive(Math.min(activeIndex + 1, filtered.length - 1))
+      event.stopPropagation()
+      if (enabledVisibleOptions.length > 0) {
+        setActive(Math.min(activeIndex + 1, enabledVisibleOptions.length - 1))
+      }
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      setActive(Math.max(activeIndex - 1, 0))
+      event.stopPropagation()
+      if (enabledVisibleOptions.length > 0) {
+        setActive(Math.max(activeIndex - 1, 0))
+      }
     } else if (event.key === 'Enter') {
       event.preventDefault()
-      const option = filtered[activeIndex]
+      event.stopPropagation()
+      const option = visibleActiveOption
       if (option) choose(option.value)
     } else if (event.key === 'Escape') {
+      event.stopPropagation()
       setOpen(false)
     }
   }
@@ -125,17 +161,30 @@ export function Combobox({
             aria-label="Filter options"
           />
           <ul className="bl-combo-list" role="listbox">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <li className="bl-combo-empty is-loading">Loading catalog options…</li>
+            ) : errorText ? (
+              <li className="bl-combo-empty is-error">{errorText}</li>
+            ) : filtered.length === 0 ? (
               <li className="bl-combo-empty">{emptyText ?? 'No matches'}</li>
             ) : (
-              filtered.map((option, index) => {
+              visibleOptions.map((option, index) => {
+                const previous = visibleOptions[index - 1]
+                const showGroup = option.group && option.group !== previous?.group
+                const enabledIndex = option.disabled
+                  ? -1
+                  : enabledVisibleOptions.findIndex((candidate) => candidate.value === option.value)
                 const optionButton = (
                   <button
                     type="button"
-                    className={`bl-combo-option ${index === activeIndex ? 'is-active' : ''} ${
+                    className={`bl-combo-option ${enabledIndex === activeIndex ? 'is-active' : ''} ${
                       option.value === value ? 'is-selected' : ''
-                    }`}
-                    onMouseEnter={() => setActive(index)}
+                    } ${option.disabled ? 'is-disabled' : ''}`}
+                    disabled={option.disabled}
+                    title={option.disabledReason}
+                    onMouseEnter={() => {
+                      if (enabledIndex >= 0) setActive(enabledIndex)
+                    }}
                     onClick={() => choose(option.value)}
                   >
                     {option.leading}
@@ -144,19 +193,25 @@ export function Combobox({
                   </button>
                 )
                 return (
-                  <li key={option.value} role="option" aria-selected={option.value === value}>
-                    {option.tooltip ? (
-                      <Tooltip content={option.tooltip} className="bl-combo-option-tip">
-                        {optionButton}
-                      </Tooltip>
-                    ) : (
-                      optionButton
-                    )}
+                  <li key={`${option.group ?? 'ungrouped'}-${option.value}`}>
+                    {showGroup ? <div className="bl-combo-group">{option.group}</div> : null}
+                    <div role="option" aria-selected={option.value === value} aria-disabled={option.disabled}>
+                      {option.tooltip && !option.disabled ? (
+                        <Tooltip content={option.tooltip} className="bl-combo-option-tip">
+                          {optionButton}
+                        </Tooltip>
+                      ) : (
+                        optionButton
+                      )}
+                    </div>
                   </li>
                 )
               })
             )}
           </ul>
+          {!loading && !errorText && filtered.length > 0 ? (
+            <div className="bl-combo-footer">{footerText}</div>
+          ) : null}
         </div>
       ) : null}
     </div>
