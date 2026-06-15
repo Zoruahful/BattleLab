@@ -140,6 +140,14 @@ export interface CatalogPokemonForm {
   artworkKey?: CatalogKey;
 }
 
+export interface CatalogPokemonAbilityReference {
+  catalogKey?: CatalogKey;
+  showdownId: ShowdownId;
+  displayName: string;
+  slot: number;
+  hidden: boolean;
+}
+
 export interface CatalogPokemon extends CatalogRecordBase {
   kind: "pokemon";
   nationalDexNumber?: number;
@@ -151,6 +159,7 @@ export interface CatalogPokemon extends CatalogRecordBase {
   spriteKey?: CatalogKey;
   animatedSpriteKey?: CatalogKey;
   artworkKey?: CatalogKey;
+  abilities?: CatalogPokemonAbilityReference[];
   preferredVisualModes?: CatalogPokemonVisualMode[];
   generationIntroduced?: string;
   formatAvailability?: CatalogFormatAvailability[];
@@ -242,6 +251,7 @@ export interface CatalogPickerOption {
   asset?: CatalogAssetReference;
   primaryType?: PokemonType;
   secondaryType?: PokemonType;
+  abilityShowdownIds?: ShowdownId[];
   increasedStat?: keyof StatSpread;
   decreasedStat?: keyof StatSpread;
   availability: CatalogPickerAvailability;

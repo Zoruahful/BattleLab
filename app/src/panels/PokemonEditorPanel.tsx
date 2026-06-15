@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent as Rea
 import {
   createCachedCatalogPickerProjection,
   createPlannedExpansionLocalPickerProjection,
+  findCatalogPokemonByShowdownId,
   getAbilityPickerOptions,
   getCatalogPickerSearchText,
   getItemPickerOptions,
@@ -857,10 +858,15 @@ export function PokemonEditorPanel({
     : 0
   const budgetBelow = Math.max(0, -allocationMinimum)
   const previewLearnsetMoveIds = activeLearnsetMoveIds ?? learnsets[speciesShowdownId] ?? []
+  const localSeedPokemonOption = speciesShowdownId ? findCatalogPokemonByShowdownId(speciesShowdownId) : undefined
+  const previewAbilityIds = selectedPokemonOption?.abilityShowdownIds?.length
+    ? selectedPokemonOption.abilityShowdownIds
+    : (localSeedPokemonOption?.abilities?.map((ability) => ability.showdownId) ?? [])
   const legalityPreview = draftPokemon
     ? createPokemonEditorLegalityPreviewReadModel({
         species: toBuildRef(selectedPokemonOption) ?? draftPokemon.speciesRef ?? null,
         ability: toBuildRef(selectedAbilityOption) ?? draftPokemon.abilityRef ?? null,
+        previewAbilityIds,
         item: toBuildRef(selectedItemOption) ?? draftPokemon.itemRef ?? null,
         teraType: toBuildRef(selectedTeraOption) ?? draftPokemon.teraTypeRef ?? null,
         moves: (draftPokemon.moveRefs ?? [null, null, null, null]).map((ref, index) => {

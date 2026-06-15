@@ -86,6 +86,15 @@ export const localCatalogSeedPokemon: CatalogPokemon[] = [
     spriteKey: 'asset-pokemon-tyranitar-static',
     animatedSpriteKey: 'asset-pokemon-tyranitar-animated',
     artworkKey: 'asset-pokemon-tyranitar-artwork',
+    abilities: [
+      {
+        catalogKey: 'ability-sand-stream',
+        showdownId: 'sandstream',
+        displayName: 'Sand Stream',
+        slot: 1,
+        hidden: false,
+      },
+    ],
     preferredVisualModes: ['static', 'animated'],
     generationIntroduced: 'Gen 2',
   },
@@ -121,6 +130,15 @@ export const localCatalogSeedPokemon: CatalogPokemon[] = [
     spriteKey: 'asset-pokemon-excadrill-static',
     animatedSpriteKey: 'asset-pokemon-excadrill-animated',
     artworkKey: 'asset-pokemon-excadrill-artwork',
+    abilities: [
+      {
+        catalogKey: 'ability-sand-rush',
+        showdownId: 'sandrush',
+        displayName: 'Sand Rush',
+        slot: 1,
+        hidden: false,
+      },
+    ],
     preferredVisualModes: ['static', 'animated'],
     generationIntroduced: 'Gen 5',
   },

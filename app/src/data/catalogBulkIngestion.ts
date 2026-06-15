@@ -345,6 +345,21 @@ async function getGeneratedCatalogCacheAvailable() {
   }
 }
 
+const sectionPayloadSupportsCurrentCatalogShape = (
+  section: CatalogBulkIngestionSection,
+  payload: { records: unknown[] },
+) => {
+  if (section !== "pokemon") return true;
+
+  return payload.records.every((record) => {
+    if (!record || typeof record !== "object") return false;
+
+    const abilities = (record as Partial<PokeApiPokemonResource>).abilities;
+
+    return Array.isArray(abilities) && abilities.length > 0;
+  });
+};
+
 async function readCurrentSectionCache(
   section: CatalogBulkIngestionSection,
   list: FetchListResult,
@@ -368,7 +383,8 @@ async function readCurrentSectionCache(
       payload.source === "pokeapi" &&
       payload.sourceBaseUrl === pokeApiBaseUrl &&
       payload.listSignature === list.listSignature &&
-      payload.records.length === expectedRecordCount;
+      payload.records.length === expectedRecordCount &&
+      sectionPayloadSupportsCurrentCatalogShape(section, payload);
 
     return { metadata, payload, isCurrent };
   } catch {

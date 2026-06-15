@@ -261,6 +261,20 @@ export function normalizePokeApiPokemonFixture(pokemon: PokeApiPokemonFixture): 
     .map((entry) => toPokemonType(entry.type.name));
   const baseStats = normalizeStats(pokemon);
   const displayName = titleCase(pokemon.name);
+  const abilities = (pokemon.abilities ?? [])
+    .slice()
+    .sort((left, right) => left.slot - right.slot)
+    .map((entry) => {
+      const abilityShowdownId = toShowdownId(entry.ability.name);
+
+      return {
+        catalogKey: `ability-${entry.ability.name}`,
+        showdownId: abilityShowdownId,
+        displayName: titleCase(entry.ability.name),
+        slot: entry.slot,
+        hidden: entry.is_hidden,
+      };
+    });
   const spriteKey = pokemon.sprites.front_default ? `asset-pokemon-${pokemon.name}-static` : undefined;
   const animatedSpriteKey = pokemon.sprites.versions?.["generation-v"]?.["black-white"]?.animated?.front_default
     ? `asset-pokemon-${pokemon.name}-animated`
@@ -299,6 +313,7 @@ export function normalizePokeApiPokemonFixture(pokemon: PokeApiPokemonFixture): 
     spriteKey,
     animatedSpriteKey,
     artworkKey,
+    abilities,
     preferredVisualModes: animatedSpriteKey ? ["static", "animated"] : ["static"],
   };
 }

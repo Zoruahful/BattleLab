@@ -187,6 +187,7 @@ export function toPokemonPickerOption(pokemon: CatalogPokemon): CatalogPickerOpt
     },
     primaryType: pokemon.types[0],
     secondaryType: pokemon.types[1],
+    abilityShowdownIds: pokemon.abilities?.map((ability) => ability.showdownId) ?? [],
     availability: statusToAvailability(pokemon.status),
     validationStatus: 'unknown',
   }

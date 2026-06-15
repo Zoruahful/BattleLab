@@ -35,6 +35,11 @@ export interface PokeApiPokemonResource {
   id: number;
   name: string;
   sprites: PokeApiPokemonSprites;
+  abilities?: Array<{
+    ability: PokeApiNamedResource;
+    is_hidden: boolean;
+    slot: number;
+  }>;
   moves?: Array<{
     move: PokeApiNamedResource;
     version_group_details?: Array<{

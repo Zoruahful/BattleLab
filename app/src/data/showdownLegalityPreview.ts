@@ -9,6 +9,7 @@ type MoveSlot = 0 | 1 | 2 | 3
 export type PokemonEditorLegalityPreviewInput = {
   species: BuildCatalogReference | null
   ability?: BuildCatalogReference | null
+  previewAbilityIds?: string[]
   item?: BuildCatalogReference | null
   teraType?: BuildCatalogReference | null
   moves: [
@@ -65,10 +66,24 @@ const toMovePreviewField = (
   }
 }
 
+const toAbilityPreviewMessage = (ability?: BuildCatalogReference | null, previewAbilityIds: Set<string> = new Set()) => {
+  if (!ability) return 'No ability selected.'
+
+  const abilityId = ability.showdownId ?? ability.catalogKey.replace(/^ability-/, '')
+  const abilityListSignal = previewAbilityIds.size
+    ? previewAbilityIds.has(abilityId)
+      ? 'Appears in catalog ability list.'
+      : 'Not found in catalog ability list.'
+    : 'Catalog ability list is unavailable for this Pokemon/form.'
+
+  return `${abilityListSignal} Pokemon Showdown must confirm final legality.`
+}
+
 export function createPokemonEditorLegalityPreviewReadModel(
   input: PokemonEditorLegalityPreviewInput,
 ): PokemonEditorLegalityReadModel {
   const previewLearnsetMoveIds = new Set(input.previewLearnsetMoveIds ?? [])
+  const previewAbilityIds = new Set(input.previewAbilityIds ?? [])
   const moveResults = input.moves.map((move, index) =>
     toMovePreviewField(move, index as MoveSlot, previewLearnsetMoveIds),
   )
@@ -79,9 +94,7 @@ export function createPokemonEditorLegalityPreviewReadModel(
       field: 'ability',
       status: input.ability ? 'runtime-unavailable' : 'not-checked',
       label: 'Ability',
-      message: input.ability
-        ? 'Ability validity is Pokemon/form-specific and remains Pokemon Showdown-owned.'
-        : 'No ability selected.',
+      message: toAbilityPreviewMessage(input.ability, previewAbilityIds),
       selectable: true,
       legalityDefining: true,
       optionKind: 'ability',
