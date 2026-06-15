@@ -13,6 +13,31 @@ export {
 } from "./catalogBulkIngestion";
 
 export {
+  catalogStorageBoundaryContractVersion,
+  catalogStorageBoundarySchemaVersion,
+  catalogStorageBoundarySections,
+  catalogStorageBoundarySourceMetadata,
+  createCatalogStorageBoundaryReadModel,
+  createCatalogStorageSectionManifest,
+  currentIndexedDbCatalogStorageAdapter,
+  futurePackagedCatalogStorageAdapter,
+  readCatalogStorageBoundaryReadModel,
+  readonlyBundleCatalogStorageAdapter,
+  sampleCatalogStorageBoundaryReadModel,
+  type CatalogStorageBoundaryInput,
+} from "./catalogStorageBoundary";
+
+export {
+  sampleCatalogStorageBoundaryValidation,
+  validateCatalogStorageBoundary,
+  type CatalogStorageBoundaryValidationCode,
+  type CatalogStorageBoundaryValidationIssue,
+  type CatalogStorageBoundaryValidationResult,
+  type CatalogStorageBoundaryValidationSeverity,
+  type CatalogStorageBoundaryValidationSourceIssue,
+} from "./catalogStorageBoundaryValidation";
+
+export {
   validateCatalogBulkIngestion,
   type CatalogBulkIngestionCounts,
   type CatalogBulkIngestionValidationCode,

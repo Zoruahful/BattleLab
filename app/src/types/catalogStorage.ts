@@ -237,6 +237,104 @@ export interface CatalogStorageAdapterBoundary {
   notes: string[];
 }
 
+export type CatalogStorageAdapterCapability =
+  | "read-generated-catalog"
+  | "write-generated-catalog-after-validation"
+  | "read-source-snapshots"
+  | "write-source-snapshots-after-validation"
+  | "read-section-metadata"
+  | "write-section-metadata"
+  | "read-list-signatures"
+  | "bundle-handoff-metadata";
+
+export type CatalogStorageBoundaryIssueSeverity = "info" | "warning" | "error";
+
+export interface CatalogStorageAdapterDescriptor {
+  id: string;
+  kind: CatalogStorageAdapterKind;
+  schemaVersion: CatalogStorageSchemaVersion;
+  label: string;
+  current: boolean;
+  implemented: boolean;
+  storageMedium: "browser-indexeddb" | "future-packaged-local" | "future-readonly-bundle";
+  capabilities: CatalogStorageAdapterCapability[];
+  disallowedCapabilities: Array<
+    | "electron"
+    | "sqlite"
+    | "filesystem-writes"
+    | "bundle-writing"
+    | "loader-execution"
+    | "user-team-storage"
+    | "simulation-output-storage"
+  >;
+  notes: string[];
+}
+
+export interface CatalogStorageBoundaryIssue {
+  code: string;
+  severity: CatalogStorageBoundaryIssueSeverity;
+  message: string;
+  path: string;
+  section?: BattleLabCatalogBundleSectionName;
+}
+
+export interface CatalogStorageBoundarySectionState {
+  section: BattleLabCatalogBundleSectionName;
+  status: CatalogStorageHealthStatus;
+  schemaVersion: CatalogStorageSchemaVersion;
+  sourceSignature?: CatalogStorageSourceSignature;
+  recordCount: number;
+  generatedAt?: string;
+  fetchedAt?: string;
+  staleAfter?: string;
+  lastCheckedAt?: string;
+  lastUpdatedAt?: string;
+  hasListSignature: boolean;
+  hasCachedPayload: boolean;
+  hasGeneratedCatalogCoverage: boolean;
+  safeToReuse: boolean;
+  messages: string[];
+}
+
+export interface CatalogStorageBoundaryReadModel {
+  id: string;
+  contractVersion: CatalogStorageContractVersion;
+  schemaVersion: CatalogStorageSchemaVersion;
+  checkedAt: string;
+  currentAdapter: CatalogStorageAdapterDescriptor;
+  futurePackagedAdapter: CatalogStorageAdapterDescriptor;
+  readonlyBundleAdapter: CatalogStorageAdapterDescriptor;
+  health: CatalogStorageCacheHealthReport;
+  safeFallback: CatalogStorageSafeFallback;
+  migrationPlan: CatalogStorageMigrationPlan;
+  bundleHandoff: CatalogStorageBundleHandoff;
+  sections: CatalogStorageBoundarySectionState[];
+  generatedCatalog: {
+    present: boolean;
+    catalogVersion?: string;
+    fetchedAt?: string;
+    schemaVersion: CatalogStorageSchemaVersion;
+    preserveUntilReplacementValidates: true;
+  };
+  safety: {
+    indexedDbCurrentAdapterPreserved: true;
+    packagedLocalAdapterImplemented: false;
+    sqliteImplemented: false;
+    electronImplemented: false;
+    filesystemWritesImplemented: false;
+    bundleWritingImplemented: false;
+    loaderExecutionImplemented: false;
+    storesUserTeams: false;
+    storesSettings: false;
+    storesReports: false;
+    storesRuntimeOutput: false;
+    pokeApiEnrichmentOnly: true;
+    showdownLegalityAuthority: true;
+  };
+  issues: CatalogStorageBoundaryIssue[];
+  notes: string[];
+}
+
 export interface CatalogStoragePlanningContract {
   manifest: CatalogStorageManifest;
   migrationPlan: CatalogStorageMigrationPlan;
