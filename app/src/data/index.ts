@@ -948,6 +948,27 @@ export {
 } from "./showdownEngineArchiveBodyDownloadProofValidation";
 
 export {
+  createShowdownEngineArchiveBodyDownloadReadModel,
+  fetchShowdownEngineArchiveBodyDownloadReadModel,
+  type ShowdownEngineArchiveBodyDownloadReadModel,
+  type ShowdownEngineArchiveBodyDownloadReadModelStatus,
+  type ShowdownEngineArchiveBodyDownloadSourceSummary,
+  type ShowdownEngineArchiveBodyDownloadSummary,
+  type ShowdownEngineArchiveBodyHashPolicyStatus,
+  type ShowdownEngineArchiveBodyHashSummary,
+  type ShowdownEngineArchiveBodyPreservationSummary,
+  type ShowdownEngineArchiveBodySafetySummary,
+} from "./showdownEngineArchiveBodyDownloadReadModel";
+
+export {
+  validateShowdownEngineArchiveBodyDownloadReadModel,
+  type ShowdownEngineArchiveBodyDownloadReadModelValidationCode,
+  type ShowdownEngineArchiveBodyDownloadReadModelValidationIssue,
+  type ShowdownEngineArchiveBodyDownloadReadModelValidationResult,
+  type ShowdownEngineArchiveBodyDownloadReadModelValidationSeverity,
+} from "./showdownEngineArchiveBodyDownloadReadModelValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
