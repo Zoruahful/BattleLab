@@ -1,5 +1,6 @@
 import type { BattleLabCatalog } from "../types/catalog";
 import type { CatalogSourceFetchIssue } from "../types/catalogFetch";
+import type { CatalogStorageCacheHealthReport } from "../types/catalogStorage";
 import type {
   PokeApiAbilityResource,
   PokeApiCatalogSourceSnapshot,
@@ -25,6 +26,7 @@ import {
   type CatalogUpdateSectionCacheMetadata,
   type CatalogUpdateSectionPayload,
 } from "./catalogUpdateCache";
+import { readCatalogStorageBoundaryReadModel } from "./catalogStorageBoundary";
 import { validatePokeApiSourceSnapshot } from "./pokeApiSourceValidation";
 
 export type CatalogBulkIngestionSection =
@@ -92,6 +94,8 @@ export interface CatalogBulkIngestionResult {
   progress: CatalogBulkIngestionProgress[];
   snapshot: PokeApiCatalogSourceSnapshot | null;
   catalog: BattleLabCatalog | null;
+  storageHealthBefore: CatalogStorageCacheHealthReport | null;
+  storageHealthAfter: CatalogStorageCacheHealthReport | null;
   sectionSummaries: CatalogBulkIngestionSectionSummary[];
   issues: CatalogSourceFetchIssue[];
   notes: string[];
@@ -342,6 +346,14 @@ async function getGeneratedCatalogCacheAvailable() {
     return Boolean(await readCatalogUpdateGeneratedCatalogCache());
   } catch {
     return false;
+  }
+}
+
+async function readStorageHealthSnapshot(): Promise<CatalogStorageCacheHealthReport | null> {
+  try {
+    return (await readCatalogStorageBoundaryReadModel()).health;
+  } catch {
+    return null;
   }
 }
 
@@ -617,6 +629,7 @@ export async function runCatalogBulkIngestion(
 
   try {
     assertNotAborted(signal);
+    const storageHealthBefore = await readStorageHealthSnapshot();
     pushProgress(createProgress("checking", 0, 6, "Checking PokeAPI section resource lists and local catalog cache."));
     let completedListRequests = 0;
     const listEntries = await Promise.all(
@@ -803,6 +816,8 @@ export async function runCatalogBulkIngestion(
       }
     }
 
+    const storageHealthAfter = await readStorageHealthSnapshot();
+
     pushProgress(
       createProgress(
         isValid ? "complete" : "failed",
@@ -822,6 +837,8 @@ export async function runCatalogBulkIngestion(
       progress,
       snapshot,
       catalog,
+      storageHealthBefore,
+      storageHealthAfter,
       sectionSummaries,
       issues,
       notes: [
@@ -830,6 +847,7 @@ export async function runCatalogBulkIngestion(
         "PokeAPI/catalog data remains enrichment-only.",
         "Pokemon Showdown remains legality and simulation source of truth.",
         "Sprite metadata remains candidate-review-gated only.",
+        "Storage health is reported through the current IndexedDB boundary before and after ingestion.",
         "No UI wiring, .bl writing, loader execution, persistence, or simulation work is performed.",
       ],
     };
@@ -848,6 +866,8 @@ export async function runCatalogBulkIngestion(
         progress,
         snapshot: null,
         catalog: null,
+        storageHealthBefore: await readStorageHealthSnapshot(),
+        storageHealthAfter: null,
         sectionSummaries: [],
         issues,
         notes: [
@@ -877,6 +897,8 @@ export async function runCatalogBulkIngestion(
       progress,
       snapshot: null,
       catalog: null,
+      storageHealthBefore: await readStorageHealthSnapshot(),
+      storageHealthAfter: null,
       sectionSummaries: [],
       issues,
       notes: [

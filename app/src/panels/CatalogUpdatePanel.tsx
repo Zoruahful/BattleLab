@@ -13,7 +13,9 @@ import {
   type CatalogUpdateGeneratedCatalogCache,
   type CatalogUpdateSectionCacheMetadata,
 } from '../data/catalogUpdateCache'
+import { readCatalogStorageBoundaryReadModel } from '../data/catalogStorageBoundary'
 import type { CatalogSourceFetchIssue } from '../types/catalogFetch'
+import type { CatalogStorageBoundaryReadModel } from '../types/catalogStorage'
 import '../styles/settings-catalog-panels.css'
 
 export type CatalogUpdatePanelProps = {
@@ -246,6 +248,38 @@ function formatCatalogVersionLabel(value?: string) {
   return 'Saved catalog'
 }
 
+function getStorageHealthMessage(readModel?: CatalogStorageBoundaryReadModel | null) {
+  if (!readModel) {
+    return 'Checking browser-local catalog storage. User teams are stored separately.'
+  }
+
+  if (readModel.health.status === 'healthy') {
+    return 'Browser-local catalog cache is ready. Future packaged app storage is not active yet.'
+  }
+
+  if (readModel.health.generatedCatalogPresent) {
+    return 'Saved catalog remains available while storage is checked. User team data is not affected.'
+  }
+
+  return 'Catalog cache is not ready yet. Team data is separate and remains unaffected.'
+}
+
+function getStorageFallbackMessage(readModel?: CatalogStorageBoundaryReadModel | null) {
+  if (!readModel) {
+    return 'Failed or cancelled updates keep the last saved generated catalog when one exists.'
+  }
+
+  if (readModel.safeFallback.status === 'use-current-cache') {
+    return 'Failed or cancelled updates keep this generated catalog available.'
+  }
+
+  if (readModel.safeFallback.status === 'block-and-keep-current') {
+    return 'New catalog data must validate before replacing the saved generated catalog.'
+  }
+
+  return 'If no generated catalog is saved, BattleLab falls back without touching team data.'
+}
+
 function getProgressState(status: CatalogPanelStatus | CatalogPanelSectionStatus): CatalogProgressDisplayState {
   if (status === 'checking') return 'checking'
   if (status === 'current') return 'current'
@@ -343,7 +377,9 @@ function applyProgressToSections(
     }
 
     if (progress.status === 'current') {
-      const total = progress.sectionTotalRequests ?? section.total
+      const total = section.lastUpdatedAt && section.total > 0
+        ? section.total
+        : progress.sectionTotalRequests ?? section.total
 
       return {
         ...section,
@@ -557,6 +593,7 @@ function applyResult(current: CatalogPanelState, result: CatalogBulkIngestionRes
 
 export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelProps) {
   const [downloadState, setDownloadState] = useState<CatalogPanelState>(() => createInitialCatalogPanelState())
+  const [storageBoundary, setStorageBoundary] = useState<CatalogStorageBoundaryReadModel | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [cacheHydrated, setCacheHydrated] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -579,10 +616,11 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
 
     let cancelled = false
 
-    hydrateCatalogPanelStateFromCache()
-      .then((state) => {
+    Promise.all([hydrateCatalogPanelStateFromCache(), readCatalogStorageBoundaryReadModel()])
+      .then(([state, readModel]) => {
         if (!cancelled && mountedRef.current) {
           setDownloadState(state)
+          setStorageBoundary(readModel)
           setCacheHydrated(true)
         }
       })
@@ -657,6 +695,18 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
       if (abortRef.current === controller) {
         abortRef.current = null
       }
+
+      readCatalogStorageBoundaryReadModel()
+        .then((readModel) => {
+          if (mountedRef.current) {
+            setStorageBoundary(readModel)
+          }
+        })
+        .catch(() => {
+          if (mountedRef.current) {
+            setStorageBoundary(null)
+          }
+        })
     }
   }
 
@@ -761,6 +811,19 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
                 Generated picker cache:{' '}
                 {downloadState.cacheHealth.generatedCatalogPresent ? 'available' : 'not saved yet'}.
               </span>
+            </div>
+
+            <div className="bl-catalog-storage-boundary" aria-label="Catalog storage boundary">
+              <div>
+                <span>Active storage</span>
+                <strong>Browser-local catalog cache</strong>
+                <p>{getStorageHealthMessage(storageBoundary)}</p>
+              </div>
+              <div>
+                <span>Future storage</span>
+                <strong>Packaged app storage: not active</strong>
+                <p>{getStorageFallbackMessage(storageBoundary)}</p>
+              </div>
             </div>
 
             <div className="bl-catalog-category-list">

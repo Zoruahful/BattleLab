@@ -19,6 +19,7 @@ export type CatalogStorageBoundaryValidationCode =
   | 'adapter-boundary-invalid'
   | 'safety-flag-open'
   | 'fallback-invalid'
+  | 'health-state-missing'
   | 'migration-invalid'
   | 'section-state-invalid'
   | 'authority-boundary-invalid'
@@ -126,13 +127,13 @@ function validateFallback(model: CatalogStorageBoundaryReadModel, issues: Catalo
     )
   }
 
-  if (model.health.status === 'malformed' && model.safeFallback.status !== 'block-and-keep-current') {
+  if ((model.health.status === 'malformed' || model.health.status === 'blocked') && model.generatedCatalog.present && model.safeFallback.status !== 'block-and-keep-current') {
     issues.push(
       createIssue(
         'fallback-invalid',
         'error',
         'safeFallback.status',
-        'Malformed cache with a generated catalog must block and keep current data.',
+        'Malformed or blocked cache with a generated catalog must block and keep current data.',
       ),
     )
   }
@@ -279,7 +280,34 @@ const healthyModel = createCatalogStorageBoundaryReadModel({
   payloadSections: [...catalogStorageBoundarySections],
 })
 
+const staleModel = createCatalogStorageBoundaryReadModel({
+  checkedAt: '2026-06-15T00:00:00.000Z',
+  metadata: [
+    {
+      ...sampleMetadata('pokemon', 25),
+      status: 'warning',
+      message: 'Stale sample metadata.',
+    },
+  ],
+  generatedCatalog: sampleGeneratedCatalog(),
+  payloadSections: [],
+})
+
 const malformedModel = createCatalogStorageBoundaryReadModel({
+  checkedAt: '2026-06-15T00:00:00.000Z',
+  metadata: [
+    {
+      ...sampleMetadata('pokemon', 0),
+      listSignature: '',
+      status: 'failed',
+      message: 'Malformed sample metadata.',
+    },
+  ],
+  generatedCatalog: null,
+  payloadSections: [],
+})
+
+const blockedModel = createCatalogStorageBoundaryReadModel({
   checkedAt: '2026-06-15T00:00:00.000Z',
   metadata: [
     {
@@ -294,10 +322,32 @@ const malformedModel = createCatalogStorageBoundaryReadModel({
 })
 
 const unavailableModel = sampleCatalogStorageBoundaryReadModel
+const validationModels = [healthyModel, staleModel, malformedModel, unavailableModel, blockedModel]
 
 export function validateCatalogStorageBoundary(): CatalogStorageBoundaryValidationResult {
-  const modelIssues = [healthyModel, malformedModel, unavailableModel].flatMap(validateBoundaryModel)
+  const modelIssues = validationModels.flatMap(validateBoundaryModel)
   const bridgeIssues: CatalogStorageBoundaryValidationIssue[] = []
+  const coveredStatuses = new Set(validationModels.map((model) => model.health.status))
+  const requiredStatuses: Array<CatalogStorageBoundaryReadModel['health']['status']> = [
+    'healthy',
+    'stale',
+    'malformed',
+    'unavailable',
+    'blocked',
+  ]
+
+  requiredStatuses.forEach((status) => {
+    if (!coveredStatuses.has(status)) {
+      bridgeIssues.push(
+        createIssue(
+          'health-state-missing',
+          'error',
+          'health.status',
+          `Storage boundary validation must cover ${status} cache health state.`,
+        ),
+      )
+    }
+  })
 
   if (!currentIndexedDbCatalogStorageAdapter.current || !currentIndexedDbCatalogStorageAdapter.implemented) {
     bridgeIssues.push(
@@ -327,7 +377,7 @@ export function validateCatalogStorageBoundary(): CatalogStorageBoundaryValidati
 
   return {
     isValid: errorCount === 0,
-    checkedModels: 3,
+    checkedModels: validationModels.length,
     issueCount: allIssues.length,
     warningCount,
     errorCount,

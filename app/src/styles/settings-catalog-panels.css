@@ -514,6 +514,45 @@
   background: #f4e1dc;
 }
 
+.bl-catalog-storage-boundary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bl-catalog-storage-boundary div {
+  min-width: 0;
+  border: 1px solid rgba(74, 124, 126, 0.18);
+  border-radius: 8px;
+  background: rgba(74, 124, 126, 0.06);
+  padding: 10px 11px;
+}
+
+.bl-catalog-storage-boundary span {
+  display: block;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bl-catalog-storage-boundary strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-strong);
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+
+.bl-catalog-storage-boundary p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
 .bl-catalog-progress-state {
   gap: 7px;
 }
@@ -859,9 +898,18 @@
   .bl-settings-section-heading,
   .bl-catalog-category-topline,
   .bl-catalog-cache-summary,
+  .bl-catalog-storage-boundary,
   .bl-settings-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .bl-catalog-storage-boundary {
+    display: flex;
+  }
+
+  .bl-catalog-storage-boundary div {
+    width: 100%;
   }
 
   .bl-catalog-cache-summary span {
