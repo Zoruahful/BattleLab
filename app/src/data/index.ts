@@ -1112,6 +1112,25 @@ export {
 } from "./showdownEngineActivationGateReadModelValidation";
 
 export {
+  createShowdownEngineCatalogUpdateAggregateReadModel,
+  createShowdownEngineCatalogUpdateAggregateReadModelSamples,
+  type ShowdownEngineCatalogUpdateAggregateReadModel,
+  type ShowdownEngineCatalogUpdateAggregateReadModelInput,
+  type ShowdownEngineCatalogUpdateAggregateRevisionSummary,
+  type ShowdownEngineCatalogUpdateAggregateSafety,
+  type ShowdownEngineCatalogUpdateAggregateSection,
+  type ShowdownEngineCatalogUpdateAggregateStatus,
+} from "./showdownEngineCatalogUpdateAggregateReadModel";
+
+export {
+  validateShowdownEngineCatalogUpdateAggregateReadModel,
+  type ShowdownEngineCatalogUpdateAggregateReadModelValidationCode,
+  type ShowdownEngineCatalogUpdateAggregateReadModelValidationIssue,
+  type ShowdownEngineCatalogUpdateAggregateReadModelValidationResult,
+  type ShowdownEngineCatalogUpdateAggregateReadModelValidationSeverity,
+} from "./showdownEngineCatalogUpdateAggregateReadModelValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
