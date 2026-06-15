@@ -6,7 +6,13 @@ import {
   type CatalogBulkIngestionSection,
   type CatalogBulkIngestionSectionSummary,
 } from '../data/catalogBulkIngestion'
-import { writeCatalogUpdateGeneratedCatalogCache } from '../data/catalogUpdateCache'
+import {
+  readCatalogUpdateCacheMetadata,
+  readCatalogUpdateGeneratedCatalogCache,
+  writeCatalogUpdateGeneratedCatalogCache,
+  type CatalogUpdateGeneratedCatalogCache,
+  type CatalogUpdateSectionCacheMetadata,
+} from '../data/catalogUpdateCache'
 import type { CatalogSourceFetchIssue } from '../types/catalogFetch'
 import '../styles/settings-catalog-panels.css'
 
@@ -31,7 +37,30 @@ type CatalogProgressDisplayState =
   | 'blocked'
 
 type CatalogPanelStatus = 'idle' | 'checking' | 'fetching' | 'validating' | 'complete' | 'warning' | 'failed' | 'cancelled'
-type CatalogPanelSectionStatus = 'idle' | 'checking' | 'current' | 'fetching' | 'complete' | 'warning' | 'failed' | 'cancelled'
+type CatalogPanelSectionStatus =
+  | 'idle'
+  | 'checking'
+  | 'current'
+  | 'stale'
+  | 'fetching'
+  | 'complete'
+  | 'warning'
+  | 'failed'
+  | 'cancelled'
+
+type CatalogCacheHealthStatus = 'empty' | 'healthy' | 'partial' | 'warning' | 'failed'
+
+interface CatalogCacheHealthSummary {
+  status: CatalogCacheHealthStatus
+  label: string
+  message: string
+  cachedSections: number
+  totalSections: number
+  recordCount: number
+  lastCompletedAt?: string
+  catalogVersion?: string
+  generatedCatalogPresent: boolean
+}
 
 interface CatalogPanelSection {
   id: CatalogBulkIngestionSection
@@ -57,6 +86,7 @@ interface CatalogPanelState {
   errorCount: number
   issues: CatalogSourceFetchIssue[]
   sections: CatalogPanelSection[]
+  cacheHealth: CatalogCacheHealthSummary
 }
 
 const catalogSections: Array<Pick<CatalogPanelSection, 'id' | 'label' | 'description'>> = [
@@ -107,6 +137,7 @@ const sectionStatusLabels: Record<CatalogPanelSectionStatus, string> = {
   idle: 'Not checked',
   checking: 'Checking',
   current: 'Current',
+  stale: 'Outdated',
   fetching: 'Downloading',
   complete: 'Prepared',
   warning: 'Warning',
@@ -114,7 +145,74 @@ const sectionStatusLabels: Record<CatalogPanelSectionStatus, string> = {
   cancelled: 'Cancelled',
 }
 
+const cacheHealthLabels: Record<CatalogCacheHealthStatus, string> = {
+  empty: 'No saved catalog',
+  healthy: 'Cache healthy',
+  partial: 'Partial cache',
+  warning: 'Needs review',
+  failed: 'Last update failed',
+}
+
+function createCacheHealthSummary(
+  sections: CatalogPanelSection[],
+  generatedCatalog?: Pick<CatalogUpdateGeneratedCatalogCache, 'fetchedAt' | 'sourceVersion'> | null,
+): CatalogCacheHealthSummary {
+  const cachedSections = sections.filter((section) => section.total > 0 && section.lastUpdatedAt).length
+  const failedSections = sections.filter((section) => section.status === 'failed').length
+  const warningSections = sections.filter((section) => section.status === 'warning').length
+  const recordCount = sections.reduce((total, section) => total + (section.lastUpdatedAt ? section.downloaded : 0), 0)
+  const lastCompletedAt = [
+    generatedCatalog?.fetchedAt,
+    ...sections.map((section) => section.lastUpdatedAt),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0]
+  const totalSections = catalogSections.length
+  const generatedCatalogPresent = Boolean(generatedCatalog)
+  const status: CatalogCacheHealthStatus =
+    failedSections > 0
+      ? 'failed'
+      : warningSections > 0
+      ? 'warning'
+      : cachedSections === 0
+      ? 'empty'
+      : cachedSections < totalSections || !generatedCatalogPresent
+      ? 'partial'
+      : 'healthy'
+  const message =
+    status === 'healthy'
+      ? 'All catalog sections have saved metadata and a generated picker cache.'
+      : status === 'partial'
+      ? 'Some sections are saved. Update will check missing or stale sections.'
+      : status === 'warning'
+      ? 'Saved catalog data is available, but one or more sections need review.'
+      : status === 'failed'
+      ? 'A previous update failed safely. Existing saved data was kept.'
+      : 'No browser cache has been completed yet.'
+
+  return {
+    status,
+    label: cacheHealthLabels[status],
+    message,
+    cachedSections,
+    totalSections,
+    recordCount,
+    lastCompletedAt,
+    catalogVersion: generatedCatalog?.sourceVersion,
+    generatedCatalogPresent,
+  }
+}
+
 function createInitialCatalogPanelState(): CatalogPanelState {
+  const sections = catalogSections.map((section) => ({
+    ...section,
+    status: 'idle' as const,
+    downloaded: 0,
+    total: 0,
+    progressPercent: 0,
+    message: `No ${section.label.toLowerCase()} records checked yet.`,
+  }))
+
   return {
     status: 'idle',
     aggregateProgressPercent: 0,
@@ -122,14 +220,8 @@ function createInitialCatalogPanelState(): CatalogPanelState {
     warningCount: 0,
     errorCount: 0,
     issues: [],
-    sections: catalogSections.map((section) => ({
-      ...section,
-      status: 'idle',
-      downloaded: 0,
-      total: 0,
-      progressPercent: 0,
-      message: `No ${section.label.toLowerCase()} records checked yet.`,
-    })),
+    sections,
+    cacheHealth: createCacheHealthSummary(sections),
   }
 }
 
@@ -151,11 +243,20 @@ function formatTimestamp(value?: string) {
 function getProgressState(status: CatalogPanelStatus | CatalogPanelSectionStatus): CatalogProgressDisplayState {
   if (status === 'checking') return 'checking'
   if (status === 'current') return 'current'
+  if (status === 'stale') return 'rate-limited'
   if (status === 'fetching') return 'downloading'
   if (status === 'complete') return 'complete'
   if (status === 'warning') return 'warning'
   if (status === 'failed') return 'failed'
   if (status === 'cancelled') return 'cancelled'
+  return 'preview'
+}
+
+function getCacheProgressState(status: CatalogCacheHealthStatus): CatalogProgressDisplayState {
+  if (status === 'healthy') return 'complete'
+  if (status === 'partial') return 'using-cache'
+  if (status === 'warning') return 'warning'
+  if (status === 'failed') return 'failed'
   return 'preview'
 }
 
@@ -255,7 +356,7 @@ function applyProgressToSections(
 
       return {
         ...section,
-        status: 'fetching' as const,
+        status: downloaded > 0 ? 'fetching' as const : section.lastUpdatedAt ? 'stale' as const : 'fetching' as const,
         downloaded,
         total,
         progressPercent: progress.sectionProgressPercent ?? progress.progressPercent,
@@ -334,6 +435,69 @@ function applyResultToSections(
   })
 }
 
+function createSectionFromCache(
+  section: Pick<CatalogPanelSection, 'id' | 'label' | 'description'>,
+  metadata?: CatalogUpdateSectionCacheMetadata | null,
+  generatedCatalog?: CatalogUpdateGeneratedCatalogCache | null,
+): CatalogPanelSection {
+  if (!metadata) {
+    return {
+      ...section,
+      status: 'idle',
+      downloaded: 0,
+      total: 0,
+      progressPercent: 0,
+      message: `No saved ${section.label.toLowerCase()} section yet.`,
+    }
+  }
+
+  const status: CatalogPanelSectionStatus =
+    metadata.status === 'failed' ? 'failed' : metadata.status === 'warning' ? 'warning' : 'current'
+  const generatedRecordCount = generatedCatalog?.catalog[section.id]?.length
+  const recordCount = generatedRecordCount ?? metadata.recordCount ?? metadata.listCount
+
+  return {
+    ...section,
+    status,
+    downloaded: recordCount,
+    total: recordCount,
+    progressPercent: recordCount > 0 ? 100 : 0,
+    lastCheckedAt: metadata.lastCheckedAt,
+    lastUpdatedAt: metadata.lastUpdatedAt,
+    message:
+      status === 'current'
+        ? 'Saved section is ready. Update will check if it is still current.'
+        : metadata.message ?? 'Saved section needs review. Existing cached data remains available.',
+    error: status === 'failed' ? metadata.message : undefined,
+  }
+}
+
+async function hydrateCatalogPanelStateFromCache(): Promise<CatalogPanelState> {
+  const [metadata, generatedCatalog] = await Promise.all([
+    readCatalogUpdateCacheMetadata(),
+    readCatalogUpdateGeneratedCatalogCache().catch(() => null),
+  ])
+  const metadataBySection = new Map(metadata.map((entry) => [entry.section, entry]))
+  const sections = catalogSections.map((section) =>
+    createSectionFromCache(section, metadataBySection.get(section.id), generatedCatalog),
+  )
+  const cacheHealth = createCacheHealthSummary(sections, generatedCatalog)
+
+  return {
+    status: 'idle',
+    aggregateProgressPercent: cacheHealth.status === 'empty' ? 0 : 100,
+    message:
+      cacheHealth.status === 'empty'
+        ? 'Ready to check PokeAPI catalog sections. Downloads start only when you click Update.'
+        : 'Saved catalog cache found. Click Update to check for stale sections.',
+    warningCount: sections.filter((section) => section.status === 'warning').length,
+    errorCount: sections.filter((section) => section.status === 'failed').length,
+    issues: [],
+    sections,
+    cacheHealth,
+  }
+}
+
 function getPanelStatusForResult(result: CatalogBulkIngestionResult, hasWarnings: boolean): CatalogPanelStatus {
   if (result.status === 'complete') return hasWarnings ? 'warning' : 'complete'
   if (result.status === 'cancelled') return 'cancelled'
@@ -342,13 +506,14 @@ function getPanelStatusForResult(result: CatalogBulkIngestionResult, hasWarnings
 
 function applyProgress(current: CatalogPanelState, progress: CatalogBulkIngestionProgress): CatalogPanelState {
   const nextStatus = getPanelStatusForProgress(progress)
+  const sections = applyProgressToSections(current.sections, progress)
 
   return {
     ...current,
     status: nextStatus,
     aggregateProgressPercent: getValidationStageProgress(progress),
     message: getProgressMessage(progress),
-    sections: applyProgressToSections(current.sections, progress),
+    sections,
   }
 }
 
@@ -357,6 +522,7 @@ function applyResult(current: CatalogPanelState, result: CatalogBulkIngestionRes
   const { warningCount, errorCount } = summarizeIssueCounts(result.issues)
   const hasWarnings = warningCount > 0 || result.sectionSummaries.some((summary) => summary.generatedCount < summary.selectedCount)
   const status = getPanelStatusForResult(result, hasWarnings)
+  const sections = applyResultToSections(current.sections, result, finishedAt)
 
   return {
     ...current,
@@ -370,17 +536,28 @@ function applyResult(current: CatalogPanelState, result: CatalogBulkIngestionRes
     warningCount,
     errorCount,
     issues: result.issues,
-    sections: applyResultToSections(current.sections, result, finishedAt),
+    sections,
+    cacheHealth: createCacheHealthSummary(
+      sections,
+      result.status === 'complete' && result.snapshot
+        ? {
+            fetchedAt: result.snapshot.fetchedAt,
+            sourceVersion: result.snapshot.sourceVersion,
+          }
+        : undefined,
+    ),
   }
 }
 
 export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelProps) {
   const [downloadState, setDownloadState] = useState<CatalogPanelState>(() => createInitialCatalogPanelState())
   const [helpOpen, setHelpOpen] = useState(false)
+  const [cacheHydrated, setCacheHydrated] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const mountedRef = useRef(true)
   const running = isRunning(downloadState.status)
   const panelProgressState = getProgressState(downloadState.status)
+  const cacheProgressState = getCacheProgressState(downloadState.cacheHealth.status)
 
   useEffect(() => {
     mountedRef.current = true
@@ -391,18 +568,66 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
     }
   }, [])
 
+  useEffect(() => {
+    if (!open || running || cacheHydrated) return
+
+    let cancelled = false
+
+    hydrateCatalogPanelStateFromCache()
+      .then((state) => {
+        if (!cancelled && mountedRef.current) {
+          setDownloadState(state)
+          setCacheHydrated(true)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled && mountedRef.current) {
+          const message = error instanceof Error ? error.message : 'Unknown cache metadata error.'
+          setDownloadState((current) => ({
+            ...current,
+            status: 'warning',
+            message: 'Local catalog cache metadata could not be read. Update can still run safely.',
+            cacheHealth: {
+              ...current.cacheHealth,
+              status: 'warning',
+              label: cacheHealthLabels.warning,
+              message,
+            },
+          }))
+          setCacheHydrated(true)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [cacheHydrated, open, running])
+
   const handleUpdate = async () => {
     if (abortRef.current || running) return
 
     const controller = new AbortController()
     const startedAt = new Date().toISOString()
     abortRef.current = controller
-    setDownloadState({
-      ...createInitialCatalogPanelState(),
+    setDownloadState((current) => ({
+      ...current,
       status: 'checking',
       startedAt,
+      finishedAt: undefined,
+      aggregateProgressPercent: 0,
       message: 'Checking PokeAPI catalog sections.',
-    })
+      warningCount: 0,
+      errorCount: 0,
+      issues: [],
+      sections: current.sections.map((section) => ({
+        ...section,
+        status: section.lastUpdatedAt ? 'checking' : 'idle',
+        message: section.lastUpdatedAt
+          ? 'Checking whether saved section is still current.'
+          : `No saved ${section.label.toLowerCase()} section yet.`,
+        error: undefined,
+      })),
+    }))
 
     try {
       const result = await runCatalogBulkIngestion({
@@ -503,6 +728,33 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
                     : 'No automatic downloads run on app load.'}
                 </p>
               </div>
+              <div>
+                <span>Cache health</span>
+                <strong className={`bl-catalog-progress-state is-${cacheProgressState}`}>
+                  {downloadState.cacheHealth.label}
+                </strong>
+                <p>
+                  {downloadState.cacheHealth.cachedSections} / {downloadState.cacheHealth.totalSections} sections saved ·{' '}
+                  {formatCount(downloadState.cacheHealth.recordCount)} records
+                </p>
+              </div>
+              <div>
+                <span>Catalog version</span>
+                <strong>{downloadState.cacheHealth.catalogVersion ?? 'Not cached'}</strong>
+                <p>
+                  {downloadState.cacheHealth.lastCompletedAt
+                    ? `Last completed ${formatTimestamp(downloadState.cacheHealth.lastCompletedAt)}.`
+                    : downloadState.cacheHealth.message}
+                </p>
+              </div>
+            </div>
+
+            <div className={`bl-catalog-cache-summary is-${downloadState.cacheHealth.status}`}>
+              <strong>{downloadState.cacheHealth.message}</strong>
+              <span>
+                Generated picker cache:{' '}
+                {downloadState.cacheHealth.generatedCatalogPresent ? 'available' : 'not saved yet'}.
+              </span>
             </div>
 
             <div className="bl-catalog-category-list">
