@@ -143,6 +143,19 @@ export async function hasCatalogUpdateSectionPayload(section: CatalogUpdateDownl
   }
 }
 
+export async function readCatalogUpdateSectionPayload(section: CatalogUpdateDownloadSectionId) {
+  const db = await openCatalogUpdateCacheDb()
+
+  try {
+    const transaction = db.transaction(payloadStoreName, 'readonly')
+    const store = transaction.objectStore(payloadStoreName)
+    const payload = await requestToPromise<CatalogUpdateSectionPayload | undefined>(store.get(section))
+    return payload ?? null
+  } finally {
+    db.close()
+  }
+}
+
 export async function writeCatalogUpdateSectionMetadata(metadata: CatalogUpdateSectionCacheMetadata) {
   const db = await openCatalogUpdateCacheDb()
 

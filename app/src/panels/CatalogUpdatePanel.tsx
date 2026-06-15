@@ -19,7 +19,8 @@ type CatalogProgressDisplayState =
   | 'disabled'
   | 'preview'
   | 'checking'
-  | 'fetching'
+  | 'current'
+  | 'downloading'
   | 'using-cache'
   | 'rate-limited'
   | 'validating'
@@ -30,7 +31,7 @@ type CatalogProgressDisplayState =
   | 'blocked'
 
 type CatalogPanelStatus = 'idle' | 'checking' | 'fetching' | 'validating' | 'complete' | 'warning' | 'failed' | 'cancelled'
-type CatalogPanelSectionStatus = 'idle' | 'checking' | 'fetching' | 'complete' | 'warning' | 'failed' | 'cancelled'
+type CatalogPanelSectionStatus = 'idle' | 'checking' | 'current' | 'fetching' | 'complete' | 'warning' | 'failed' | 'cancelled'
 
 interface CatalogPanelSection {
   id: CatalogBulkIngestionSection
@@ -105,6 +106,7 @@ const runStatusLabels: Record<CatalogPanelStatus, string> = {
 const sectionStatusLabels: Record<CatalogPanelSectionStatus, string> = {
   idle: 'Not checked',
   checking: 'Checking',
+  current: 'Current',
   fetching: 'Downloading',
   complete: 'Prepared',
   warning: 'Warning',
@@ -148,7 +150,8 @@ function formatTimestamp(value?: string) {
 
 function getProgressState(status: CatalogPanelStatus | CatalogPanelSectionStatus): CatalogProgressDisplayState {
   if (status === 'checking') return 'checking'
-  if (status === 'fetching') return 'fetching'
+  if (status === 'current') return 'current'
+  if (status === 'fetching') return 'downloading'
   if (status === 'complete') return 'complete'
   if (status === 'warning') return 'warning'
   if (status === 'failed') return 'failed'
@@ -166,7 +169,10 @@ function isRunning(status: CatalogPanelStatus) {
 }
 
 function getPanelStatusForProgress(progress: CatalogBulkIngestionProgress): CatalogPanelStatus {
+  if (progress.status === 'checking') return 'checking'
   if (progress.status === 'fetching-lists') return 'checking'
+  if (progress.status === 'current') return 'fetching'
+  if (progress.status === 'downloading') return 'fetching'
   if (progress.status === 'fetching-details') return 'fetching'
   if (
     progress.status === 'validating-source' ||
@@ -189,7 +195,10 @@ function getValidationStageProgress(progress: CatalogBulkIngestionProgress) {
 }
 
 function getProgressMessage(progress: CatalogBulkIngestionProgress) {
+  if (progress.status === 'checking') return 'Checking local catalog cache and PokeAPI section lists.'
   if (progress.status === 'fetching-lists') return 'Checking PokeAPI section resource lists.'
+  if (progress.status === 'current') return 'Current sections are being skipped.'
+  if (progress.status === 'downloading') return 'Downloading changed catalog records from PokeAPI.'
   if (progress.status === 'fetching-details') return 'Downloading selected catalog records from PokeAPI.'
   if (progress.status === 'validating-source') return 'Checking downloaded source data before use.'
   if (progress.status === 'generating-catalog') return 'Preparing BattleLab catalog records from enrichment data.'
@@ -217,7 +226,7 @@ function applyProgressToSections(
   return sections.map((section) => {
     if (section.id !== progress.section) return section
 
-    if (progress.status === 'fetching-lists') {
+    if (progress.status === 'checking' || progress.status === 'fetching-lists') {
       return {
         ...section,
         status: 'checking' as const,
@@ -226,7 +235,21 @@ function applyProgressToSections(
       }
     }
 
-    if (progress.status === 'fetching-details') {
+    if (progress.status === 'current') {
+      const total = progress.sectionTotalRequests ?? section.total
+
+      return {
+        ...section,
+        status: 'current' as const,
+        downloaded: total,
+        total,
+        progressPercent: 100,
+        lastCheckedAt: new Date().toISOString(),
+        message: progress.message,
+      }
+    }
+
+    if (progress.status === 'downloading' || progress.status === 'fetching-details') {
       const total = progress.sectionTotalRequests ?? section.total
       const downloaded = progress.sectionCompletedRequests ?? section.downloaded
 
@@ -297,12 +320,14 @@ function applyResultToSections(
 
     return {
       ...section,
-      status: hasRecordWarning ? 'warning' as const : 'complete' as const,
+      status: summary.status === 'skipped-current' ? 'current' as const : hasRecordWarning ? 'warning' as const : 'complete' as const,
       downloaded: summary.generatedCount,
       total: summary.selectedCount,
       progressPercent: 100,
-      lastUpdatedAt: finishedAt,
-      message: hasRecordWarning
+      lastUpdatedAt: summary.status === 'skipped-current' ? section.lastUpdatedAt : finishedAt,
+      message: summary.status === 'skipped-current'
+        ? `${formatCount(summary.generatedCount)} catalog records already current.`
+        : hasRecordWarning
         ? `${formatCount(summary.generatedCount)} generated from ${formatCount(summary.selectedCount)} fetched records.`
         : `${formatCount(summary.generatedCount)} catalog records prepared.`,
     }

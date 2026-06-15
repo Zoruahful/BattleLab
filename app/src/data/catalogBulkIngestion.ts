@@ -16,6 +16,15 @@ import {
   normalizeFetchedPokeApiItemResourceForPrototype,
   type PokeApiItemResourceWithEffectEntries,
 } from "./catalogLiveFetchPrototype";
+import {
+  readCatalogUpdateGeneratedCatalogCache,
+  readCatalogUpdateSectionMetadata,
+  readCatalogUpdateSectionPayload,
+  writeCatalogUpdateSectionCacheEntry,
+  type CatalogUpdateListResource,
+  type CatalogUpdateSectionCacheMetadata,
+  type CatalogUpdateSectionPayload,
+} from "./catalogUpdateCache";
 import { validatePokeApiSourceSnapshot } from "./pokeApiSourceValidation";
 
 export type CatalogBulkIngestionSection =
@@ -30,7 +39,10 @@ export type CatalogBulkIngestionMode = "bounded" | "full";
 
 export type CatalogBulkIngestionStatus =
   | "idle"
+  | "checking"
   | "fetching-lists"
+  | "current"
+  | "downloading"
   | "fetching-details"
   | "validating-source"
   | "generating-catalog"
@@ -62,9 +74,11 @@ export interface CatalogBulkIngestionProgress {
 
 export interface CatalogBulkIngestionSectionSummary {
   section: CatalogBulkIngestionSection | "assets" | "searchIndex";
+  status?: "downloaded" | "skipped-current" | "generated";
   listEndpointCount?: number;
   selectedCount: number;
   generatedCount: number;
+  listSignature?: string;
 }
 
 export interface CatalogBulkIngestionResult {
@@ -124,6 +138,16 @@ interface PokeApiListResponse {
 interface FetchListResult {
   count: number;
   results: PokeApiNamedResource[];
+  listUrl: string;
+  listSignature: string;
+}
+
+interface SectionPreparedRecords<TResource> {
+  section: CatalogBulkIngestionSection;
+  records: TResource[];
+  skipped: boolean;
+  metadata: CatalogUpdateSectionCacheMetadata | null;
+  payload: CatalogUpdateSectionPayload | null;
 }
 
 const pokeApiBaseUrl = "https://pokeapi.co/api/v2";
@@ -269,6 +293,8 @@ const createIssue = (
   message,
 });
 
+const isIndexedDbAvailable = () => typeof indexedDB !== "undefined";
+
 const mergeLimits = (limits: Partial<CatalogBulkIngestionLimits> = {}): CatalogBulkIngestionLimits => ({
   ...defaultBoundedLimits,
   ...limits,
@@ -283,6 +309,54 @@ const getSectionLimit = (
 function assertNotAborted(signal?: AbortSignal) {
   if (signal?.aborted) {
     throw new DOMException("Catalog bulk ingestion cancelled.", "AbortError");
+  }
+}
+
+function createListSignature(section: CatalogBulkIngestionSection, count: number, results: readonly PokeApiNamedResource[]) {
+  return [
+    "pokeapi-list-v1",
+    section,
+    count,
+    ...results.map((resource) => `${resource.name}:${resource.url}`),
+  ].join("|");
+}
+
+async function getGeneratedCatalogCacheAvailable() {
+  try {
+    return Boolean(await readCatalogUpdateGeneratedCatalogCache());
+  } catch {
+    return false;
+  }
+}
+
+async function readCurrentSectionCache(
+  section: CatalogBulkIngestionSection,
+  list: FetchListResult,
+  expectedRecordCount: number,
+) {
+  try {
+    const metadata = await readCatalogUpdateSectionMetadata(section);
+    const payload = await readCatalogUpdateSectionPayload(section);
+
+    if (!metadata || !payload) {
+      return { metadata: null, payload: null, isCurrent: false };
+    }
+
+    const isCurrent =
+      metadata.source === "pokeapi" &&
+      metadata.sourceBaseUrl === pokeApiBaseUrl &&
+      metadata.listSignature === list.listSignature &&
+      metadata.recordCount === expectedRecordCount &&
+      metadata.listCount === list.count &&
+      metadata.status === "current" &&
+      payload.source === "pokeapi" &&
+      payload.sourceBaseUrl === pokeApiBaseUrl &&
+      payload.listSignature === list.listSignature &&
+      payload.records.length === expectedRecordCount;
+
+    return { metadata, payload, isCurrent };
+  } catch {
+    return { metadata: null, payload: null, isCurrent: false };
   }
 }
 
@@ -305,15 +379,19 @@ async function fetchResourceList(
 ): Promise<FetchListResult> {
   const endpoint = endpointBySection[section];
   const limit = getSectionLimit(section, mode, limits);
-  const list = await fetchJson<PokeApiListResponse>(`${pokeApiBaseUrl}/${endpoint}/?limit=${limit}&offset=0`, signal);
+  const listUrl = `${pokeApiBaseUrl}/${endpoint}/?limit=${limit}&offset=0`;
+  const list = await fetchJson<PokeApiListResponse>(listUrl, signal);
   const results =
     section === "types"
       ? list.results.filter((resource) => battleLabTypeNames.has(resource.name))
       : list.results;
+  const selectedResults = mode === "full" ? results : results.slice(0, limits[section]);
 
   return {
     count: list.count,
-    results: mode === "full" ? results : results.slice(0, limits[section]),
+    results: selectedResults,
+    listUrl,
+    listSignature: createListSignature(section, list.count, selectedResults),
   };
 }
 
@@ -355,7 +433,7 @@ async function fetchDetails<TResource>(
     assertNotAborted(signal);
     pushProgress(
       createProgress(
-        "fetching-details",
+        "downloading",
         completedRequests.value,
         totalRequests,
         `Fetching ${section}/${resource.name}.`,
@@ -369,7 +447,7 @@ async function fetchDetails<TResource>(
     sectionCompletedRequests += 1;
     pushProgress(
       createProgress(
-        "fetching-details",
+        "downloading",
         completedRequests.value,
         totalRequests,
         `Fetched ${section}/${resource.name}.`,
@@ -384,56 +462,117 @@ async function fetchDetails<TResource>(
 
 const createSectionSummaries = (
   listCounts: Record<CatalogBulkIngestionSection, number>,
+  listSignatures: Record<CatalogBulkIngestionSection, string>,
+  skippedSections: Set<CatalogBulkIngestionSection>,
   snapshot: PokeApiCatalogSourceSnapshot,
   catalog: BattleLabCatalog,
 ): CatalogBulkIngestionSectionSummary[] => [
   {
     section: "pokemon",
+    status: skippedSections.has("pokemon") ? "skipped-current" : "downloaded",
     listEndpointCount: listCounts.pokemon,
     selectedCount: snapshot.pokemon.length,
     generatedCount: catalog.pokemon.length,
+    listSignature: listSignatures.pokemon,
   },
   {
     section: "moves",
+    status: skippedSections.has("moves") ? "skipped-current" : "downloaded",
     listEndpointCount: listCounts.moves,
     selectedCount: snapshot.moves.length,
     generatedCount: catalog.moves.length,
+    listSignature: listSignatures.moves,
   },
   {
     section: "abilities",
+    status: skippedSections.has("abilities") ? "skipped-current" : "downloaded",
     listEndpointCount: listCounts.abilities,
     selectedCount: snapshot.abilities.length,
     generatedCount: catalog.abilities.length,
+    listSignature: listSignatures.abilities,
   },
   {
     section: "items",
+    status: skippedSections.has("items") ? "skipped-current" : "downloaded",
     listEndpointCount: listCounts.items,
     selectedCount: snapshot.items.length,
     generatedCount: catalog.items.length,
+    listSignature: listSignatures.items,
   },
   {
     section: "types",
+    status: skippedSections.has("types") ? "skipped-current" : "downloaded",
     listEndpointCount: listCounts.types,
     selectedCount: snapshot.types.length,
     generatedCount: catalog.types.length,
+    listSignature: listSignatures.types,
   },
   {
     section: "natures",
+    status: skippedSections.has("natures") ? "skipped-current" : "downloaded",
     listEndpointCount: listCounts.natures,
     selectedCount: snapshot.natures.length,
     generatedCount: catalog.natures.length,
+    listSignature: listSignatures.natures,
   },
   {
     section: "assets",
+    status: "generated",
     selectedCount: catalog.assets.length,
     generatedCount: catalog.assets.length,
   },
   {
     section: "searchIndex",
+    status: "generated",
     selectedCount: catalog.searchIndex?.length ?? 0,
     generatedCount: catalog.searchIndex?.length ?? 0,
   },
 ];
+
+function createSectionCacheMetadata(
+  section: CatalogBulkIngestionSection,
+  list: FetchListResult,
+  recordCount: number,
+  fetchedAt: string,
+): CatalogUpdateSectionCacheMetadata {
+  return {
+    section,
+    endpoint: endpointBySection[section],
+    source: "pokeapi",
+    sourceBaseUrl: pokeApiBaseUrl,
+    listUrl: list.listUrl,
+    listCount: list.count,
+    listSignature: list.listSignature,
+    recordCount,
+    payloadVersion: 1,
+    lastCheckedAt: fetchedAt,
+    lastUpdatedAt: fetchedAt,
+    status: "current",
+    message: `${recordCount} ${section} records are current for this PokeAPI list signature.`,
+  };
+}
+
+function createSectionCachePayload(
+  section: CatalogBulkIngestionSection,
+  list: FetchListResult,
+  records: unknown[],
+  fetchedAt: string,
+): CatalogUpdateSectionPayload {
+  return {
+    section,
+    endpoint: endpointBySection[section],
+    source: "pokeapi",
+    sourceBaseUrl: pokeApiBaseUrl,
+    listSignature: list.listSignature,
+    listResults: list.results.map((resource): CatalogUpdateListResource => ({
+      name: resource.name,
+      url: resource.url,
+    })),
+    records,
+    fetchedAt,
+    payloadVersion: 1,
+  };
+}
 
 export async function runCatalogBulkIngestion(
   options: CatalogBulkIngestionOptions = {},
@@ -455,7 +594,7 @@ export async function runCatalogBulkIngestion(
 
   try {
     assertNotAborted(signal);
-    pushProgress(createProgress("fetching-lists", 0, 6, "Fetching PokeAPI section resource lists."));
+    pushProgress(createProgress("checking", 0, 6, "Checking PokeAPI section resource lists and local catalog cache."));
     let completedListRequests = 0;
     const listEntries = await Promise.all(
       (Object.keys(endpointBySection) as CatalogBulkIngestionSection[]).map(async (section) => {
@@ -463,7 +602,7 @@ export async function runCatalogBulkIngestion(
         completedListRequests += 1;
         pushProgress(
           createProgress(
-            "fetching-lists",
+            "checking",
             completedListRequests,
             6,
             `Fetched ${section} resource list.`,
@@ -478,71 +617,88 @@ export async function runCatalogBulkIngestion(
     const lists = Object.fromEntries(listEntries) as Record<CatalogBulkIngestionSection, FetchListResult>;
     const totalRequests = Object.values(lists).reduce((total, list) => total + list.results.length, 0);
     const completedRequests = { value: 0 };
+    const hasGeneratedCache = await getGeneratedCatalogCacheAvailable();
 
-    const pokemon = await fetchDetails<PokeApiPokemonResource>(
-      "pokemon",
-      lists.pokemon.results,
-      pushProgress,
-      completedRequests,
-      totalRequests,
-      concurrency,
-      signal,
-    );
-    const moves = await fetchDetails<PokeApiMoveResourceWithEffectEntries>(
-      "moves",
-      lists.moves.results,
-      pushProgress,
-      completedRequests,
-      totalRequests,
-      concurrency,
-      signal,
-    );
-    const abilities = await fetchDetails<PokeApiAbilityResourceWithEffectEntries>(
-      "abilities",
-      lists.abilities.results,
-      pushProgress,
-      completedRequests,
-      totalRequests,
-      concurrency,
-      signal,
-    );
-    const items = await fetchDetails<PokeApiItemResourceWithEffectEntries>(
-      "items",
-      lists.items.results,
-      pushProgress,
-      completedRequests,
-      totalRequests,
-      concurrency,
-      signal,
-    );
-    const types = await fetchDetails<PokeApiTypeResource>(
-      "types",
-      lists.types.results,
-      pushProgress,
-      completedRequests,
-      totalRequests,
-      concurrency,
-      signal,
-    );
-    const natures = await fetchDetails<PokeApiNatureResource>(
-      "natures",
-      lists.natures.results,
-      pushProgress,
-      completedRequests,
-      totalRequests,
-      concurrency,
-      signal,
-    );
+    async function prepareSection<TResource>(
+      section: CatalogBulkIngestionSection,
+    ): Promise<SectionPreparedRecords<TResource>> {
+      const list = lists[section];
+      const expectedRecordCount = list.results.length;
+
+      pushProgress(
+        createProgress(
+          "checking",
+          completedRequests.value,
+          totalRequests,
+          `Checking ${section} local cache.`,
+          section,
+          0,
+          expectedRecordCount,
+        ),
+      );
+
+      const cached = await readCurrentSectionCache(section, list, expectedRecordCount);
+
+      if (cached.isCurrent && cached.metadata && cached.payload) {
+        completedRequests.value += expectedRecordCount;
+        pushProgress(
+          createProgress(
+            "current",
+            completedRequests.value,
+            totalRequests,
+            hasGeneratedCache
+              ? `${section} is current; skipped detail download.`
+              : `${section} payload is current; skipped detail download and will regenerate catalog cache.`,
+            section,
+            expectedRecordCount,
+            expectedRecordCount,
+          ),
+        );
+
+        return {
+          section,
+          records: cached.payload.records as TResource[],
+          skipped: true,
+          metadata: cached.metadata,
+          payload: cached.payload,
+        };
+      }
+
+      const records = await fetchDetails<TResource>(
+        section,
+        list.results,
+        pushProgress,
+        completedRequests,
+        totalRequests,
+        concurrency,
+        signal,
+      );
+
+      return {
+        section,
+        records,
+        skipped: false,
+        metadata: createSectionCacheMetadata(section, list, records.length, fetchedAt),
+        payload: createSectionCachePayload(section, list, records, fetchedAt),
+      };
+    }
+
+    const pokemon = await prepareSection<PokeApiPokemonResource>("pokemon");
+    const moves = await prepareSection<PokeApiMoveResourceWithEffectEntries>("moves");
+    const abilities = await prepareSection<PokeApiAbilityResourceWithEffectEntries>("abilities");
+    const items = await prepareSection<PokeApiItemResourceWithEffectEntries>("items");
+    const types = await prepareSection<PokeApiTypeResource>("types");
+    const natures = await prepareSection<PokeApiNatureResource>("natures");
 
     const snapshot: PokeApiCatalogSourceSnapshot = {
       fetchedAt,
       sourceVersion,
-      pokemon: pokemon.filter(hasBattleLabPokemonTypes),
-      moves: moves.filter(hasBattleLabMoveType).map(normalizeFetchedPokeApiMoveResourceForBulkIngestion),
-      abilities: abilities.map(normalizeFetchedPokeApiAbilityResourceForBulkIngestion),
-      items: items.map(normalizeFetchedPokeApiItemResourceForPrototype) as PokeApiItemResource[],
-      types,
-      natures,
+      pokemon: pokemon.records.filter(hasBattleLabPokemonTypes),
+      moves: moves.records.filter(hasBattleLabMoveType).map(normalizeFetchedPokeApiMoveResourceForBulkIngestion),
+      abilities: abilities.records.map(normalizeFetchedPokeApiAbilityResourceForBulkIngestion),
+      items: items.records.map(normalizeFetchedPokeApiItemResourceForPrototype) as PokeApiItemResource[],
+      types: types.records,
+      natures: natures.records,
     };
 
     pushProgress(
@@ -571,6 +727,10 @@ export async function runCatalogBulkIngestion(
       });
 
     const isValid = Boolean(catalog && sourceValidation.isValid && generatedCatalogValidation?.isValid);
+    const preparedSections = [pokemon, moves, abilities, items, types, natures];
+    const skippedSections = new Set(
+      preparedSections.filter((section) => section.skipped).map((section) => section.section),
+    );
     const sectionSummaries = catalog
       ? createSectionSummaries(
           {
@@ -581,10 +741,38 @@ export async function runCatalogBulkIngestion(
             types: lists.types.count,
             natures: lists.natures.count,
           },
+          {
+            pokemon: lists.pokemon.listSignature,
+            moves: lists.moves.listSignature,
+            abilities: lists.abilities.listSignature,
+            items: lists.items.listSignature,
+            types: lists.types.listSignature,
+            natures: lists.natures.listSignature,
+          },
+          skippedSections,
           snapshot,
           catalog,
         )
       : [];
+
+    if (isValid && isIndexedDbAvailable()) {
+      try {
+        await Promise.all(
+          preparedSections
+            .filter((section) => !section.skipped && section.metadata && section.payload)
+            .map((section) => writeCatalogUpdateSectionCacheEntry(section.metadata!, section.payload!)),
+        );
+      } catch (error) {
+        issues.push(
+          createIssue(
+            "cache-stale",
+            "warning",
+            error instanceof Error ? error.message : "Catalog section cache could not be updated.",
+            "sectionCache",
+          ),
+        );
+      }
+    }
 
     pushProgress(
       createProgress(
