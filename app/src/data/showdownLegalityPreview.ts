@@ -2,11 +2,15 @@ import type {
   BuildCatalogReference,
   PokemonEditorLegalityFieldReadModel,
   PokemonEditorLegalityReadModel,
+  ShowdownLegalityFieldResult,
+  ShowdownLegalityResult,
 } from '../types'
+import { runPokemonEditorShowdownLegalityRuntimeProof } from './showdownLegalityRuntimeProof'
 
 type MoveSlot = 0 | 1 | 2 | 3
 
 export type PokemonEditorLegalityPreviewInput = {
+  format?: 'vgc-regulation-h' | 'vgc-regulation-g' | 'custom'
   species: BuildCatalogReference | null
   ability?: BuildCatalogReference | null
   previewAbilityIds?: string[]
@@ -29,6 +33,61 @@ const optionPreview = (option?: BuildCatalogReference | null) =>
         displayName: option.displayName,
       }
     : undefined
+
+const fieldLabel = (field: ShowdownLegalityFieldResult) => {
+  if (field.field === 'move') return `Move ${(field.slotIndex ?? 0) + 1}`
+  if (field.field === 'ability') return 'Ability'
+  if (field.field === 'item') return 'Item'
+  if (field.field === 'teraType') return 'Tera type'
+  if (field.field === 'nature') return 'Nature'
+  return 'Species'
+}
+
+const fieldOptionKind = (field: ShowdownLegalityFieldResult) => {
+  if (field.field === 'teraType') return 'type'
+  if (field.field === 'move' || field.field === 'ability' || field.field === 'item' || field.field === 'nature') {
+    return field.field
+  }
+  return undefined
+}
+
+const fieldResultToReadModel = (field: ShowdownLegalityFieldResult): PokemonEditorLegalityFieldReadModel => ({
+  field: field.field,
+  ...(field.slotIndex !== undefined ? { slotIndex: field.slotIndex } : {}),
+  status: field.status,
+  label: fieldLabel(field),
+  message: field.messages.map((message) => message.message).join(' '),
+  selectable: field.selectable,
+  legalityDefining: field.legalityDefining,
+  optionKind: fieldOptionKind(field),
+  option: optionPreview(field.value),
+})
+
+const runtimeResultToReadModel = (
+  input: PokemonEditorLegalityPreviewInput,
+  result: ShowdownLegalityResult,
+): PokemonEditorLegalityReadModel => ({
+  status: result.status,
+  format: input.format ?? 'custom',
+  species: input.species,
+  fieldResults: result.fields.map(fieldResultToReadModel),
+  runtimeUnavailableFallback:
+    result.status === 'runtime-unavailable'
+      ? {
+          status: 'runtime-unavailable',
+          reason: result.runtimeMetadata.runtimeUnavailableReason ?? 'runtime-not-implemented',
+          preserveCurrentUiBehavior: true,
+          allowCatalogSelection: true,
+          markLegalityAsUnknown: true,
+          blockSimulationStart: true,
+          message: 'Pokemon Showdown legality runtime is not wired yet. Local signals are preview-only.',
+        }
+      : undefined,
+  notes: [
+    'Pokemon Showdown remains the legality and simulation source of truth.',
+    'PokeAPI and catalog data are enrichment only.',
+  ],
+})
 
 const toMovePreviewField = (
   move: BuildCatalogReference | null,
@@ -82,6 +141,12 @@ const toAbilityPreviewMessage = (ability?: BuildCatalogReference | null, preview
 export function createPokemonEditorLegalityPreviewReadModel(
   input: PokemonEditorLegalityPreviewInput,
 ): PokemonEditorLegalityReadModel {
+  const runtimeResult = runPokemonEditorShowdownLegalityRuntimeProof(input)
+
+  if (runtimeResult.fields.length) {
+    return runtimeResultToReadModel(input, runtimeResult)
+  }
+
   const previewLearnsetMoveIds = new Set(input.previewLearnsetMoveIds ?? [])
   const previewAbilityIds = new Set(input.previewAbilityIds ?? [])
   const moveResults = input.moves.map((move, index) =>

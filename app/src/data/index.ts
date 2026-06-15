@@ -589,6 +589,12 @@ export {
 } from "./catalogSelectors";
 
 export {
+  createPokemonEditorShowdownLegalityRequest,
+  runPokemonEditorShowdownLegalityRuntimeProof,
+  type PokemonEditorShowdownLegalityRuntimeProofInput,
+} from "./showdownLegalityRuntimeProof";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
