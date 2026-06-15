@@ -1030,6 +1030,26 @@ export {
 } from "./showdownEngineArchiveContentsManifestValidation";
 
 export {
+  createShowdownEngineArchiveExtractionPlan,
+  type ShowdownEngineArchiveExtractionDecision,
+  type ShowdownEngineArchiveExtractionPlan,
+  type ShowdownEngineArchiveExtractionPlanDecision,
+  type ShowdownEngineArchiveExtractionPlanInput,
+  type ShowdownEngineArchiveExtractionPlanSafety,
+  type ShowdownEngineArchiveExtractionPlanStatus,
+  type ShowdownEngineArchiveExtractionTarget,
+  type ShowdownEngineArchiveExtractionValidationHandoff,
+} from "./showdownEngineArchiveExtractionPlan";
+
+export {
+  validateShowdownEngineArchiveExtractionPlan,
+  type ShowdownEngineArchiveExtractionPlanValidationCode,
+  type ShowdownEngineArchiveExtractionPlanValidationIssue,
+  type ShowdownEngineArchiveExtractionPlanValidationResult,
+  type ShowdownEngineArchiveExtractionPlanValidationSeverity,
+} from "./showdownEngineArchiveExtractionPlanValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
