@@ -1,7 +1,6 @@
 import type {
   ShowdownEngineActivationGateReadModel,
 } from './showdownEngineActivationGateReadModel'
-import { createShowdownEngineActivationGateReadModelSamples } from './showdownEngineActivationGateReadModel'
 import { sampleShowdownEngineArchiveDownloadReadModels } from './showdownEngineArchiveDownloadReadModel'
 import { createFailedShowdownEngineArchiveMetadataReadModel } from './showdownEngineArchiveMetadataReadModel'
 import type { ShowdownEngineArchiveBodyDownloadReadModelStatus } from './showdownEngineArchiveBodyDownloadReadModel'
@@ -67,6 +66,99 @@ export interface ShowdownEngineCatalogUpdateAggregateReadModel {
   revision: ShowdownEngineCatalogUpdateAggregateRevisionSummary
   safety: ShowdownEngineCatalogUpdateAggregateSafety
   boundaryNotes: string[]
+}
+
+const prerequisiteKeys: ShowdownEngineActivationGateReadModel['prerequisiteRows'][number]['key'][] = [
+  'immutable-source-policy',
+  'archive-contents-manifest',
+  'extraction-staging',
+  'required-files',
+  'format-registry-validation',
+  'custom-format-overlay',
+]
+
+const prerequisiteLabels: Record<ShowdownEngineActivationGateReadModel['prerequisiteRows'][number]['key'], string> = {
+  'immutable-source-policy': 'Immutable Source Policy',
+  'archive-contents-manifest': 'Archive Contents Manifest',
+  'extraction-staging': 'Extraction / Staging',
+  'required-files': 'Required Files',
+  'format-registry-validation': 'Format Registry Validation',
+  'custom-format-overlay': 'Custom Format Overlay',
+}
+
+const createStaticActivationGateReadModel = (
+  status: ShowdownEngineActivationGateReadModel['status'],
+): ShowdownEngineActivationGateReadModel => {
+  const ready = status === 'activation-ready'
+  const failed = status === 'failed-preserves-active'
+  const cancelled = status === 'cancelled-preserves-active'
+  const rowStatus = failed ? 'failed' : cancelled ? 'cancelled' : ready ? 'ready' : 'blocked'
+  const previousActiveRevisionId = 'pokemon-showdown-current-valid-preview'
+  const stagedRevisionId = ready ? 'pokemon-showdown-master-preview-staged' : null
+  const resultingActiveRevisionId = ready ? stagedRevisionId : previousActiveRevisionId
+
+  return {
+    readModelId: `static-activation-gate-${status}`,
+    phase: ready ? 'ready' : failed ? 'failed' : cancelled ? 'cancelled' : 'blocked',
+    status,
+    message: ready
+      ? 'Pokemon Showdown Engine activation prerequisites are represented for a future approved promotion handoff.'
+      : failed
+        ? 'Failed activation gate rejects staged metadata and preserves the previous active Engine revision.'
+        : cancelled
+          ? 'Cancelled activation gate preserves the previous active Engine revision.'
+          : 'Pokemon Showdown Engine activation remains blocked until all source, manifest, extraction, and registry prerequisites are ready.',
+    prerequisiteRows: prerequisiteKeys.map((key) => ({
+      key,
+      label: prerequisiteLabels[key],
+      status: rowStatus,
+      message: `${prerequisiteLabels[key]} is represented by no-execution aggregate preview metadata.`,
+      metadataOnly: true,
+    })),
+    activeRevision: {
+      revisionId: previousActiveRevisionId,
+      role: 'active',
+      available: true,
+    },
+    stagedRevision: {
+      revisionId: stagedRevisionId ?? 'not-available',
+      role: 'staged',
+      available: Boolean(stagedRevisionId),
+    },
+    resultingActiveRevision: {
+      revisionId: resultingActiveRevisionId ?? previousActiveRevisionId,
+      role: 'resulting-active',
+      available: true,
+    },
+    promotion: {
+      decision: ready ? 'promote-staged-revision' : failed ? 'reject-staged-revision' : cancelled ? 'cancelled' : 'blocked',
+      promotionBlocked: !ready,
+      previousActivePreserved: true,
+      reason: ready
+        ? 'Future activation may promote the staged revision only after real storage promotion is approved.'
+        : 'Activation remains blocked or terminal; previous active Engine metadata remains preserved.',
+    },
+    safety: {
+      noImportTimeDownload: true,
+      noAppLoadDownload: true,
+      noPanelOpenDownload: true,
+      noArchiveInspection: true,
+      noArchiveExtraction: true,
+      noFileIo: true,
+      noFileReads: true,
+      noDynamicImports: true,
+      noLoaderExecution: true,
+      noCatalogUpdatePanelWiring: true,
+      noSimulationExecution: true,
+      customFormatsOverlayOnly: true,
+      pokemonShowdownAuthority: 'pokemon-showdown-legality-source-of-truth',
+      catalogRole: 'enrichment-only',
+    },
+    boundaryNotes: [
+      'Static activation gate read-model is UI-safe metadata only and does not trigger Catalog Update execution.',
+      'BattleLab custom formats remain overlays and must not modify upstream Pokemon Showdown source in place.',
+    ],
+  }
 }
 
 export interface ShowdownEngineCatalogUpdateAggregateReadModelInput {
@@ -211,7 +303,12 @@ export function createShowdownEngineCatalogUpdateAggregateReadModel(
 }
 
 export async function createShowdownEngineCatalogUpdateAggregateReadModelSamples() {
-  const activationSamples = await createShowdownEngineActivationGateReadModelSamples()
+  const activationSamples = {
+    blocked: createStaticActivationGateReadModel('blocked'),
+    ready: createStaticActivationGateReadModel('activation-ready'),
+    failed: createStaticActivationGateReadModel('failed-preserves-active'),
+    cancelled: createStaticActivationGateReadModel('cancelled-preserves-active'),
+  }
 
   return {
     blocked: createShowdownEngineCatalogUpdateAggregateReadModel({

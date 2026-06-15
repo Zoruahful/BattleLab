@@ -15,6 +15,10 @@ import {
 } from '../data/catalogUpdateCache'
 import { readCatalogStorageBoundaryReadModel } from '../data/catalogStorageBoundary'
 import {
+  createShowdownEngineCatalogUpdateAggregateReadModelSamples,
+  type ShowdownEngineCatalogUpdateAggregateReadModel,
+} from '../data/showdownEngineCatalogUpdateAggregateReadModel'
+import {
   createShowdownEngineArchiveDownloadReadModel,
   sampleShowdownEngineArchiveDownloadReadModels,
   type ShowdownEngineArchiveDownloadReadModel,
@@ -172,6 +176,13 @@ const cacheHealthLabels: Record<CatalogCacheHealthStatus, string> = {
   partial: 'Partial cache',
   warning: 'Needs review',
   failed: 'Last update failed',
+}
+
+const engineAggregateStatusLabels: Record<ShowdownEngineCatalogUpdateAggregateReadModel['status'], string> = {
+  'ready-preview': 'Ready preview',
+  'blocked-preview': 'Blocked preview',
+  'failed-preserves-active': 'Failed safely',
+  'cancelled-preserves-active': 'Cancelled safely',
 }
 
 function isCatalogSectionId(sectionId: CatalogPanelSectionId): sectionId is CatalogBulkIngestionSection {
@@ -772,6 +783,7 @@ function waitForEngineProgressFrame(signal: AbortSignal) {
 export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelProps) {
   const [downloadState, setDownloadState] = useState<CatalogPanelState>(() => createInitialCatalogPanelState())
   const [storageBoundary, setStorageBoundary] = useState<CatalogStorageBoundaryReadModel | null>(null)
+  const [engineAggregatePreview, setEngineAggregatePreview] = useState<ShowdownEngineCatalogUpdateAggregateReadModel | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [cacheHydrated, setCacheHydrated] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -824,6 +836,28 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
       cancelled = true
     }
   }, [cacheHydrated, open, running])
+
+  useEffect(() => {
+    if (!open || engineAggregatePreview) return
+
+    let cancelled = false
+
+    createShowdownEngineCatalogUpdateAggregateReadModelSamples()
+      .then((samples) => {
+        if (!cancelled && mountedRef.current) {
+          setEngineAggregatePreview(samples.blocked)
+        }
+      })
+      .catch(() => {
+        if (!cancelled && mountedRef.current) {
+          setEngineAggregatePreview(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [engineAggregatePreview, open])
 
   const runEngineUpdateWithUi = async (signal: AbortSignal, requestedAt: string) => {
     try {
@@ -1089,6 +1123,30 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
                 <p>{getStorageFallbackMessage(storageBoundary)}</p>
               </div>
             </div>
+
+            {engineAggregatePreview ? (
+              <div className="bl-catalog-storage-boundary" aria-label="Pokemon Showdown Engine activation preview">
+                <div>
+                  <span>Pokemon Showdown Engine</span>
+                  <strong>{engineAggregateStatusLabels[engineAggregatePreview.status]}</strong>
+                  <p>{engineAggregatePreview.message}</p>
+                </div>
+                <div>
+                  <span>Activation gate</span>
+                  <strong>
+                    {engineAggregatePreview.sections.filter((section) => section.blocksActivation).length} blocking checks
+                  </strong>
+                  <p>
+                    {engineAggregatePreview.archiveMetadataStatus} · body download {engineAggregatePreview.archiveBodyDownloadStatus}
+                  </p>
+                </div>
+                <div>
+                  <span>Previous active Engine</span>
+                  <strong>{engineAggregatePreview.revision.previousActivePreserved ? 'Preserved' : 'Needs review'}</strong>
+                  <p>No extraction, file IO, loader execution, or simulation runs from this preview.</p>
+                </div>
+              </div>
+            ) : null}
 
             <div className="bl-catalog-category-list">
               {downloadState.sections.map((section) => {
