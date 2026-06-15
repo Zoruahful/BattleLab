@@ -847,6 +847,28 @@ export {
 } from "./showdownEngineArchiveDownloadAdapterValidation";
 
 export {
+  createShowdownEngineArchiveDownloadReadModel,
+  sampleShowdownEngineArchiveDownloadReadModels,
+  type ShowdownEngineArchiveDownloadDecisionProps,
+  type ShowdownEngineArchiveDownloadReadModel,
+  type ShowdownEngineArchiveDownloadReadModelRow,
+  type ShowdownEngineArchiveDownloadReadModelStatus,
+  type ShowdownEngineArchiveDownloadSafetyProps,
+  type ShowdownEngineArchiveDownloadSourceProps,
+  type ShowdownEngineArchiveDownloadStorageProps,
+  type ShowdownEngineArchiveDownloadValidationProps,
+} from "./showdownEngineArchiveDownloadReadModel";
+
+export {
+  sampleShowdownEngineArchiveDownloadReadModelValidation,
+  validateShowdownEngineArchiveDownloadReadModel,
+  type ShowdownEngineArchiveDownloadReadModelValidationCode,
+  type ShowdownEngineArchiveDownloadReadModelValidationIssue,
+  type ShowdownEngineArchiveDownloadReadModelValidationResult,
+  type ShowdownEngineArchiveDownloadReadModelValidationSeverity,
+} from "./showdownEngineArchiveDownloadReadModelValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
