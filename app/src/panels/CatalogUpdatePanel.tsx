@@ -842,7 +842,9 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
                       </span>
                     </div>
                     <div
-                      className={`bl-catalog-meter is-${progressState}`}
+                      className={`bl-catalog-meter is-${progressState} ${
+                        section.status === 'current' || section.status === 'complete' ? 'is-finished' : ''
+                      }`}
                       aria-label={`${section.label} progress`}
                     >
                       <span style={{ width: `${section.progressPercent}%` }} />
