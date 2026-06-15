@@ -1227,9 +1227,20 @@
   text-align: center;
 }
 
+.bl-combo-empty.is-loading {
+  color: var(--text-2);
+  font-style: italic;
+  animation: bl-combo-loading-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes bl-combo-loading-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 .bl-combo-empty.is-error {
   color: #8a4232;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .bl-combo-footer {
