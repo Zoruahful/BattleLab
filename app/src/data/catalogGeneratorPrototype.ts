@@ -49,8 +49,42 @@ const pokemonTypes: PokemonType[] = [
 ];
 
 const displayNameOverrides: Record<string, string> = {
-  "rotom-wash": "Rotom-Wash",
+  // Move display names
   "will-o-wisp": "Will-O-Wisp",
+  // Pokemon form display names — hyphens preserved to match competitive convention
+  "rotom-wash": "Rotom-Wash",
+  "rotom-heat": "Rotom-Heat",
+  "rotom-frost": "Rotom-Frost",
+  "rotom-fan": "Rotom-Fan",
+  "rotom-mow": "Rotom-Mow",
+  "landorus-therian": "Landorus-Therian",
+  "tornadus-therian": "Tornadus-Therian",
+  "thundurus-therian": "Thundurus-Therian",
+  "tornadus-incarnate": "Tornadus-Incarnate",
+  "thundurus-incarnate": "Thundurus-Incarnate",
+  "landorus-incarnate": "Landorus-Incarnate",
+  "urshifu-rapid-strike": "Urshifu-Rapid-Strike",
+  "urshifu-single-strike": "Urshifu-Single-Strike",
+  "ogerpon-wellspring-mask": "Ogerpon-Wellspring-Mask",
+  "ogerpon-hearthflame-mask": "Ogerpon-Hearthflame-Mask",
+  "ogerpon-cornerstone-mask": "Ogerpon-Cornerstone-Mask",
+  "palafin-hero": "Palafin-Hero",
+  "basculegion-male": "Basculegion-M",
+  "basculegion-female": "Basculegion-F",
+  "indeedee-male": "Indeedee-M",
+  "indeedee-female": "Indeedee-F",
+  "ursaluna-bloodmoon": "Ursaluna-Bloodmoon",
+  "tatsugiri-curly": "Tatsugiri-Curly",
+  "tatsugiri-droopy": "Tatsugiri-Droopy",
+  "tatsugiri-stretchy": "Tatsugiri-Stretchy",
+  "maushold-family-of-four": "Maushold-Family-of-Four",
+  "maushold-family-of-three": "Maushold-Family-of-Three",
+  // Ability display names — lowercase conjunctions
+  "vessel-of-ruin": "Vessel of Ruin",
+  "sword-of-ruin": "Sword of Ruin",
+  "tablets-of-ruin": "Tablets of Ruin",
+  "beads-of-ruin": "Beads of Ruin",
+  "well-baked-body": "Well-Baked Body",
 };
 
 const titleCase = (value: string) =>
