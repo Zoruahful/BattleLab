@@ -1071,6 +1071,26 @@ export {
 } from "./showdownEngineFormatRegistryValidationPlanValidation";
 
 export {
+  createShowdownEngineActivationGate,
+  type ShowdownEngineActivationGate,
+  type ShowdownEngineActivationGateDecision,
+  type ShowdownEngineActivationGateInput,
+  type ShowdownEngineActivationGatePrerequisite,
+  type ShowdownEngineActivationGatePromotion,
+  type ShowdownEngineActivationGateSafety,
+  type ShowdownEngineActivationGateStatus,
+  type ShowdownEngineActivationGateStorageTarget,
+} from "./showdownEngineActivationGate";
+
+export {
+  validateShowdownEngineActivationGate,
+  type ShowdownEngineActivationGateValidationCode,
+  type ShowdownEngineActivationGateValidationIssue,
+  type ShowdownEngineActivationGateValidationResult,
+  type ShowdownEngineActivationGateValidationSeverity,
+} from "./showdownEngineActivationGateValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
