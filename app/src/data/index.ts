@@ -824,6 +824,29 @@ export {
 } from "./showdownEngineFormatRegistryLoaderProofValidation";
 
 export {
+  createShowdownEngineArchiveDownloadAdapterDryRunResult,
+  runShowdownEngineArchiveDownloadAdapterDryRun,
+  sampleShowdownEngineArchiveDownloadAdapterDryRunResults,
+  type ShowdownEngineArchiveDownloadAdapterLifecycleStage,
+  type ShowdownEngineArchiveDownloadAdapterLifecycleStep,
+  type ShowdownEngineArchiveDownloadAdapterMode,
+  type ShowdownEngineArchiveDownloadAdapterRequest,
+  type ShowdownEngineArchiveDownloadAdapterResult,
+  type ShowdownEngineArchiveDownloadAdapterSafety,
+  type ShowdownEngineArchiveDownloadAdapterStatus,
+  type ShowdownEngineArchiveDownloadAdapterValidationHandoff,
+} from "./showdownEngineArchiveDownloadAdapter";
+
+export {
+  sampleShowdownEngineArchiveDownloadAdapterValidation,
+  validateShowdownEngineArchiveDownloadAdapter,
+  type ShowdownEngineArchiveDownloadAdapterValidationCode,
+  type ShowdownEngineArchiveDownloadAdapterValidationIssue,
+  type ShowdownEngineArchiveDownloadAdapterValidationResult,
+  type ShowdownEngineArchiveDownloadAdapterValidationSeverity,
+} from "./showdownEngineArchiveDownloadAdapterValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
