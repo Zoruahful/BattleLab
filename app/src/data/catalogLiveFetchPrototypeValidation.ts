@@ -6,6 +6,7 @@ import {
   runCatalogLiveFetchPrototype,
   type CatalogLiveFetchPrototypeResult,
   type CatalogLiveFetchPrototypeCoverageMode,
+  type CatalogLiveFetchPrototypeOptions,
   type PokeApiItemResourceWithEffectEntries,
 } from "./catalogLiveFetchPrototype";
 import { approvedCatalogLiveFetchSampleManifest } from "./catalogSourceManifest";
@@ -249,8 +250,10 @@ export function validateCatalogLiveFetchPrototypePlannedCoverage(): CatalogLiveF
   };
 }
 
-export async function validateCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPrototypeValidationResult> {
-  const result = await runCatalogLiveFetchPrototype();
+export async function validateCatalogLiveFetchPrototype(
+  options: CatalogLiveFetchPrototypeOptions = {},
+): Promise<CatalogLiveFetchPrototypeValidationResult> {
+  const result = await runCatalogLiveFetchPrototype(options);
   const issues: CatalogLiveFetchPrototypeValidationIssue[] = result.issues.map(toFetchValidationIssue);
 
   if (!result.snapshot) {
@@ -306,4 +309,8 @@ export async function validateCatalogLiveFetchPrototype(): Promise<CatalogLiveFe
     result,
     issues,
   };
+}
+
+export async function validateCatalogLiveFetchPrototypePlannedExpansion(): Promise<CatalogLiveFetchPrototypeValidationResult> {
+  return validateCatalogLiveFetchPrototype({ coverageMode: "planned-expansion" });
 }

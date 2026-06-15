@@ -184,6 +184,7 @@ export {
 export {
   validateCatalogLiveFetchPrototype,
   validateCatalogLiveFetchPrototypeCoverage,
+  validateCatalogLiveFetchPrototypePlannedExpansion,
   validateCatalogLiveFetchPrototypePlannedCoverage,
   type CatalogLiveFetchPrototypeCoverageValidationCode,
   type CatalogLiveFetchPrototypeCoverageValidationIssue,
