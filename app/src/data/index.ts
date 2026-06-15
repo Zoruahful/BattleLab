@@ -732,6 +732,28 @@ export {
 } from "./showdownEngineStorageAdapterValidation";
 
 export {
+  createShowdownEngineCatalogUpdateReadModel,
+  createShowdownEngineCatalogUpdateReadModelSamples,
+  type ShowdownEngineCatalogUpdateProgressRow,
+  type ShowdownEngineCatalogUpdateReadinessSummary,
+  type ShowdownEngineCatalogUpdateReadModel,
+  type ShowdownEngineCatalogUpdateReadModelInput,
+  type ShowdownEngineCatalogUpdateReadModelStatus,
+  type ShowdownEngineCatalogUpdateRevisionSummary,
+  type ShowdownEngineCatalogUpdateSafetySummary,
+  type ShowdownEngineCatalogUpdateSectionKey,
+  type ShowdownEngineCatalogUpdateStorageSummary,
+} from "./showdownEngineCatalogUpdateReadModel";
+
+export {
+  validateShowdownEngineCatalogUpdateReadModel,
+  type ShowdownEngineCatalogUpdateReadModelValidationCode,
+  type ShowdownEngineCatalogUpdateReadModelValidationIssue,
+  type ShowdownEngineCatalogUpdateReadModelValidationResult,
+  type ShowdownEngineCatalogUpdateReadModelValidationSeverity,
+} from "./showdownEngineCatalogUpdateReadModelValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
