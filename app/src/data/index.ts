@@ -666,6 +666,37 @@ export {
 } from "./showdownEngineUpdateServiceValidation";
 
 export {
+  createCancelledShowdownEngineUpdateArchitectureReadModel,
+  createFailedShowdownEngineUpdateArchitectureReadModel,
+  createShowdownEngineUpdateArchitectureReadModel,
+  sampleShowdownEngineArchiveIntegrity,
+  showdownEngineCustomFormatOverlayPolicy,
+  showdownEngineGitHubSourceArchive,
+  showdownEngineRequiredFileChecks,
+  showdownEngineStoragePlan,
+  type ShowdownEngineArchiveHashAlgorithm,
+  type ShowdownEngineArchiveIntegrity,
+  type ShowdownEngineArchitectureValidationStatus,
+  type ShowdownEngineCustomFormatOverlayPolicy,
+  type ShowdownEngineRequiredFileCheck,
+  type ShowdownEngineRevisionMetadata,
+  type ShowdownEngineRevisionStatus,
+  type ShowdownEngineSourceArchiveDescriptor,
+  type ShowdownEngineSourceArchiveKind,
+  type ShowdownEngineStoragePlan,
+  type ShowdownEngineUpdateArchitectureReadModel,
+  type ShowdownEngineUpdateExecutionTrigger,
+} from "./showdownEngineUpdateArchitecture";
+
+export {
+  validateShowdownEngineUpdateArchitecture,
+  type ShowdownEngineUpdateArchitectureValidationCode,
+  type ShowdownEngineUpdateArchitectureValidationIssue,
+  type ShowdownEngineUpdateArchitectureValidationResult,
+  type ShowdownEngineUpdateArchitectureValidationSeverity,
+} from "./showdownEngineUpdateArchitectureValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
