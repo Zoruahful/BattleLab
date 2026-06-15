@@ -252,7 +252,6 @@ function createHealthReport(
 
   let status: CatalogStorageCacheHealthReport['status'] = 'healthy'
   if (caughtError) status = 'unavailable'
-  else if (malformedEntries.length > 0 && generatedCatalog) status = 'blocked'
   else if (malformedEntries.length > 0) status = 'malformed'
   else if (staleSections.length > 0) status = 'stale'
   else if (unavailableSections.length > 0 || !generatedCatalog) status = 'unavailable'

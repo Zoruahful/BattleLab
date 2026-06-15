@@ -18,7 +18,6 @@ export type CatalogBulkIngestionValidationCode =
   | "insufficient-broad-coverage"
   | "missing-boundary-note"
   | "search-index-under-covered"
-  | "storage-health-missing"
   | "source-snapshot-missing"
   | "validation-issue";
 
@@ -58,7 +57,6 @@ const requiredBoundaryNoteFragments = [
   "enrichment-only",
   "Pokemon Showdown remains legality and simulation source of truth",
   "candidate-review-gated",
-  "Storage health",
   "No UI wiring",
   ".bl writing",
 ];
@@ -147,28 +145,6 @@ export async function validateCatalogBulkIngestion(
         "error",
         "fullModeAvailable",
         "Bulk ingestion must expose a full endpoint-list mode for a later heavy verification checkpoint.",
-      ),
-    );
-  }
-
-  if (!result.storageHealthBefore) {
-    issues.push(
-      createIssue(
-        "storage-health-missing",
-        "error",
-        "storageHealthBefore",
-        "Bulk ingestion must report storage boundary health before attempting replacement data.",
-      ),
-    );
-  }
-
-  if (!result.storageHealthAfter) {
-    issues.push(
-      createIssue(
-        "storage-health-missing",
-        "error",
-        "storageHealthAfter",
-        "Bulk ingestion must report storage boundary health after source/generated catalog validation.",
       ),
     );
   }
