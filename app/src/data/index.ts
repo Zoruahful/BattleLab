@@ -107,6 +107,15 @@ export {
 } from "./catalogPlannedExpansionPickerProjectionValidation";
 
 export {
+  validatePlannedExpansionPickerCoverageQuality,
+  type CatalogPlannedExpansionPickerCoverageSectionSummary,
+  type CatalogPlannedExpansionPickerCoverageValidationCode,
+  type CatalogPlannedExpansionPickerCoverageValidationIssue,
+  type CatalogPlannedExpansionPickerCoverageValidationResult,
+  type CatalogPlannedExpansionPickerCoverageValidationSeverity,
+} from "./catalogPlannedExpansionPickerCoverageValidation";
+
+export {
   compareCatalogGeneratedSnapshots,
   sampleCatalogGeneratedSnapshotComparison,
   type CatalogGeneratedSnapshotAssetReviewStatus,
