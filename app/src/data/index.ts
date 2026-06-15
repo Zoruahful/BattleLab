@@ -1150,6 +1150,24 @@ export {
 } from "./showdownEngineInstalledFormatRegistryProofValidation";
 
 export {
+  createShowdownEngineInstalledFormatRegistryBridge,
+  type ShowdownEngineInstalledFormatRegistryBridge,
+  type ShowdownEngineInstalledFormatRegistryBridgeAggregateHandoff,
+  type ShowdownEngineInstalledFormatRegistryBridgeOptions,
+  type ShowdownEngineInstalledFormatRegistryBridgePackageSummary,
+  type ShowdownEngineInstalledFormatRegistryBridgeSafety,
+  type ShowdownEngineInstalledFormatRegistryBridgeStatus,
+} from "./showdownEngineInstalledFormatRegistryBridge";
+
+export {
+  validateShowdownEngineInstalledFormatRegistryBridge,
+  type ShowdownEngineInstalledFormatRegistryBridgeValidationCode,
+  type ShowdownEngineInstalledFormatRegistryBridgeValidationIssue,
+  type ShowdownEngineInstalledFormatRegistryBridgeValidationResult,
+  type ShowdownEngineInstalledFormatRegistryBridgeValidationSeverity,
+} from "./showdownEngineInstalledFormatRegistryBridgeValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
