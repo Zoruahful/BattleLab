@@ -754,6 +754,33 @@ export {
 } from "./showdownEngineCatalogUpdateReadModelValidation";
 
 export {
+  createCancelledShowdownEngineArchiveExecutionPlan,
+  createFailedShowdownEngineArchiveExecutionPlan,
+  sampleShowdownEngineArchiveExecutionPlan,
+  sampleShowdownEngineArchiveExecutionRequest,
+  sampleShowdownEngineArchiveExecutionSteps,
+  showdownEngineArchiveExecutionSafetyPolicy,
+  type ShowdownEngineArchiveExecutionDecision,
+  type ShowdownEngineArchiveExecutionOutcome,
+  type ShowdownEngineArchiveExecutionPlan,
+  type ShowdownEngineArchiveExecutionRequest,
+  type ShowdownEngineArchiveExecutionSafety,
+  type ShowdownEngineArchiveExecutionStage,
+  type ShowdownEngineArchiveExecutionStageStatus,
+  type ShowdownEngineArchiveExecutionStep,
+  type ShowdownEngineArchiveExecutionTrigger,
+} from "./showdownEngineArchiveExecutionPlan";
+
+export {
+  sampleShowdownEngineArchiveExecutionPlanValidation,
+  validateShowdownEngineArchiveExecutionPlan,
+  type ShowdownEngineArchiveExecutionPlanValidationCode,
+  type ShowdownEngineArchiveExecutionPlanValidationIssue,
+  type ShowdownEngineArchiveExecutionPlanValidationResult,
+  type ShowdownEngineArchiveExecutionPlanValidationSeverity,
+} from "./showdownEngineArchiveExecutionPlanValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
