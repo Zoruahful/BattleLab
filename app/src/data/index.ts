@@ -1050,6 +1050,27 @@ export {
 } from "./showdownEngineArchiveExtractionPlanValidation";
 
 export {
+  createShowdownEngineFormatRegistryValidationPlan,
+  type ShowdownEngineFormatRegistryValidationExpectedRegistry,
+  type ShowdownEngineFormatRegistryValidationOverlayHandoff,
+  type ShowdownEngineFormatRegistryValidationPlan,
+  type ShowdownEngineFormatRegistryValidationPlanDecision,
+  type ShowdownEngineFormatRegistryValidationPlanInput,
+  type ShowdownEngineFormatRegistryValidationPlanPromotionGate,
+  type ShowdownEngineFormatRegistryValidationPlanSafety,
+  type ShowdownEngineFormatRegistryValidationPlanStatus,
+  type ShowdownEngineFormatRegistryValidationSourceFileHandoff,
+} from "./showdownEngineFormatRegistryValidationPlan";
+
+export {
+  validateShowdownEngineFormatRegistryValidationPlan,
+  type ShowdownEngineFormatRegistryValidationPlanValidationCode,
+  type ShowdownEngineFormatRegistryValidationPlanValidationIssue,
+  type ShowdownEngineFormatRegistryValidationPlanValidationResult,
+  type ShowdownEngineFormatRegistryValidationPlanValidationSeverity,
+} from "./showdownEngineFormatRegistryValidationPlanValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
