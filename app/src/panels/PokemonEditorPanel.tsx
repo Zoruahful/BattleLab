@@ -13,6 +13,7 @@ import {
   type CatalogCachedPickerProjectionOptionSets,
   type CatalogPlannedExpansionPickerProjectionOptionSets,
 } from '../data'
+import { createPokemonEditorLegalityPreviewReadModel } from '../data/showdownLegalityPreview'
 import {
   CATEGORY_META,
   CHAMPION_SP_MAX,
@@ -33,13 +34,14 @@ import {
   spToEv,
   type MoveCategory,
   type NatureMods,
+  learnsets,
 } from '../data/pokemonEditorData'
 import { Combobox, type ComboOption } from '../components/Combobox'
 import { GymStatEditor, type EditorMode } from '../components/GymStatEditor'
 import { NotesEditor } from '../components/NotesEditor'
 import { Tooltip, TooltipCard } from '../components/Tooltip'
 import type { CatalogPickerOption } from '../types/catalog'
-import type { BuildCatalogReference, PokemonBuild, PokemonType, StatSpread } from '../types'
+import type { BuildCatalogReference, PokemonBuild, PokemonEditorLegalityFieldReadModel, PokemonType, StatSpread } from '../types'
 import '../styles/pokemon-editor-panel.css'
 
 export type PokemonEditorDraft = {
@@ -284,6 +286,29 @@ function NatureModChip({
   )
 }
 
+const legalityStatusLabel: Record<PokemonEditorLegalityFieldReadModel['status'], string> = {
+  'not-checked': 'Not checked',
+  checking: 'Checking',
+  legal: 'Legal',
+  illegal: 'Illegal',
+  warning: 'Preview',
+  unknown: 'Selectable',
+  'runtime-unavailable': 'Showdown needed',
+}
+
+function LegalityPreviewRow({ field }: { field: PokemonEditorLegalityFieldReadModel }) {
+  return (
+    <li className={`bl-legality-row is-${field.status}`}>
+      <div>
+        <strong>{field.label}</strong>
+        <span>{field.option?.displayName ?? field.message}</span>
+      </div>
+      <span className="bl-legality-status">{legalityStatusLabel[field.status]}</span>
+      {field.option?.displayName && field.message ? <p>{field.message}</p> : null}
+    </li>
+  )
+}
+
 
 function moveTooltip(move: (typeof editorMoves)[number], catalogOption?: CatalogPickerOption): ReactNode {
   return (
@@ -507,7 +532,14 @@ export function PokemonEditorPanel({
   const selectedAbilityValue = selectedAbilityOptionKey || draftPokemon?.ability || ''
   const selectedNatureValue = selectedNatureOptionKey || draftPokemon?.nature || ''
   const selectedTeraValue = selectedTeraOptionKey || draftPokemon?.teraType || ''
-  const speciesShowdownId = selectedPokemonOption?.showdownId ?? draftPokemon?.species.toLowerCase() ?? ''
+  const speciesShowdownId = useMemo(
+    () => selectedPokemonOption?.showdownId ?? draftPokemon?.species.toLowerCase() ?? '',
+    [draftPokemon?.species, selectedPokemonOption?.showdownId],
+  )
+  const activeLearnsetMoveIds = useMemo(
+    () => activePokemonMoveIdsByShowdownId?.[speciesShowdownId],
+    [activePokemonMoveIdsByShowdownId, speciesShowdownId],
+  )
 
   const updateDraft = (updates: Partial<PokemonBuild>) => {
     setDraftPokemon((current) => (current ? { ...current, ...updates } : current))
@@ -736,12 +768,10 @@ export function PokemonEditorPanel({
       searchText: 'none empty clear',
       group: 'Selected',
     }
-    const downloadedLearnsetIds = activePokemonMoveIdsByShowdownId?.[speciesShowdownId]
-
-    if (downloadedLearnsetIds?.length) {
+    if (activeLearnsetMoveIds?.length) {
       return [
         noneOption,
-        ...downloadedLearnsetIds
+        ...activeLearnsetMoveIds
           .map((moveId) => catalogMovesById.get(moveId))
           .filter((option): option is CatalogPickerOption => Boolean(option))
           .map((option) => {
@@ -795,8 +825,17 @@ export function PokemonEditorPanel({
         }
       }),
     ]
-  }, [activePokemonMoveIdsByShowdownId, movePickerOptions, speciesShowdownId])
+  }, [activeLearnsetMoveIds, movePickerOptions, speciesShowdownId])
 
+  const selectedItemOption = selectedItemOptionKey
+    ? itemPickerOptions.find((candidate) => candidate.catalogKey === selectedItemOptionKey)
+    : undefined
+  const selectedAbilityOption = selectedAbilityOptionKey
+    ? abilityPickerOptions.find((candidate) => candidate.catalogKey === selectedAbilityOptionKey)
+    : undefined
+  const selectedTeraOption = selectedTeraOptionKey
+    ? typePickerOptions.find((candidate) => candidate.catalogKey === selectedTeraOptionKey)
+    : undefined
   const base = getBaseStats(speciesShowdownId)
   const selectedNatureOption = selectedNatureOptionKey
     ? naturePickerOptions.find((candidate) => candidate.catalogKey === selectedNatureOptionKey)
@@ -817,6 +856,24 @@ export function PokemonEditorPanel({
     ? Math.min(...statKeys.map((stat) => (isChampion ? (spSpread?.[stat] ?? 0) : draftPokemon.evs[stat])))
     : 0
   const budgetBelow = Math.max(0, -allocationMinimum)
+  const previewLearnsetMoveIds = activeLearnsetMoveIds ?? learnsets[speciesShowdownId] ?? []
+  const legalityPreview = draftPokemon
+    ? createPokemonEditorLegalityPreviewReadModel({
+        species: toBuildRef(selectedPokemonOption) ?? draftPokemon.speciesRef ?? null,
+        ability: toBuildRef(selectedAbilityOption) ?? draftPokemon.abilityRef ?? null,
+        item: toBuildRef(selectedItemOption) ?? draftPokemon.itemRef ?? null,
+        teraType: toBuildRef(selectedTeraOption) ?? draftPokemon.teraTypeRef ?? null,
+        moves: (draftPokemon.moveRefs ?? [null, null, null, null]).map((ref, index) => {
+          if (ref) return ref
+          const moveName = draftPokemon.moves[index]
+          return moveName ? findMoveRef(moveName, movePickerOptions) : null
+        }) as [BuildCatalogReference | null, BuildCatalogReference | null, BuildCatalogReference | null, BuildCatalogReference | null],
+        previewLearnsetMoveIds,
+      })
+    : null
+  const legalityPreviewRows = legalityPreview
+    ? legalityPreview.fieldResults.filter((field) => field.status !== 'not-checked')
+    : []
 
   return (
     <aside
@@ -989,6 +1046,29 @@ export function PokemonEditorPanel({
                     )
                   })}
                 </div>
+              </section>
+
+              <section className="bl-editor-section bl-legality-preview" aria-label="Showdown legality preview">
+                <div className="bl-editor-section-heading">
+                  <h3>Legality</h3>
+                  <span>Preview only</span>
+                </div>
+                <p className="bl-legality-note">
+                  Local catalog data can flag obvious move/selection signals, but Pokemon Showdown will own final
+                  legality and simulation checks.
+                </p>
+                {legalityPreviewRows.length > 0 ? (
+                  <ul className="bl-legality-list">
+                    {legalityPreviewRows.map((field) => (
+                      <LegalityPreviewRow
+                        field={field}
+                        key={`${field.field}-${field.slotIndex ?? 'main'}-${field.option?.catalogKey ?? field.status}`}
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="bl-legality-empty">Choose moves, ability, item, or Tera type to see preview signals.</p>
+                )}
               </section>
 
               <GymStatEditor
