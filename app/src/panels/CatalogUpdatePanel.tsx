@@ -240,6 +240,12 @@ function formatTimestamp(value?: string) {
   }).format(new Date(value))
 }
 
+function formatCatalogVersionLabel(value?: string) {
+  if (!value) return 'Not cached'
+  if (value.startsWith('pokeapi-bulk-ingestion')) return 'PokeAPI catalog'
+  return 'Saved catalog'
+}
+
 function getProgressState(status: CatalogPanelStatus | CatalogPanelSectionStatus): CatalogProgressDisplayState {
   if (status === 'checking') return 'checking'
   if (status === 'current') return 'current'
@@ -740,7 +746,7 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
               </div>
               <div>
                 <span>Catalog version</span>
-                <strong>{downloadState.cacheHealth.catalogVersion ?? 'Not cached'}</strong>
+                <strong>{formatCatalogVersionLabel(downloadState.cacheHealth.catalogVersion)}</strong>
                 <p>
                   {downloadState.cacheHealth.lastCompletedAt
                     ? `Last completed ${formatTimestamp(downloadState.cacheHealth.lastCompletedAt)}.`
