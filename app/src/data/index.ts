@@ -14,6 +14,29 @@ export {
 export { sampleBattleLabCatalogBundle } from "./catalogBundleFixture";
 
 export {
+  sampleCatalogBundleLoaderAppCompatibilityBlockedResult,
+  sampleCatalogBundleLoaderContract,
+  sampleCatalogBundleLoaderFixtureExamples,
+  sampleCatalogBundleLoaderInvalidSectionHashBlockedResult,
+  sampleCatalogBundleLoaderLoadedInMemoryResult,
+  sampleCatalogBundleLoaderRequest,
+  sampleCatalogBundleLoaderSafeFailurePolicy,
+  sampleCatalogBundleLoaderSourceIdentity,
+  sampleCatalogBundleLoaderUnsafeAssetPolicyBlockedResult,
+  sampleCatalogBundleUnsignedSignaturePreview,
+  type CatalogBundleLoaderFixtureExamples,
+} from "./catalogBundleLoaderFixtures";
+
+export {
+  sampleCatalogBundleLoaderFixtureValidation,
+  validateCatalogBundleLoaderFixtures,
+  type CatalogBundleLoaderFixtureValidationCode,
+  type CatalogBundleLoaderFixtureValidationIssue,
+  type CatalogBundleLoaderFixtureValidationResult,
+  type CatalogBundleLoaderFixtureValidationSeverity,
+} from "./catalogBundleLoaderFixtureValidation";
+
+export {
   battleLabCatalogBundleCanonicalization,
   canonicalizeBattleLabCatalogBundleSection,
   createBattleLabCatalogBundleHash,
