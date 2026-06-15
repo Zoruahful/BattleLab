@@ -929,6 +929,25 @@ export {
 } from "./showdownEngineArchiveMetadataReadinessValidation";
 
 export {
+  runShowdownEngineArchiveBodyDownloadProof,
+  showdownEngineArchiveBodyDownloadProofMaxBytes,
+  type ShowdownEngineArchiveBodyDownloadProofMetadataComparison,
+  type ShowdownEngineArchiveBodyDownloadProofOptions,
+  type ShowdownEngineArchiveBodyDownloadProofRequest,
+  type ShowdownEngineArchiveBodyDownloadProofResult,
+  type ShowdownEngineArchiveBodyDownloadProofSafety,
+  type ShowdownEngineArchiveBodyDownloadProofStatus,
+} from "./showdownEngineArchiveBodyDownloadProof";
+
+export {
+  validateShowdownEngineArchiveBodyDownloadProof,
+  type ShowdownEngineArchiveBodyDownloadProofValidationCode,
+  type ShowdownEngineArchiveBodyDownloadProofValidationIssue,
+  type ShowdownEngineArchiveBodyDownloadProofValidationResult,
+  type ShowdownEngineArchiveBodyDownloadProofValidationSeverity,
+} from "./showdownEngineArchiveBodyDownloadProofValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
