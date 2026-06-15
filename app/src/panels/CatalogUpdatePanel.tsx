@@ -15,12 +15,12 @@ import {
 } from '../data/catalogUpdateCache'
 import { readCatalogStorageBoundaryReadModel } from '../data/catalogStorageBoundary'
 import {
-  createShowdownEngineFormatRegistryReadModel,
-  createShowdownEngineUpdateReadModel,
-  type ShowdownEngineUpdateProgressEvent,
-  type ShowdownEngineUpdateReadModel,
-  type ShowdownEngineUpdateStatus,
-} from '../data/showdownEngineUpdateService'
+  createShowdownEngineArchiveDownloadReadModel,
+  sampleShowdownEngineArchiveDownloadReadModels,
+  type ShowdownEngineArchiveDownloadReadModel,
+  type ShowdownEngineArchiveDownloadReadModelRow,
+  type ShowdownEngineArchiveDownloadReadModelStatus,
+} from '../data/showdownEngineArchiveDownloadReadModel'
 import type { CatalogSourceFetchIssue } from '../types/catalogFetch'
 import type { CatalogStorageBoundaryReadModel } from '../types/catalogStorage'
 import '../styles/settings-catalog-panels.css'
@@ -35,6 +35,7 @@ type CatalogProgressDisplayState =
   | 'preview'
   | 'checking'
   | 'current'
+  | 'resolving'
   | 'downloading'
   | 'preparing'
   | 'using-cache'
@@ -53,8 +54,10 @@ type CatalogPanelSectionStatus =
   | 'checking'
   | 'current'
   | 'stale'
+  | 'resolving'
   | 'fetching'
   | 'preparing'
+  | 'staging'
   | 'validating'
   | 'complete'
   | 'warning'
@@ -152,8 +155,10 @@ const sectionStatusLabels: Record<CatalogPanelSectionStatus, string> = {
   checking: 'Checking',
   current: 'Current',
   stale: 'Outdated',
+  resolving: 'Resolving',
   fetching: 'Downloading',
   preparing: 'Preparing',
+  staging: 'Staging',
   validating: 'Validating',
   complete: 'Prepared',
   warning: 'Warning',
@@ -193,97 +198,106 @@ function createInitialEngineSection(): CatalogPanelSection {
   }
 }
 
-function getEngineSectionStatus(status: ShowdownEngineUpdateStatus): CatalogPanelSectionStatus {
-  if (status === 'not-started') return 'idle'
+function getEngineSectionStatus(status: ShowdownEngineArchiveDownloadReadModelStatus | 'pending'): CatalogPanelSectionStatus {
+  if (status === 'not-started' || status === 'pending') return 'idle'
+  if (status === 'resolving') return 'resolving'
   if (status === 'downloading') return 'fetching'
-  if (status === 'extracting-preparing') return 'preparing'
+  if (status === 'staging') return 'staging'
   return status
 }
 
-function getEngineCountLabel(readModel: ShowdownEngineUpdateReadModel) {
-  if (readModel.formatRegistry.status === 'unavailable') {
-    return 'Format registry unavailable'
+function getEngineLifecycleMessage(row: ShowdownEngineArchiveDownloadReadModelRow) {
+  switch (row.key) {
+    case 'checking-current-engine':
+      return 'Checking the current Pokemon Showdown Engine metadata.'
+    case 'resolving-github-archive':
+      return 'Resolving the future Pokemon Showdown GitHub archive source. No network request is running.'
+    case 'planning-archive-download':
+      return 'Planning the archive download handoff. This checkpoint does not download archives.'
+    case 'validating-checksum-handoff':
+      return 'Checking the planned checksum and hash-validation handoff.'
+    case 'validating-required-files-handoff':
+      return 'Checking the required Engine files that future updates must validate.'
+    case 'validating-format-registry-handoff':
+      return 'Checking the format registry handoff for future legality and format checks.'
+    case 'planning-staging':
+      return 'Preparing the staged Engine handoff plan without file writes.'
+    case 'final-decision':
+      return 'Confirming whether the dry-run Engine handoff would be ready.'
+    case 'complete':
+      return 'Engine dry-run readiness is complete. Catalog Update does not run simulations.'
+    case 'failed':
+      return 'Engine dry-run failed safely. Previous valid Engine data remains available.'
+    case 'cancelled':
+      return 'Engine dry-run was cancelled. Previous valid Engine data remains available.'
   }
-
-  const totalFormats = readModel.formatRegistry.officialFormatCount + readModel.formatRegistry.battleLabCustomFormatCount
-
-  if (totalFormats <= 0) {
-    return 'Formats unavailable'
-  }
-
-  return `${formatCount(totalFormats)} formats ready`
 }
 
-function getEngineMessage(readModel: ShowdownEngineUpdateReadModel) {
-  if (readModel.formatRegistry.status === 'unavailable') {
-    return 'Engine package check completed, but format metadata is unavailable in this browser run. No simulation is running.'
-  }
+function getEngineCountLabel(row: ShowdownEngineArchiveDownloadReadModelRow) {
+  return row.label
+}
 
+function getEngineMessage(readModel: ShowdownEngineArchiveDownloadReadModel) {
   if (readModel.status === 'failed') {
-    return 'Engine update failed safely. Previous valid Engine data remains available.'
+    return 'Engine dry-run failed safely. Previous valid Engine data remains available.'
   }
 
   if (readModel.status === 'cancelled') {
-    return 'Engine update cancelled. Previous valid Engine data remains available.'
+    return 'Engine dry-run was cancelled. Previous valid Engine data remains available.'
   }
 
-  if (readModel.status === 'warning') {
-    return 'Engine prepared with warnings. Simulation does not run from Catalog Update.'
+  if (!readModel.validation.readyForPromotion) {
+    return 'Engine dry-run completed with warnings. No simulation is running from Catalog Update.'
   }
 
-  if (readModel.status === 'current') {
-    return 'Pokemon Showdown Engine and formats are current. Simulation does not run from Catalog Update.'
-  }
-
-  return 'Pokemon Showdown Engine and formats are prepared for future legality and format checks.'
+  return 'Engine dry-run readiness is complete for future legality and format checks. No simulation is running.'
 }
 
-function createEngineSectionFromReadModel(readModel: ShowdownEngineUpdateReadModel): CatalogPanelSection {
-  const formatCountTotal = readModel.formatRegistry.officialFormatCount + readModel.formatRegistry.battleLabCustomFormatCount
-  const status =
-    readModel.formatRegistry.status === 'unavailable' && readModel.status === 'complete'
-      ? 'warning'
-      : getEngineSectionStatus(readModel.status)
+function createEngineSectionFromReadModel(readModel: ShowdownEngineArchiveDownloadReadModel): CatalogPanelSection {
+  const finalRow =
+    readModel.rows.find((row) => row.status === readModel.status && row.progressPercent >= 100) ??
+    readModel.rows.find((row) => row.key === 'complete') ??
+    readModel.rows[readModel.rows.length - 1]
+  const status = readModel.status === 'complete' && !readModel.validation.readyForPromotion
+    ? 'warning'
+    : getEngineSectionStatus(readModel.status)
 
   return {
     id: 'engine',
     label: 'Engine',
     description: 'Pokemon Showdown engine and format readiness for future legality and format checks.',
     status,
-    downloaded: readModel.formatRegistry.status === 'unavailable' ? 1 : formatCountTotal,
-    total: readModel.formatRegistry.status === 'unavailable' ? 1 : formatCountTotal,
-    progressPercent: readModel.progressPercent,
-    countLabel: getEngineCountLabel(readModel),
-    lastCheckedAt: readModel.requestedAt,
-    lastUpdatedAt: readModel.completedAt ?? readModel.activeEngine?.preparedAt,
+    downloaded: readModel.validation.officialFormatCount,
+    total: readModel.validation.officialFormatCount,
+    progressPercent: finalRow?.progressPercent ?? 100,
+    countLabel: readModel.validation.officialFormatCount > 0
+      ? `${formatCount(readModel.validation.officialFormatCount)} formats checked`
+      : 'Format registry handoff checked',
+    lastCheckedAt: new Date().toISOString(),
+    lastUpdatedAt: readModel.status === 'complete' ? new Date().toISOString() : undefined,
     message: getEngineMessage(readModel),
-    error: readModel.errors[0],
+    error: readModel.status === 'failed' ? readModel.decision.message : undefined,
   }
 }
 
-function applyEngineProgressEventToSection(
+function applyEngineReadModelRowToSection(
   section: CatalogPanelSection,
-  event: ShowdownEngineUpdateProgressEvent,
+  row: ShowdownEngineArchiveDownloadReadModelRow,
+  checkedAt: string,
 ): CatalogPanelSection {
-  const total = section.total > 0 ? section.total : 1
-  const downloaded = event.progressPercent >= 100 ? total : Math.floor((total * event.progressPercent) / 100)
+  const total = section.total > 0 ? section.total : 100
+  const downloaded = row.progressPercent >= 100 ? total : Math.floor((total * row.progressPercent) / 100)
 
   return {
     ...section,
-    status: getEngineSectionStatus(event.status),
+    status: getEngineSectionStatus(row.status),
     downloaded,
     total,
-    progressPercent: event.progressPercent,
-    countLabel: event.progressPercent >= 100 && section.total > 0 ? `${formatCount(section.total)} formats ready` : 'Checking Engine formats',
-    lastCheckedAt: event.emittedAt,
-    message:
-      event.status === 'downloading'
-        ? 'Checking Pokemon Showdown Engine package data.'
-        : event.status === 'extracting-preparing'
-        ? 'Preparing Engine and format metadata. No simulation is running.'
-        : event.status === 'validating'
-        ? 'Validating Engine readiness before marking it ready.'
-        : event.message,
+    progressPercent: row.progressPercent,
+    countLabel: getEngineCountLabel(row),
+    lastCheckedAt: checkedAt,
+    message: getEngineLifecycleMessage(row),
+    error: row.status === 'failed' ? row.message : undefined,
   }
 }
 
@@ -418,8 +432,10 @@ function getProgressState(status: CatalogPanelStatus | CatalogPanelSectionStatus
   if (status === 'checking') return 'checking'
   if (status === 'current') return 'current'
   if (status === 'stale') return 'rate-limited'
+  if (status === 'resolving') return 'resolving'
   if (status === 'fetching') return 'downloading'
   if (status === 'preparing') return 'preparing'
+  if (status === 'staging') return 'preparing'
   if (status === 'validating') return 'validating'
   if (status === 'complete') return 'complete'
   if (status === 'warning') return 'warning'
@@ -570,7 +586,12 @@ function applyResultToSections(
 ): CatalogPanelSection[] {
   if (result.status === 'cancelled') {
     return sections.map((section) =>
-      section.status === 'checking' || section.status === 'fetching' || section.status === 'preparing' || section.status === 'validating'
+      section.status === 'checking' ||
+      section.status === 'resolving' ||
+      section.status === 'fetching' ||
+      section.status === 'preparing' ||
+      section.status === 'staging' ||
+      section.status === 'validating'
         ? {
             ...section,
             status: 'cancelled' as const,
@@ -585,7 +606,12 @@ function applyResultToSections(
 
   if (result.status === 'failed') {
     return sections.map((section) =>
-      section.status === 'checking' || section.status === 'fetching' || section.status === 'preparing' || section.status === 'validating'
+      section.status === 'checking' ||
+      section.status === 'resolving' ||
+      section.status === 'fetching' ||
+      section.status === 'preparing' ||
+      section.status === 'staging' ||
+      section.status === 'validating'
         ? {
             ...section,
             status: 'failed' as const,
@@ -799,30 +825,23 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
     }
   }, [cacheHydrated, open, running])
 
-  const runEngineUpdateWithUi = async (signal: AbortSignal, requestedAt: string, mode: 'complete' | 'current') => {
+  const runEngineUpdateWithUi = async (signal: AbortSignal, requestedAt: string) => {
     try {
-      const formatRegistry = await createShowdownEngineFormatRegistryReadModel(requestedAt)
-      const readModel = createShowdownEngineUpdateReadModel({
-        mode,
-        requestedAt,
-        updateId: `showdown-engine-update-${requestedAt}`,
-        formatRegistry,
-      })
+      const readModel = createShowdownEngineArchiveDownloadReadModel()
+      const activeRows = readModel.rows.filter((row) => row.status !== 'pending')
 
-      for (const event of readModel.events) {
+      for (const row of activeRows) {
         if (signal.aborted) {
-          const cancelledReadModel = createShowdownEngineUpdateReadModel({
-            mode: 'cancelled',
-            requestedAt: new Date().toISOString(),
-            updateId: `showdown-engine-cancelled-${requestedAt}`,
-            formatRegistry,
-          })
+          const cancelledReadModel = sampleShowdownEngineArchiveDownloadReadModels.cancelled
+          const cancelledRow = cancelledReadModel.rows.find((candidate) => candidate.key === 'cancelled')
 
           if (mountedRef.current) {
             setDownloadState((current) => ({
               ...current,
               sections: current.sections.map((section) =>
-                section.id === 'engine' ? createEngineSectionFromReadModel(cancelledReadModel) : section,
+                section.id === 'engine' && cancelledRow
+                  ? applyEngineReadModelRowToSection(section, cancelledRow, new Date().toISOString())
+                  : section,
               ),
             }))
           }
@@ -834,7 +853,7 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
           setDownloadState((current) => ({
             ...current,
             sections: current.sections.map((section) =>
-              section.id === 'engine' ? applyEngineProgressEventToSection(section, event) : section,
+              section.id === 'engine' ? applyEngineReadModelRowToSection(section, row, requestedAt) : section,
             ),
           }))
         }
@@ -853,11 +872,7 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
 
       return readModel
     } catch (error) {
-      const failedReadModel = createShowdownEngineUpdateReadModel({
-        mode: 'failed',
-        requestedAt: new Date().toISOString(),
-        updateId: `showdown-engine-failed-${requestedAt}`,
-      })
+      const failedReadModel = sampleShowdownEngineArchiveDownloadReadModels.failed
       const message = error instanceof Error ? error.message : 'Unknown Pokemon Showdown Engine update error.'
 
       if (mountedRef.current) {
@@ -867,7 +882,8 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
             section.id === 'engine'
               ? {
                   ...createEngineSectionFromReadModel(failedReadModel),
-                  message: 'Engine update failed safely. Previous valid Engine data remains available.',
+                  status: 'failed' as const,
+                  message: 'Engine dry-run failed safely. Previous valid Engine data remains available.',
                   error: message,
                 }
               : section,
@@ -884,7 +900,6 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
 
     const controller = new AbortController()
     const startedAt = new Date().toISOString()
-    const engineAlreadyReady = downloadState.sections.some((section) => section.id === 'engine' && section.lastUpdatedAt)
     abortRef.current = controller
     setDownloadState((current) => ({
       ...current,
@@ -920,7 +935,7 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
     }))
 
     try {
-      const engineUpdate = runEngineUpdateWithUi(controller.signal, startedAt, engineAlreadyReady ? 'current' : 'complete')
+      const engineUpdate = runEngineUpdateWithUi(controller.signal, startedAt)
       const result = await runCatalogBulkIngestion({
         mode: 'full',
         signal: controller.signal,
