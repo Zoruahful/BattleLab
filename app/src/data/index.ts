@@ -803,6 +803,27 @@ export {
 } from "./showdownEngineArchiveCatalogUpdateReadModelValidation";
 
 export {
+  createShowdownEngineFormatRegistryLoaderProofs,
+  sampleShowdownEngineFormatRegistryLoaderProofs,
+  sampleShowdownEngineFormatRegistryLoaderReadiness,
+  type ShowdownEngineFormatRegistryLoaderProof,
+  type ShowdownEngineFormatRegistryLoaderProofSafety,
+  type ShowdownEngineFormatRegistryLoaderProofSource,
+  type ShowdownEngineFormatRegistryLoaderProofStatus,
+  type ShowdownEngineFormatRegistryOverlayReadiness,
+  type ShowdownEngineFormatRegistrySourceFileReadiness,
+} from "./showdownEngineFormatRegistryLoaderProof";
+
+export {
+  sampleShowdownEngineFormatRegistryLoaderProofValidation,
+  validateShowdownEngineFormatRegistryLoaderProof,
+  type ShowdownEngineFormatRegistryLoaderProofValidationCode,
+  type ShowdownEngineFormatRegistryLoaderProofValidationIssue,
+  type ShowdownEngineFormatRegistryLoaderProofValidationResult,
+  type ShowdownEngineFormatRegistryLoaderProofValidationSeverity,
+} from "./showdownEngineFormatRegistryLoaderProofValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
