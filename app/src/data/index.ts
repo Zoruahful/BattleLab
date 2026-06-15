@@ -635,6 +635,37 @@ export {
 } from "./showdownRuntimeAdapterSmokeValidation";
 
 export {
+  battleLabCustomFormatPlaceholders,
+  createShowdownEngineFormatRegistryReadModel,
+  createShowdownEngineUpdateReadModel,
+  sampleCurrentShowdownEngineData,
+  sampleShowdownEngineFormatRegistry,
+  sampleShowdownEngineUpdateReadModels,
+  showdownEngineStorageBoundary,
+  showdownEngineUpdateSafetyPolicy,
+  type ShowdownEngineDataSnapshot,
+  type ShowdownEngineFormatAvailability,
+  type ShowdownEngineFormatRegistryReadModel,
+  type ShowdownEngineFormatSource,
+  type ShowdownEngineStorageBoundary,
+  type ShowdownEngineUpdatePhase,
+  type ShowdownEngineUpdateProgressEvent,
+  type ShowdownEngineUpdateReadModel,
+  type ShowdownEngineUpdateSafetyPolicy,
+  type ShowdownEngineUpdateServiceOptions,
+  type ShowdownEngineUpdateStatus,
+  type ShowdownEngineUpdateTrigger,
+} from "./showdownEngineUpdateService";
+
+export {
+  validateShowdownEngineUpdateService,
+  type ShowdownEngineUpdateValidationCode,
+  type ShowdownEngineUpdateValidationIssue,
+  type ShowdownEngineUpdateValidationResult,
+  type ShowdownEngineUpdateValidationSeverity,
+} from "./showdownEngineUpdateServiceValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
