@@ -1,4 +1,25 @@
 export {
+  runCatalogBulkIngestion,
+  type CatalogBulkIngestionLimits,
+  type CatalogBulkIngestionMode,
+  type CatalogBulkIngestionOptions,
+  type CatalogBulkIngestionProgress,
+  type CatalogBulkIngestionResult,
+  type CatalogBulkIngestionSection,
+  type CatalogBulkIngestionSectionSummary,
+  type CatalogBulkIngestionStatus,
+} from "./catalogBulkIngestion";
+
+export {
+  validateCatalogBulkIngestion,
+  type CatalogBulkIngestionCounts,
+  type CatalogBulkIngestionValidationCode,
+  type CatalogBulkIngestionValidationIssue,
+  type CatalogBulkIngestionValidationResult,
+  type CatalogBulkIngestionValidationSeverity,
+} from "./catalogBulkIngestionValidation";
+
+export {
   localCatalogSeed,
   localCatalogSeedAbilities,
   localCatalogSeedAssets,
