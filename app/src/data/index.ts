@@ -1011,6 +1011,25 @@ export {
 } from "./showdownEngineImmutableSourceRevisionValidation";
 
 export {
+  createShowdownEngineArchiveContentsManifest,
+  type ShowdownEngineArchiveContentsManifest,
+  type ShowdownEngineArchiveContentsManifestFile,
+  type ShowdownEngineArchiveContentsManifestInput,
+  type ShowdownEngineArchiveContentsManifestPromotionGate,
+  type ShowdownEngineArchiveContentsManifestSafety,
+  type ShowdownEngineArchiveContentsManifestStatus,
+  type ShowdownEngineArchiveContentsOverlayHandoff,
+} from "./showdownEngineArchiveContentsManifest";
+
+export {
+  validateShowdownEngineArchiveContentsManifest,
+  type ShowdownEngineArchiveContentsManifestValidationCode,
+  type ShowdownEngineArchiveContentsManifestValidationIssue,
+  type ShowdownEngineArchiveContentsManifestValidationResult,
+  type ShowdownEngineArchiveContentsManifestValidationSeverity,
+} from "./showdownEngineArchiveContentsManifestValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
