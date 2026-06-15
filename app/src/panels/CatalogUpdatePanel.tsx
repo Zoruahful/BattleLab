@@ -14,6 +14,13 @@ import {
   type CatalogUpdateSectionCacheMetadata,
 } from '../data/catalogUpdateCache'
 import { readCatalogStorageBoundaryReadModel } from '../data/catalogStorageBoundary'
+import {
+  createShowdownEngineFormatRegistryReadModel,
+  createShowdownEngineUpdateReadModel,
+  type ShowdownEngineUpdateProgressEvent,
+  type ShowdownEngineUpdateReadModel,
+  type ShowdownEngineUpdateStatus,
+} from '../data/showdownEngineUpdateService'
 import type { CatalogSourceFetchIssue } from '../types/catalogFetch'
 import type { CatalogStorageBoundaryReadModel } from '../types/catalogStorage'
 import '../styles/settings-catalog-panels.css'
@@ -29,6 +36,7 @@ type CatalogProgressDisplayState =
   | 'checking'
   | 'current'
   | 'downloading'
+  | 'preparing'
   | 'using-cache'
   | 'rate-limited'
   | 'validating'
@@ -39,12 +47,15 @@ type CatalogProgressDisplayState =
   | 'blocked'
 
 type CatalogPanelStatus = 'idle' | 'checking' | 'fetching' | 'validating' | 'complete' | 'warning' | 'failed' | 'cancelled'
+type CatalogPanelSectionId = CatalogBulkIngestionSection | 'engine'
 type CatalogPanelSectionStatus =
   | 'idle'
   | 'checking'
   | 'current'
   | 'stale'
   | 'fetching'
+  | 'preparing'
+  | 'validating'
   | 'complete'
   | 'warning'
   | 'failed'
@@ -65,13 +76,14 @@ interface CatalogCacheHealthSummary {
 }
 
 interface CatalogPanelSection {
-  id: CatalogBulkIngestionSection
+  id: CatalogPanelSectionId
   label: string
   description: string
   status: CatalogPanelSectionStatus
   downloaded: number
   total: number
   progressPercent: number
+  countLabel?: string
   lastCheckedAt?: string
   lastUpdatedAt?: string
   message: string
@@ -91,7 +103,7 @@ interface CatalogPanelState {
   cacheHealth: CatalogCacheHealthSummary
 }
 
-const catalogSections: Array<Pick<CatalogPanelSection, 'id' | 'label' | 'description'>> = [
+const catalogSections: Array<Pick<CatalogPanelSection, 'id' | 'label' | 'description'> & { id: CatalogBulkIngestionSection }> = [
   {
     id: 'pokemon',
     label: 'Pokemon',
@@ -141,6 +153,8 @@ const sectionStatusLabels: Record<CatalogPanelSectionStatus, string> = {
   current: 'Current',
   stale: 'Outdated',
   fetching: 'Downloading',
+  preparing: 'Preparing',
+  validating: 'Validating',
   complete: 'Prepared',
   warning: 'Warning',
   failed: 'Failed safely',
@@ -155,17 +169,136 @@ const cacheHealthLabels: Record<CatalogCacheHealthStatus, string> = {
   failed: 'Last update failed',
 }
 
+function isCatalogSectionId(sectionId: CatalogPanelSectionId): sectionId is CatalogBulkIngestionSection {
+  return sectionId !== 'engine'
+}
+
+function getCatalogOnlySections(sections: CatalogPanelSection[]) {
+  return sections.filter(
+    (section): section is CatalogPanelSection & { id: CatalogBulkIngestionSection } => isCatalogSectionId(section.id),
+  )
+}
+
+function createInitialEngineSection(): CatalogPanelSection {
+  return {
+    id: 'engine',
+    label: 'Engine',
+    description: 'Pokemon Showdown engine and format readiness for future legality and format checks.',
+    status: 'idle',
+    downloaded: 0,
+    total: 0,
+    progressPercent: 0,
+    countLabel: 'No Engine check yet',
+    message: 'Engine updates start only when you click Update. Catalog Update does not run simulations.',
+  }
+}
+
+function getEngineSectionStatus(status: ShowdownEngineUpdateStatus): CatalogPanelSectionStatus {
+  if (status === 'not-started') return 'idle'
+  if (status === 'downloading') return 'fetching'
+  if (status === 'extracting-preparing') return 'preparing'
+  return status
+}
+
+function getEngineCountLabel(readModel: ShowdownEngineUpdateReadModel) {
+  if (readModel.formatRegistry.status === 'unavailable') {
+    return 'Format registry unavailable'
+  }
+
+  const totalFormats = readModel.formatRegistry.officialFormatCount + readModel.formatRegistry.battleLabCustomFormatCount
+
+  if (totalFormats <= 0) {
+    return 'Formats unavailable'
+  }
+
+  return `${formatCount(totalFormats)} formats ready`
+}
+
+function getEngineMessage(readModel: ShowdownEngineUpdateReadModel) {
+  if (readModel.formatRegistry.status === 'unavailable') {
+    return 'Engine package check completed, but format metadata is unavailable in this browser run. No simulation is running.'
+  }
+
+  if (readModel.status === 'failed') {
+    return 'Engine update failed safely. Previous valid Engine data remains available.'
+  }
+
+  if (readModel.status === 'cancelled') {
+    return 'Engine update cancelled. Previous valid Engine data remains available.'
+  }
+
+  if (readModel.status === 'warning') {
+    return 'Engine prepared with warnings. Simulation does not run from Catalog Update.'
+  }
+
+  if (readModel.status === 'current') {
+    return 'Pokemon Showdown Engine and formats are current. Simulation does not run from Catalog Update.'
+  }
+
+  return 'Pokemon Showdown Engine and formats are prepared for future legality and format checks.'
+}
+
+function createEngineSectionFromReadModel(readModel: ShowdownEngineUpdateReadModel): CatalogPanelSection {
+  const formatCountTotal = readModel.formatRegistry.officialFormatCount + readModel.formatRegistry.battleLabCustomFormatCount
+  const status =
+    readModel.formatRegistry.status === 'unavailable' && readModel.status === 'complete'
+      ? 'warning'
+      : getEngineSectionStatus(readModel.status)
+
+  return {
+    id: 'engine',
+    label: 'Engine',
+    description: 'Pokemon Showdown engine and format readiness for future legality and format checks.',
+    status,
+    downloaded: readModel.formatRegistry.status === 'unavailable' ? 1 : formatCountTotal,
+    total: readModel.formatRegistry.status === 'unavailable' ? 1 : formatCountTotal,
+    progressPercent: readModel.progressPercent,
+    countLabel: getEngineCountLabel(readModel),
+    lastCheckedAt: readModel.requestedAt,
+    lastUpdatedAt: readModel.completedAt ?? readModel.activeEngine?.preparedAt,
+    message: getEngineMessage(readModel),
+    error: readModel.errors[0],
+  }
+}
+
+function applyEngineProgressEventToSection(
+  section: CatalogPanelSection,
+  event: ShowdownEngineUpdateProgressEvent,
+): CatalogPanelSection {
+  const total = section.total > 0 ? section.total : 1
+  const downloaded = event.progressPercent >= 100 ? total : Math.floor((total * event.progressPercent) / 100)
+
+  return {
+    ...section,
+    status: getEngineSectionStatus(event.status),
+    downloaded,
+    total,
+    progressPercent: event.progressPercent,
+    countLabel: event.progressPercent >= 100 && section.total > 0 ? `${formatCount(section.total)} formats ready` : 'Checking Engine formats',
+    lastCheckedAt: event.emittedAt,
+    message:
+      event.status === 'downloading'
+        ? 'Checking Pokemon Showdown Engine package data.'
+        : event.status === 'extracting-preparing'
+        ? 'Preparing Engine and format metadata. No simulation is running.'
+        : event.status === 'validating'
+        ? 'Validating Engine readiness before marking it ready.'
+        : event.message,
+  }
+}
+
 function createCacheHealthSummary(
   sections: CatalogPanelSection[],
   generatedCatalog?: Pick<CatalogUpdateGeneratedCatalogCache, 'fetchedAt' | 'sourceVersion'> | null,
 ): CatalogCacheHealthSummary {
-  const cachedSections = sections.filter((section) => section.total > 0 && section.lastUpdatedAt).length
-  const failedSections = sections.filter((section) => section.status === 'failed').length
-  const warningSections = sections.filter((section) => section.status === 'warning').length
-  const recordCount = sections.reduce((total, section) => total + (section.lastUpdatedAt ? section.downloaded : 0), 0)
+  const catalogOnlySections = getCatalogOnlySections(sections)
+  const cachedSections = catalogOnlySections.filter((section) => section.total > 0 && section.lastUpdatedAt).length
+  const failedSections = catalogOnlySections.filter((section) => section.status === 'failed').length
+  const warningSections = catalogOnlySections.filter((section) => section.status === 'warning').length
+  const recordCount = catalogOnlySections.reduce((total, section) => total + (section.lastUpdatedAt ? section.downloaded : 0), 0)
   const lastCompletedAt = [
     generatedCatalog?.fetchedAt,
-    ...sections.map((section) => section.lastUpdatedAt),
+    ...catalogOnlySections.map((section) => section.lastUpdatedAt),
   ]
     .filter((value): value is string => Boolean(value))
     .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0]
@@ -206,7 +339,7 @@ function createCacheHealthSummary(
 }
 
 function createInitialCatalogPanelState(): CatalogPanelState {
-  const sections = catalogSections.map((section) => ({
+  const catalogRows = catalogSections.map((section) => ({
     ...section,
     status: 'idle' as const,
     downloaded: 0,
@@ -214,6 +347,7 @@ function createInitialCatalogPanelState(): CatalogPanelState {
     progressPercent: 0,
     message: `No ${section.label.toLowerCase()} records checked yet.`,
   }))
+  const sections = [...catalogRows, createInitialEngineSection()]
 
   return {
     status: 'idle',
@@ -223,7 +357,7 @@ function createInitialCatalogPanelState(): CatalogPanelState {
     errorCount: 0,
     issues: [],
     sections,
-    cacheHealth: createCacheHealthSummary(sections),
+    cacheHealth: createCacheHealthSummary(catalogRows),
   }
 }
 
@@ -285,6 +419,8 @@ function getProgressState(status: CatalogPanelStatus | CatalogPanelSectionStatus
   if (status === 'current') return 'current'
   if (status === 'stale') return 'rate-limited'
   if (status === 'fetching') return 'downloading'
+  if (status === 'preparing') return 'preparing'
+  if (status === 'validating') return 'validating'
   if (status === 'complete') return 'complete'
   if (status === 'warning') return 'warning'
   if (status === 'failed') return 'failed'
@@ -301,6 +437,7 @@ function getCacheProgressState(status: CatalogCacheHealthStatus): CatalogProgres
 }
 
 function getSectionRecordCopy(section: CatalogPanelSection) {
+  if (section.countLabel) return section.countLabel
   if (section.total <= 0) return 'No records checked'
   return `${formatCount(section.downloaded)} / ${formatCount(section.total)} records`
 }
@@ -356,7 +493,7 @@ function applyProgressToSections(
 ): CatalogPanelSection[] {
   if (progress.status === 'validating-source' || progress.status === 'generating-catalog' || progress.status === 'validating-catalog') {
     return sections.map((section) =>
-      section.status === 'fetching' && section.progressPercent >= 100
+      isCatalogSectionId(section.id) && section.status === 'fetching' && section.progressPercent >= 100
         ? { ...section, status: 'complete' as const, message: 'Downloaded. Awaiting catalog validation.' }
         : section,
     )
@@ -365,6 +502,7 @@ function applyProgressToSections(
   if (!progress.section) return sections
 
   return sections.map((section) => {
+    if (!isCatalogSectionId(section.id)) return section
     if (section.id !== progress.section) return section
 
     if (progress.status === 'checking' || progress.status === 'fetching-lists') {
@@ -432,11 +570,14 @@ function applyResultToSections(
 ): CatalogPanelSection[] {
   if (result.status === 'cancelled') {
     return sections.map((section) =>
-      section.status === 'checking' || section.status === 'fetching'
+      section.status === 'checking' || section.status === 'fetching' || section.status === 'preparing' || section.status === 'validating'
         ? {
             ...section,
             status: 'cancelled' as const,
-            message: 'Cancelled. Existing catalog data was not overwritten.',
+            message:
+              section.id === 'engine'
+                ? 'Cancelled. Previous valid Engine data remains available.'
+                : 'Cancelled. Existing catalog data was not overwritten.',
           }
         : section,
     )
@@ -444,11 +585,14 @@ function applyResultToSections(
 
   if (result.status === 'failed') {
     return sections.map((section) =>
-      section.status === 'checking' || section.status === 'fetching'
+      section.status === 'checking' || section.status === 'fetching' || section.status === 'preparing' || section.status === 'validating'
         ? {
             ...section,
             status: 'failed' as const,
-            message: 'Failed safely. Existing catalog data was not overwritten.',
+            message:
+              section.id === 'engine'
+                ? 'Failed safely. Previous valid Engine data remains available.'
+                : 'Failed safely. Existing catalog data was not overwritten.',
             error: result.issues[0]?.message,
           }
         : section,
@@ -456,6 +600,7 @@ function applyResultToSections(
   }
 
   return sections.map((section) => {
+    if (!isCatalogSectionId(section.id)) return section
     const summary = getSummaryForSection(result, section.id)
     if (!summary) return section
 
@@ -478,7 +623,7 @@ function applyResultToSections(
 }
 
 function createSectionFromCache(
-  section: Pick<CatalogPanelSection, 'id' | 'label' | 'description'>,
+  section: Pick<CatalogPanelSection, 'id' | 'label' | 'description'> & { id: CatalogBulkIngestionSection },
   metadata?: CatalogUpdateSectionCacheMetadata | null,
   generatedCatalog?: CatalogUpdateGeneratedCatalogCache | null,
 ): CatalogPanelSection {
@@ -520,10 +665,11 @@ async function hydrateCatalogPanelStateFromCache(): Promise<CatalogPanelState> {
     readCatalogUpdateGeneratedCatalogCache().catch(() => null),
   ])
   const metadataBySection = new Map(metadata.map((entry) => [entry.section, entry]))
-  const sections = catalogSections.map((section) =>
+  const catalogRows = catalogSections.map((section) =>
     createSectionFromCache(section, metadataBySection.get(section.id), generatedCatalog),
   )
-  const cacheHealth = createCacheHealthSummary(sections, generatedCatalog)
+  const sections = [...catalogRows, createInitialEngineSection()]
+  const cacheHealth = createCacheHealthSummary(catalogRows, generatedCatalog)
 
   return {
     status: 'idle',
@@ -532,8 +678,8 @@ async function hydrateCatalogPanelStateFromCache(): Promise<CatalogPanelState> {
       cacheHealth.status === 'empty'
         ? 'Ready to check PokeAPI catalog sections. Downloads start only when you click Update.'
         : 'Saved catalog cache found. Click Update to check for stale sections.',
-    warningCount: sections.filter((section) => section.status === 'warning').length,
-    errorCount: sections.filter((section) => section.status === 'failed').length,
+    warningCount: catalogRows.filter((section) => section.status === 'warning').length,
+    errorCount: catalogRows.filter((section) => section.status === 'failed').length,
     issues: [],
     sections,
     cacheHealth,
@@ -589,6 +735,12 @@ function applyResult(current: CatalogPanelState, result: CatalogBulkIngestionRes
         : undefined,
     ),
   }
+}
+
+function waitForEngineProgressFrame(signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, signal.aborted ? 0 : 180)
+  })
 }
 
 export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelProps) {
@@ -647,11 +799,92 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
     }
   }, [cacheHydrated, open, running])
 
+  const runEngineUpdateWithUi = async (signal: AbortSignal, requestedAt: string, mode: 'complete' | 'current') => {
+    try {
+      const formatRegistry = await createShowdownEngineFormatRegistryReadModel(requestedAt)
+      const readModel = createShowdownEngineUpdateReadModel({
+        mode,
+        requestedAt,
+        updateId: `showdown-engine-update-${requestedAt}`,
+        formatRegistry,
+      })
+
+      for (const event of readModel.events) {
+        if (signal.aborted) {
+          const cancelledReadModel = createShowdownEngineUpdateReadModel({
+            mode: 'cancelled',
+            requestedAt: new Date().toISOString(),
+            updateId: `showdown-engine-cancelled-${requestedAt}`,
+            formatRegistry,
+          })
+
+          if (mountedRef.current) {
+            setDownloadState((current) => ({
+              ...current,
+              sections: current.sections.map((section) =>
+                section.id === 'engine' ? createEngineSectionFromReadModel(cancelledReadModel) : section,
+              ),
+            }))
+          }
+
+          return cancelledReadModel
+        }
+
+        if (mountedRef.current) {
+          setDownloadState((current) => ({
+            ...current,
+            sections: current.sections.map((section) =>
+              section.id === 'engine' ? applyEngineProgressEventToSection(section, event) : section,
+            ),
+          }))
+        }
+
+        await waitForEngineProgressFrame(signal)
+      }
+
+      if (mountedRef.current) {
+        setDownloadState((current) => ({
+          ...current,
+          sections: current.sections.map((section) =>
+            section.id === 'engine' ? createEngineSectionFromReadModel(readModel) : section,
+          ),
+        }))
+      }
+
+      return readModel
+    } catch (error) {
+      const failedReadModel = createShowdownEngineUpdateReadModel({
+        mode: 'failed',
+        requestedAt: new Date().toISOString(),
+        updateId: `showdown-engine-failed-${requestedAt}`,
+      })
+      const message = error instanceof Error ? error.message : 'Unknown Pokemon Showdown Engine update error.'
+
+      if (mountedRef.current) {
+        setDownloadState((current) => ({
+          ...current,
+          sections: current.sections.map((section) =>
+            section.id === 'engine'
+              ? {
+                  ...createEngineSectionFromReadModel(failedReadModel),
+                  message: 'Engine update failed safely. Previous valid Engine data remains available.',
+                  error: message,
+                }
+              : section,
+          ),
+        }))
+      }
+
+      return failedReadModel
+    }
+  }
+
   const handleUpdate = async () => {
     if (abortRef.current || running) return
 
     const controller = new AbortController()
     const startedAt = new Date().toISOString()
+    const engineAlreadyReady = downloadState.sections.some((section) => section.id === 'engine' && section.lastUpdatedAt)
     abortRef.current = controller
     setDownloadState((current) => ({
       ...current,
@@ -663,17 +896,31 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
       warningCount: 0,
       errorCount: 0,
       issues: [],
-      sections: current.sections.map((section) => ({
-        ...section,
-        status: section.lastUpdatedAt ? 'checking' : 'idle',
-        message: section.lastUpdatedAt
-          ? 'Checking whether saved section is still current.'
-          : `No saved ${section.label.toLowerCase()} section yet.`,
-        error: undefined,
-      })),
+      sections: current.sections.map((section) =>
+        section.id === 'engine'
+          ? {
+              ...section,
+              status: 'checking' as const,
+              downloaded: 0,
+              progressPercent: 10,
+              countLabel: section.lastUpdatedAt ? section.countLabel : 'Checking Engine formats',
+              lastCheckedAt: startedAt,
+              message: 'Checking Pokemon Showdown Engine and format readiness. No simulation is running.',
+              error: undefined,
+            }
+          : {
+              ...section,
+              status: section.lastUpdatedAt ? 'checking' as const : 'idle' as const,
+              message: section.lastUpdatedAt
+                ? 'Checking whether saved section is still current.'
+                : `No saved ${section.label.toLowerCase()} section yet.`,
+              error: undefined,
+            },
+      ),
     }))
 
     try {
+      const engineUpdate = runEngineUpdateWithUi(controller.signal, startedAt, engineAlreadyReady ? 'current' : 'complete')
       const result = await runCatalogBulkIngestion({
         mode: 'full',
         signal: controller.signal,
@@ -691,6 +938,8 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
       if (mountedRef.current) {
         setDownloadState((current) => applyResult(current, result))
       }
+
+      await engineUpdate
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null

@@ -704,6 +704,14 @@
   color: #7f7a3f;
 }
 
+.bl-catalog-status.is-progress-preparing,
+.bl-catalog-progress-state.is-preparing::before,
+.bl-catalog-meter.is-preparing span {
+  border-color: rgba(95, 127, 161, 0.22);
+  background: #6f8f72;
+  color: #5f7f62;
+}
+
 .bl-catalog-status.is-progress-complete,
 .bl-catalog-progress-state.is-complete::before,
 .bl-catalog-meter.is-complete span {
@@ -788,6 +796,7 @@
 .bl-catalog-meter.is-checking span,
 .bl-catalog-meter.is-fetching span,
 .bl-catalog-meter.is-downloading span,
+.bl-catalog-meter.is-preparing span,
 .bl-catalog-meter.is-validating span {
   background-image: linear-gradient(
     90deg,
