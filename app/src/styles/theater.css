@@ -187,7 +187,11 @@
 .replay-card:hover {
   border-color: var(--accent-tint);
   box-shadow: var(--shadow-soft);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.005);
+}
+
+.replay-card:active {
+  transform: translateY(0) scale(0.999);
 }
 
 .replay-card.is-active {

@@ -116,7 +116,11 @@
 .bl-report-card.is-active {
   border-color: var(--accent);
   box-shadow: var(--shadow-soft);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.005);
+}
+
+.bl-report-card:active {
+  transform: translateY(0) scale(0.999);
 }
 
 .bl-report-card-main {
