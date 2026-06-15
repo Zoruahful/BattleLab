@@ -60,6 +60,7 @@ const createLiveFetchResult = (
   overrides: Partial<CatalogLiveFetchPrototypeResult> = {},
 ): CatalogLiveFetchPrototypeResult => ({
   status: "complete",
+  coverageMode: "active-sample",
   fetchedAt: fixtureTimestamp,
   sourceVersion: `catalog-runtime-orchestrator-preview-${id}`,
   targetSections: [...targetSections],

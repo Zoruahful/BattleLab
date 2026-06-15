@@ -1,9 +1,11 @@
 import type { CatalogSourceFetchIssue } from "../types/catalogFetch";
 import {
+  catalogLiveFetchPlannedCoverageResourceIds,
   catalogLiveFetchPrototypeResourceIds,
   normalizeFetchedPokeApiItemResourceForPrototype,
   runCatalogLiveFetchPrototype,
   type CatalogLiveFetchPrototypeResult,
+  type CatalogLiveFetchPrototypeCoverageMode,
   type PokeApiItemResourceWithEffectEntries,
 } from "./catalogLiveFetchPrototype";
 import { approvedCatalogLiveFetchSampleManifest } from "./catalogSourceManifest";
@@ -17,6 +19,7 @@ export type CatalogLiveFetchPrototypeCoverageValidationCode =
   | "section-count-mismatch"
   | "required-resource-missing"
   | "duplicate-resource-id"
+  | "planned-resource-missing-active-baseline"
   | "item-fallback-missing";
 
 export interface CatalogLiveFetchPrototypeCoverageValidationIssue {
@@ -29,6 +32,7 @@ export interface CatalogLiveFetchPrototypeCoverageValidationIssue {
 export interface CatalogLiveFetchPrototypeCoverageValidationResult {
   isValid: boolean;
   issues: CatalogLiveFetchPrototypeCoverageValidationIssue[];
+  coverageMode: CatalogLiveFetchPrototypeCoverageMode;
   coverage: Record<CatalogLiveFetchPrototypeResourceSection, number>;
 }
 
@@ -163,6 +167,84 @@ export function validateCatalogLiveFetchPrototypeCoverage(): CatalogLiveFetchPro
   return {
     isValid: issues.length === 0,
     issues,
+    coverageMode: "active-sample",
+    coverage,
+  };
+}
+
+export function validateCatalogLiveFetchPrototypePlannedCoverage(): CatalogLiveFetchPrototypeCoverageValidationResult {
+  const issues: CatalogLiveFetchPrototypeCoverageValidationIssue[] = [];
+  const coverage = Object.fromEntries(
+    Object.entries(catalogLiveFetchPlannedCoverageResourceIds).map(([section, ids]) => [section, ids.length]),
+  ) as Record<CatalogLiveFetchPrototypeResourceSection, number>;
+
+  Object.entries(approvedCatalogLiveFetchSampleManifest.sections).forEach(([section, sectionManifest]) => {
+    const typedSection = section as CatalogLiveFetchPrototypeResourceSection;
+    const actualIds: readonly string[] = catalogLiveFetchPlannedCoverageResourceIds[typedSection];
+    const duplicateIds = actualIds.filter((id, index) => actualIds.indexOf(id) !== index);
+
+    if (actualIds.length !== sectionManifest.expansionPolicy.plannedResourceIds.length) {
+      issues.push(
+        createCoverageIssue(
+          "section-count-mismatch",
+          `plannedResourceIds.${section}`,
+          `Expected ${sectionManifest.expansionPolicy.plannedResourceIds.length} planned ${section} resources, but found ${actualIds.length}.`,
+        ),
+      );
+    }
+
+    duplicateIds.forEach((id) => {
+      issues.push(
+        createCoverageIssue(
+          "duplicate-resource-id",
+          `plannedResourceIds.${section}.${id}`,
+          `Duplicate planned ${section} resource id '${id}' is not allowed in the live-fetch prototype set.`,
+        ),
+      );
+    });
+
+    sectionManifest.expansionPolicy.plannedResourceIds.forEach((id) => {
+      if (!actualIds.includes(id)) {
+        issues.push(
+          createCoverageIssue(
+            "required-resource-missing",
+            `plannedResourceIds.${section}.${id}`,
+            `Required planned ${section} resource id '${id}' is missing from the planned live-fetch prototype set.`,
+          ),
+        );
+      }
+    });
+
+    sectionManifest.resourceIds.forEach((id) => {
+      if (!actualIds.includes(id)) {
+        issues.push(
+          createCoverageIssue(
+            "planned-resource-missing-active-baseline",
+            `plannedResourceIds.${section}.${id}`,
+            `Planned ${section} coverage must preserve active baseline resource id '${id}'.`,
+          ),
+        );
+      }
+    });
+  });
+
+  const normalizedFallbackItem = normalizeFetchedPokeApiItemResourceForPrototype(createFallbackOnlyItem());
+  const fallbackText = normalizedFallbackItem.flavor_text_entries.find((entry) => entry.language.name === "en")?.text;
+
+  if (fallbackText !== "PokeAPI live item description unavailable for BattleLab Fallback Test Item.") {
+    issues.push(
+      createCoverageIssue(
+        "item-fallback-missing",
+        "itemFallback.flavorText",
+        "PokeAPI item fallback text is not represented for English names without flavor or effect text.",
+      ),
+    );
+  }
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+    coverageMode: "planned-expansion",
     coverage,
   };
 }

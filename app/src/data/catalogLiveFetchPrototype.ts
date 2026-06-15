@@ -19,7 +19,10 @@ import {
   validatePokeApiSourceSnapshot,
   type PokeApiSourceValidationResult,
 } from "./pokeApiSourceValidation";
-import { approvedCatalogLiveFetchSampleResourceIds } from "./catalogSourceManifest";
+import {
+  approvedCatalogLiveFetchSampleResourceIds,
+  plannedCatalogCoverageExpansionResourceIds,
+} from "./catalogSourceManifest";
 
 const pokeApiBaseUrl = "https://pokeapi.co/api/v2";
 const pokeApiEndpointBySection: Record<CatalogLiveFetchPrototypeSection, string> = {
@@ -33,7 +36,11 @@ const pokeApiEndpointBySection: Record<CatalogLiveFetchPrototypeSection, string>
 
 export const catalogLiveFetchPrototypeResourceIds = approvedCatalogLiveFetchSampleResourceIds;
 
+export const catalogLiveFetchPlannedCoverageResourceIds = plannedCatalogCoverageExpansionResourceIds;
+
 export type CatalogLiveFetchPrototypeSection = keyof typeof catalogLiveFetchPrototypeResourceIds;
+
+export type CatalogLiveFetchPrototypeCoverageMode = "active-sample" | "planned-expansion";
 
 export type CatalogLiveFetchPrototypeStatus =
   | "idle"
@@ -55,6 +62,7 @@ export interface CatalogLiveFetchPrototypeProgress {
 
 export interface CatalogLiveFetchPrototypeResult {
   status: CatalogLiveFetchPrototypeStatus;
+  coverageMode: CatalogLiveFetchPrototypeCoverageMode;
   fetchedAt: string;
   sourceVersion: string;
   targetSections: BattleLabCatalogBundleSectionName[];
@@ -65,6 +73,10 @@ export interface CatalogLiveFetchPrototypeResult {
   generatedCatalogValidation: CatalogGeneratorPrototypeValidationResult | null;
   issues: CatalogSourceFetchIssue[];
   notes: string[];
+}
+
+export interface CatalogLiveFetchPrototypeOptions {
+  coverageMode?: CatalogLiveFetchPrototypeCoverageMode;
 }
 
 const targetSections: BattleLabCatalogBundleSectionName[] = [
@@ -175,13 +187,14 @@ async function fetchPokeApiResource<TResource>(section: CatalogLiveFetchPrototyp
 
 async function fetchSection<TResource>(
   section: CatalogLiveFetchPrototypeSection,
+  resourceIds: Record<CatalogLiveFetchPrototypeSection, readonly string[]>,
   completedRequests: number,
   totalRequests: number,
   progress: CatalogLiveFetchPrototypeProgress[],
 ): Promise<{ records: TResource[]; completedRequests: number }> {
   const records: TResource[] = [];
 
-  for (const id of catalogLiveFetchPrototypeResourceIds[section]) {
+  for (const id of resourceIds[section]) {
     progress.push(createProgress("fetching", completedRequests, totalRequests, `Fetching ${section}/${id}.`, section));
     records.push(await fetchPokeApiResource<TResource>(section, id));
     completedRequests += 1;
@@ -190,35 +203,44 @@ async function fetchSection<TResource>(
   return { records, completedRequests };
 }
 
-export async function runCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPrototypeResult> {
+const getResourceIdsForCoverageMode = (coverageMode: CatalogLiveFetchPrototypeCoverageMode) =>
+  coverageMode === "planned-expansion"
+    ? catalogLiveFetchPlannedCoverageResourceIds
+    : catalogLiveFetchPrototypeResourceIds;
+
+export async function runCatalogLiveFetchPrototype(
+  options: CatalogLiveFetchPrototypeOptions = {},
+): Promise<CatalogLiveFetchPrototypeResult> {
+  const coverageMode = options.coverageMode ?? "active-sample";
+  const resourceIds = getResourceIdsForCoverageMode(coverageMode);
   const fetchedAt = new Date().toISOString();
-  const totalRequests = Object.values(catalogLiveFetchPrototypeResourceIds).reduce(
+  const totalRequests = Object.values(resourceIds).reduce(
     (total, resourceIds) => total + resourceIds.length,
     0,
   );
   const progress: CatalogLiveFetchPrototypeProgress[] = [
-    createProgress("idle", 0, totalRequests, "Catalog live-fetch prototype prepared."),
+    createProgress("idle", 0, totalRequests, `Catalog live-fetch prototype prepared for ${coverageMode}.`),
   ];
   const issues: CatalogSourceFetchIssue[] = [];
   let completedRequests = 0;
 
   try {
-    const pokemon = await fetchSection<PokeApiPokemonResource>("pokemon", completedRequests, totalRequests, progress);
+    const pokemon = await fetchSection<PokeApiPokemonResource>("pokemon", resourceIds, completedRequests, totalRequests, progress);
     completedRequests = pokemon.completedRequests;
 
-    const moves = await fetchSection<PokeApiMoveResource>("moves", completedRequests, totalRequests, progress);
+    const moves = await fetchSection<PokeApiMoveResource>("moves", resourceIds, completedRequests, totalRequests, progress);
     completedRequests = moves.completedRequests;
 
-    const abilities = await fetchSection<PokeApiAbilityResource>("abilities", completedRequests, totalRequests, progress);
+    const abilities = await fetchSection<PokeApiAbilityResource>("abilities", resourceIds, completedRequests, totalRequests, progress);
     completedRequests = abilities.completedRequests;
 
-    const items = await fetchSection<PokeApiItemResourceWithEffectEntries>("items", completedRequests, totalRequests, progress);
+    const items = await fetchSection<PokeApiItemResourceWithEffectEntries>("items", resourceIds, completedRequests, totalRequests, progress);
     completedRequests = items.completedRequests;
 
-    const types = await fetchSection<PokeApiTypeResource>("types", completedRequests, totalRequests, progress);
+    const types = await fetchSection<PokeApiTypeResource>("types", resourceIds, completedRequests, totalRequests, progress);
     completedRequests = types.completedRequests;
 
-    const natures = await fetchSection<PokeApiNatureResource>("natures", completedRequests, totalRequests, progress);
+    const natures = await fetchSection<PokeApiNatureResource>("natures", resourceIds, completedRequests, totalRequests, progress);
     completedRequests = natures.completedRequests;
 
     const snapshot: PokeApiCatalogSourceSnapshot = {
@@ -271,6 +293,7 @@ export async function runCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPr
 
     return {
       status: isValid ? "complete" : "failed",
+      coverageMode,
       fetchedAt,
       sourceVersion: snapshot.sourceVersion,
       targetSections,
@@ -299,6 +322,7 @@ export async function runCatalogLiveFetchPrototype(): Promise<CatalogLiveFetchPr
 
     return {
       status: "failed",
+      coverageMode,
       fetchedAt,
       sourceVersion: `pokeapi-live-fetch-prototype-${fetchedAt}`,
       targetSections,

@@ -60,6 +60,7 @@ const createResult = (
   overrides: Partial<CatalogLiveFetchPrototypeResult> = {},
 ): CatalogLiveFetchPrototypeResult => ({
   status: "complete",
+  coverageMode: "active-sample",
   fetchedAt: fixtureTimestamp,
   sourceVersion: `pokeapi-live-fetch-read-model-adapter-${id}`,
   targetSections: [...targetSections],

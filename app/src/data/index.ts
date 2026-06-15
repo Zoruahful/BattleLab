@@ -170,8 +170,11 @@ export {
 } from "./catalogCoverageExpansionPlanValidation";
 
 export {
+  catalogLiveFetchPlannedCoverageResourceIds,
   catalogLiveFetchPrototypeResourceIds,
   runCatalogLiveFetchPrototype,
+  type CatalogLiveFetchPrototypeCoverageMode,
+  type CatalogLiveFetchPrototypeOptions,
   type CatalogLiveFetchPrototypeProgress,
   type CatalogLiveFetchPrototypeResult,
   type CatalogLiveFetchPrototypeSection,
@@ -181,6 +184,7 @@ export {
 export {
   validateCatalogLiveFetchPrototype,
   validateCatalogLiveFetchPrototypeCoverage,
+  validateCatalogLiveFetchPrototypePlannedCoverage,
   type CatalogLiveFetchPrototypeCoverageValidationCode,
   type CatalogLiveFetchPrototypeCoverageValidationIssue,
   type CatalogLiveFetchPrototypeCoverageValidationResult,

@@ -2,10 +2,14 @@ import { catalogLiveFetchPrototypeResourceIds } from "./catalogLiveFetchPrototyp
 import {
   approvedCatalogLiveFetchSampleManifest,
   approvedCatalogLiveFetchSampleResourceIds,
+  plannedCatalogCoverageExpansionResourceIds,
   type CatalogSourceManifestSection,
 } from "./catalogSourceManifest";
 import { approvedCatalogLiveFetchSampleManifestValidation } from "./catalogSourceManifestValidation";
-import { validateCatalogLiveFetchPrototypeCoverage } from "./catalogLiveFetchPrototypeValidation";
+import {
+  validateCatalogLiveFetchPrototypeCoverage,
+  validateCatalogLiveFetchPrototypePlannedCoverage,
+} from "./catalogLiveFetchPrototypeValidation";
 
 export type CatalogSourceManifestBridgeValidationSeverity = "error" | "warning";
 
@@ -14,6 +18,7 @@ export type CatalogSourceManifestBridgeValidationCode =
   | "coverage-count-mismatch"
   | "coverage-validation-failed"
   | "manifest-validation-failed"
+  | "planned-coverage-validation-failed"
   | "resource-id-mismatch"
   | "source-role-mismatch"
   | "sprite-policy-mismatch";
@@ -30,6 +35,7 @@ export interface CatalogSourceManifestBridgeValidationResult {
   issues: CatalogSourceManifestBridgeValidationIssue[];
   manifestIssueCount: number;
   coverageIssueCount: number;
+  plannedCoverageIssueCount: number;
   sectionCount: number;
 }
 
@@ -50,6 +56,7 @@ const resourceIdsMatch = (left: readonly string[], right: readonly string[]) =>
 export function validateCatalogSourceManifestLiveFetchBridge(): CatalogSourceManifestBridgeValidationResult {
   const issues: CatalogSourceManifestBridgeValidationIssue[] = [];
   const coverageValidation = validateCatalogLiveFetchPrototypeCoverage();
+  const plannedCoverageValidation = validateCatalogLiveFetchPrototypePlannedCoverage();
 
   if (!approvedCatalogLiveFetchSampleManifestValidation.isValid) {
     issues.push(
@@ -67,6 +74,16 @@ export function validateCatalogSourceManifestLiveFetchBridge(): CatalogSourceMan
         "coverage-validation-failed",
         "validateCatalogLiveFetchPrototypeCoverage",
         "Live-fetch prototype coverage validation must pass before checking manifest bridge alignment.",
+      ),
+    );
+  }
+
+  if (!plannedCoverageValidation.isValid) {
+    issues.push(
+      createBridgeIssue(
+        "planned-coverage-validation-failed",
+        "validateCatalogLiveFetchPrototypePlannedCoverage",
+        "Planned live-fetch prototype coverage validation must pass before checking manifest bridge alignment.",
       ),
     );
   }
@@ -107,7 +124,9 @@ export function validateCatalogSourceManifestLiveFetchBridge(): CatalogSourceMan
   Object.entries(approvedCatalogLiveFetchSampleManifest.sections).forEach(([section, sectionManifest]) => {
     const typedSection = section as CatalogSourceManifestSection;
     const manifestResourceIds = sectionManifest.resourceIds;
+    const plannedManifestResourceIds = sectionManifest.expansionPolicy.plannedResourceIds;
     const approvedResourceIds = approvedCatalogLiveFetchSampleResourceIds[typedSection];
+    const plannedApprovedResourceIds = plannedCatalogCoverageExpansionResourceIds[typedSection];
     const prototypeResourceIds = catalogLiveFetchPrototypeResourceIds[typedSection];
 
     if (!resourceIdsMatch(prototypeResourceIds, approvedResourceIds)) {
@@ -139,6 +158,26 @@ export function validateCatalogSourceManifestLiveFetchBridge(): CatalogSourceMan
         ),
       );
     }
+
+    if (!resourceIdsMatch(plannedApprovedResourceIds, plannedManifestResourceIds)) {
+      issues.push(
+        createBridgeIssue(
+          "resource-id-mismatch",
+          `plannedCatalogCoverageExpansionResourceIds.${section}`,
+          `Planned live-fetch prototype ${section} IDs must match manifest expansion policy resource IDs.`,
+        ),
+      );
+    }
+
+    if (plannedCoverageValidation.coverage[typedSection] !== plannedManifestResourceIds.length) {
+      issues.push(
+        createBridgeIssue(
+          "coverage-count-mismatch",
+          `plannedCoverage.${section}`,
+          `Planned coverage count for ${section} must match manifest expansion policy plannedResourceIds length.`,
+        ),
+      );
+    }
   });
 
   return {
@@ -146,6 +185,7 @@ export function validateCatalogSourceManifestLiveFetchBridge(): CatalogSourceMan
     issues,
     manifestIssueCount: approvedCatalogLiveFetchSampleManifestValidation.issues.length,
     coverageIssueCount: coverageValidation.issues.length,
+    plannedCoverageIssueCount: plannedCoverageValidation.issues.length,
     sectionCount: Object.keys(approvedCatalogLiveFetchSampleManifest.sections).length,
   };
 }
