@@ -852,7 +852,7 @@ export function PokemonEditorPanel({
                     options={pokemonOptions}
                     loading={pickerLoading}
                     errorText={pickerErrorText}
-                    maxVisibleOptions={40}
+                    maxVisibleOptions={0}
                     onChange={handleSelectPokemon}
                   />
                 </label>
@@ -1003,7 +1003,7 @@ export function PokemonEditorPanel({
                   placeholder="Choose a Pokemon"
                   loading={pickerLoading}
                   errorText={pickerErrorText}
-                  maxVisibleOptions={40}
+                  maxVisibleOptions={0}
                   onChange={handleSelectPokemon}
                 />
               </label>

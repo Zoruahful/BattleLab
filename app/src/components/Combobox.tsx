@@ -51,7 +51,8 @@ export function Combobox({
   }, [query, options])
 
   const visibleOptions = useMemo(() => {
-    const limited = filtered.slice(0, maxVisibleOptions)
+    const unlimited = maxVisibleOptions <= 0
+    const limited = unlimited ? filtered : filtered.slice(0, maxVisibleOptions)
     const selectedInVisible = selected ? limited.some((option) => option.value === selected.value) : true
 
     if (!selected || selectedInVisible) return limited
@@ -62,7 +63,7 @@ export function Combobox({
   const enabledVisibleOptions = visibleOptions.filter((option) => !option.disabled)
   const activeIndex = enabledVisibleOptions.length > 0 ? Math.min(active, enabledVisibleOptions.length - 1) : 0
   const visibleActiveOption = enabledVisibleOptions[activeIndex]
-  const limited = filtered.length > visibleOptions.length
+  const limited = maxVisibleOptions > 0 && filtered.length > visibleOptions.length
   const footerText = limited
     ? `${resultLimitLabel} ${Math.min(filtered.length, visibleOptions.length)} of ${filtered.length} matches`
     : `${filtered.length} ${filtered.length === 1 ? 'match' : 'matches'}`
