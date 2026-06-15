@@ -1,8 +1,10 @@
 import {
   approvedCatalogLiveFetchSampleManifest,
   type CatalogSourceCoverageTier,
+  type CatalogSourceExpansionApprovalStatus,
   type CatalogSourceManifest,
   type CatalogSourceManifestSection,
+  type CatalogSourceResourceSetMode,
 } from "./catalogSourceManifest";
 
 export type CatalogSourceManifestValidationSeverity = "error" | "warning";
@@ -12,9 +14,15 @@ export type CatalogSourceManifestValidationCode =
   | "coverage-tier-missing"
   | "coverage-tier-unexpected"
   | "duplicate-resource-id"
+  | "expansion-approval-unexpected"
+  | "expansion-policy-missing"
+  | "expansion-resource-missing"
+  | "expansion-resource-set-mode-unexpected"
+  | "expansion-target-unexpected"
   | "expected-count-mismatch"
   | "manifest-note-missing"
   | "required-section-missing"
+  | "resource-set-mode-unexpected"
   | "section-name-mismatch"
   | "source-role-mismatch"
   | "sprite-policy-mismatch";
@@ -50,6 +58,26 @@ const expectedCoverageTierBySection = {
   types: "complete-type-picker",
   natures: "current-team-builder-editor",
 } satisfies Record<CatalogSourceManifestSection, CatalogSourceCoverageTier>;
+
+const expectedExpansionTargetBySection = {
+  pokemon: "broad-catalog-foundation",
+  moves: "broad-catalog-foundation",
+  abilities: "broad-catalog-foundation",
+  items: "broad-catalog-foundation",
+  types: "complete-type-picker",
+  natures: "complete-nature-picker",
+} satisfies Record<CatalogSourceManifestSection, CatalogSourceCoverageTier>;
+
+const expectedExpansionModeBySection = {
+  pokemon: "curated-resource-ids",
+  moves: "curated-resource-ids",
+  abilities: "curated-resource-ids",
+  items: "curated-resource-ids",
+  types: "complete-static-list",
+  natures: "complete-static-list",
+} satisfies Record<CatalogSourceManifestSection, CatalogSourceResourceSetMode>;
+
+const expectedExpansionApprovalStatus: CatalogSourceExpansionApprovalStatus = "planned-lead-review";
 
 const requiredManifestNoteFragments = [
   "UI wiring",
@@ -172,6 +200,17 @@ export function validateCatalogSourceManifest(
       );
     }
 
+    if (sectionManifest.resourceSetMode !== "curated-resource-ids") {
+      issues.push(
+        createManifestIssue(
+          "resource-set-mode-unexpected",
+          "error",
+          `sections.${section}.resourceSetMode`,
+          `Catalog source manifest active ${section} resource set must remain curated resource IDs.`,
+        ),
+      );
+    }
+
     if (!sectionManifest.coverageTier) {
       issues.push(
         createManifestIssue(
@@ -201,6 +240,101 @@ export function validateCatalogSourceManifest(
           `Catalog source manifest ${section} expectedCount must match resourceIds length.`,
         ),
       );
+    }
+
+    if (!sectionManifest.expansionPolicy) {
+      issues.push(
+        createManifestIssue(
+          "expansion-policy-missing",
+          "error",
+          `sections.${section}.expansionPolicy`,
+          `Catalog source manifest ${section} section must declare a planned expansion policy.`,
+        ),
+      );
+    } else {
+      if (sectionManifest.expansionPolicy.targetCoverageTier !== expectedExpansionTargetBySection[section]) {
+        issues.push(
+          createManifestIssue(
+            "expansion-target-unexpected",
+            "error",
+            `sections.${section}.expansionPolicy.targetCoverageTier`,
+            `Catalog source manifest ${section} expansion target must be '${expectedExpansionTargetBySection[section]}'.`,
+          ),
+        );
+      }
+
+      if (sectionManifest.expansionPolicy.resourceSetMode !== expectedExpansionModeBySection[section]) {
+        issues.push(
+          createManifestIssue(
+            "expansion-resource-set-mode-unexpected",
+            "error",
+            `sections.${section}.expansionPolicy.resourceSetMode`,
+            `Catalog source manifest ${section} expansion mode must be '${expectedExpansionModeBySection[section]}'.`,
+          ),
+        );
+      }
+
+      if (sectionManifest.expansionPolicy.approvalStatus !== expectedExpansionApprovalStatus) {
+        issues.push(
+          createManifestIssue(
+            "expansion-approval-unexpected",
+            "error",
+            `sections.${section}.expansionPolicy.approvalStatus`,
+            "Catalog source manifest expansion policy must remain planned for Lead review.",
+          ),
+        );
+      }
+
+      if (sectionManifest.expansionPolicy.plannedResourceIds.length < sectionManifest.resourceIds.length) {
+        issues.push(
+          createManifestIssue(
+            "expansion-resource-missing",
+            "error",
+            `sections.${section}.expansionPolicy.plannedResourceIds`,
+            `Catalog source manifest ${section} planned expansion must not be smaller than the active sample set.`,
+          ),
+        );
+      }
+
+      if (
+        sectionManifest.expansionPolicy.expectedMinimumCount !== undefined &&
+        sectionManifest.expansionPolicy.plannedResourceIds.length < sectionManifest.expansionPolicy.expectedMinimumCount
+      ) {
+        issues.push(
+          createManifestIssue(
+            "expansion-resource-missing",
+            "error",
+            `sections.${section}.expansionPolicy.expectedMinimumCount`,
+            `Catalog source manifest ${section} planned expansion must meet expectedMinimumCount.`,
+          ),
+        );
+      }
+
+      sectionManifest.resourceIds.forEach((id) => {
+        if (!sectionManifest.expansionPolicy.plannedResourceIds.includes(id)) {
+          issues.push(
+            createManifestIssue(
+              "expansion-resource-missing",
+              "error",
+              `sections.${section}.expansionPolicy.plannedResourceIds.${id}`,
+              `Catalog source manifest ${section} planned expansion must include active sample id '${id}'.`,
+            ),
+          );
+        }
+      });
+
+      sectionManifest.expansionPolicy.plannedResourceIds
+        .filter((id, index) => sectionManifest.expansionPolicy.plannedResourceIds.indexOf(id) !== index)
+        .forEach((id) => {
+          issues.push(
+            createManifestIssue(
+              "duplicate-resource-id",
+              "error",
+              `sections.${section}.expansionPolicy.plannedResourceIds.${id}`,
+              `Catalog source manifest ${section} expansion policy contains duplicate resource id '${id}'.`,
+            ),
+          );
+        });
     }
 
     sectionManifest.resourceIds

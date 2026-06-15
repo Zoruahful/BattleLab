@@ -120,10 +120,14 @@ export {
 export {
   approvedCatalogLiveFetchSampleManifest,
   approvedCatalogLiveFetchSampleResourceIds,
+  plannedCatalogCoverageExpansionResourceIds,
+  type CatalogSourceExpansionApprovalStatus,
   type CatalogSourceCoverageTier,
   type CatalogSourceManifest,
+  type CatalogSourceManifestExpansionPolicy,
   type CatalogSourceManifestSection,
   type CatalogSourceManifestSectionEntry,
+  type CatalogSourceResourceSetMode,
 } from "./catalogSourceManifest";
 
 export {
