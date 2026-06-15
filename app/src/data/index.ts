@@ -75,6 +75,22 @@ export {
 } from "./catalogGeneratedBundleFixture";
 
 export {
+  createPlannedExpansionGeneratedCatalogFixture,
+  type CatalogPlannedExpansionGeneratedCatalogCounts,
+  type CatalogPlannedExpansionGeneratedCatalogFixture,
+  type CatalogPlannedExpansionGeneratedCatalogSection,
+  type CatalogPlannedExpansionPickerReadinessSection,
+} from "./catalogPlannedExpansionGeneratedCatalog";
+
+export {
+  validatePlannedExpansionGeneratedCatalogFixture,
+  type CatalogPlannedExpansionGeneratedCatalogValidationCode,
+  type CatalogPlannedExpansionGeneratedCatalogValidationIssue,
+  type CatalogPlannedExpansionGeneratedCatalogValidationResult,
+  type CatalogPlannedExpansionGeneratedCatalogValidationSeverity,
+} from "./catalogPlannedExpansionGeneratedCatalogValidation";
+
+export {
   compareCatalogGeneratedSnapshots,
   sampleCatalogGeneratedSnapshotComparison,
   type CatalogGeneratedSnapshotAssetReviewStatus,
