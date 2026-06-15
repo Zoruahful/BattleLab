@@ -869,6 +869,25 @@ export {
 } from "./showdownEngineArchiveDownloadReadModelValidation";
 
 export {
+  createFailedShowdownEngineArchiveMetadataFetchProof,
+  fetchShowdownEngineArchiveMetadataProof,
+  type ShowdownEngineArchiveMetadataFetchHeaders,
+  type ShowdownEngineArchiveMetadataFetchMode,
+  type ShowdownEngineArchiveMetadataFetchProofOptions,
+  type ShowdownEngineArchiveMetadataFetchRequest,
+  type ShowdownEngineArchiveMetadataFetchResult,
+  type ShowdownEngineArchiveMetadataFetchStatus,
+} from "./showdownEngineArchiveMetadataFetchProof";
+
+export {
+  validateShowdownEngineArchiveMetadataFetchProof,
+  type ShowdownEngineArchiveMetadataFetchProofValidationCode,
+  type ShowdownEngineArchiveMetadataFetchProofValidationIssue,
+  type ShowdownEngineArchiveMetadataFetchProofValidationResult,
+  type ShowdownEngineArchiveMetadataFetchProofValidationSeverity,
+} from "./showdownEngineArchiveMetadataFetchProofValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
