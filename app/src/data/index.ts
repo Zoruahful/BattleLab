@@ -37,6 +37,23 @@ export {
 } from "./catalogBundleLoaderFixtureValidation";
 
 export {
+  createCatalogBundleLoaderStatusBridge,
+  sampleCatalogBundleLoaderStatusBridge,
+  type CatalogBundleLoaderStatusBridgeProps,
+  type CatalogBundleLoaderStatusBridgeSafety,
+  type CatalogBundleLoaderStatusBridgeState,
+} from "./catalogBundleLoaderStatusBridge";
+
+export {
+  sampleCatalogBundleLoaderStatusBridgeValidation,
+  validateCatalogBundleLoaderStatusBridge,
+  type CatalogBundleLoaderStatusBridgeValidationCode,
+  type CatalogBundleLoaderStatusBridgeValidationIssue,
+  type CatalogBundleLoaderStatusBridgeValidationResult,
+  type CatalogBundleLoaderStatusBridgeValidationSeverity,
+} from "./catalogBundleLoaderStatusBridgeValidation";
+
+export {
   battleLabCatalogBundleCanonicalization,
   canonicalizeBattleLabCatalogBundleSection,
   createBattleLabCatalogBundleHash,
