@@ -32,6 +32,7 @@ import {
   spSpreadToEv,
   spToEv,
   type MoveCategory,
+  type NatureMods,
 } from '../data/pokemonEditorData'
 import { Combobox, type ComboOption } from '../components/Combobox'
 import { GymStatEditor, type EditorMode } from '../components/GymStatEditor'
@@ -250,8 +251,27 @@ function ItemIconSlot({ option }: { option: CatalogPickerOption }) {
   )
 }
 
-function NatureModChip({ showdownId }: { showdownId?: string }) {
-  const mods = getNatureMods(showdownId ?? '')
+const resolveNatureMods = (
+  option?: Pick<CatalogPickerOption, 'increasedStat' | 'decreasedStat' | 'showdownId'> | null,
+  fallbackShowdownId = '',
+): NatureMods => {
+  const inc = option?.increasedStat
+  const dec = option?.decreasedStat
+  if (inc && dec) {
+    return inc === dec ? { inc: null, dec: null } : { inc, dec }
+  }
+
+  return getNatureMods(option?.showdownId ?? fallbackShowdownId)
+}
+
+function NatureModChip({
+  option,
+  showdownId,
+}: {
+  option?: Pick<CatalogPickerOption, 'increasedStat' | 'decreasedStat' | 'showdownId'>
+  showdownId?: string
+}) {
+  const mods = resolveNatureMods(option, showdownId)
   if (!mods.inc || !mods.dec) {
     return <span className="bl-nature-chip is-neutral">No stat change</span>
   }
@@ -290,7 +310,7 @@ function natureTooltip(option: CatalogPickerOption): ReactNode {
     <TooltipCard
       title={option.displayName}
       subtitle="Nature"
-      rows={[{ label: 'Stat change', value: <NatureModChip showdownId={option.showdownId} /> }]}
+      rows={[{ label: 'Stat change', value: <NatureModChip option={option} /> }]}
       description={option.description}
     />
   )
@@ -675,8 +695,8 @@ export function PokemonEditorPanel({
             group: getCatalogOptionGroup(option, 'Nature'),
             disabled: isUnavailableOption(option),
             disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
-            meta: <NatureModChip showdownId={option.showdownId} />,
-            selectedMeta: <NatureModChip showdownId={option.showdownId} />,
+            meta: <NatureModChip option={option} />,
+            selectedMeta: <NatureModChip option={option} />,
             tooltip: natureTooltip(option),
           })),
         ],
@@ -778,7 +798,13 @@ export function PokemonEditorPanel({
   }, [activePokemonMoveIdsByShowdownId, movePickerOptions, speciesShowdownId])
 
   const base = getBaseStats(speciesShowdownId)
-  const natureMods = getNatureMods(draftPokemon?.natureRef?.showdownId ?? draftPokemon?.nature.toLowerCase() ?? '')
+  const selectedNatureOption = selectedNatureOptionKey
+    ? naturePickerOptions.find((candidate) => candidate.catalogKey === selectedNatureOptionKey)
+    : undefined
+  const natureMods = resolveNatureMods(
+    selectedNatureOption,
+    draftPokemon?.natureRef?.showdownId ?? draftPokemon?.nature.toLowerCase() ?? '',
+  )
   const computed = draftPokemon ? computeStats(base, draftPokemon.evs, draftPokemon.ivs, natureMods) : null
   const spSpread = draftPokemon ? evSpreadToSp(draftPokemon.evs) : null
   const evTotal = draftPokemon ? spreadTotal(draftPokemon.evs) : 0

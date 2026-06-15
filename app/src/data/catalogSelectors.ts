@@ -271,6 +271,8 @@ export function toNaturePickerOption(nature: CatalogNature): CatalogPickerOption
     aliases: nature.aliases,
     description: nature.shortDescription,
     tags: ['nature'],
+    increasedStat: nature.increasedStat,
+    decreasedStat: nature.decreasedStat,
     availability: statusToAvailability(nature.status),
     validationStatus: 'unknown',
   }

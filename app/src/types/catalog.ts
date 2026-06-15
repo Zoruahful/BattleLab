@@ -242,6 +242,8 @@ export interface CatalogPickerOption {
   asset?: CatalogAssetReference;
   primaryType?: PokemonType;
   secondaryType?: PokemonType;
+  increasedStat?: keyof StatSpread;
+  decreasedStat?: keyof StatSpread;
   availability: CatalogPickerAvailability;
   validationStatus?: CatalogValidationStatus;
   disabledReason?: string;
