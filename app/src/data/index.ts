@@ -991,6 +991,26 @@ export {
 } from "./showdownEngineArchiveSourcePolicyValidation";
 
 export {
+  createShowdownEngineImmutableSourceRevision,
+  type ShowdownEngineImmutableSourceRevision,
+  type ShowdownEngineImmutableSourceRevisionApprovalStatus,
+  type ShowdownEngineImmutableSourceRevisionCandidate,
+  type ShowdownEngineImmutableSourceRevisionChecksum,
+  type ShowdownEngineImmutableSourceRevisionInput,
+  type ShowdownEngineImmutableSourceRevisionPromotionGate,
+  type ShowdownEngineImmutableSourceRevisionSafety,
+  type ShowdownEngineImmutableSourceRevisionStatus,
+} from "./showdownEngineImmutableSourceRevision";
+
+export {
+  validateShowdownEngineImmutableSourceRevision,
+  type ShowdownEngineImmutableSourceRevisionValidationCode,
+  type ShowdownEngineImmutableSourceRevisionValidationIssue,
+  type ShowdownEngineImmutableSourceRevisionValidationResult,
+  type ShowdownEngineImmutableSourceRevisionValidationSeverity,
+} from "./showdownEngineImmutableSourceRevisionValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
