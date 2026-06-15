@@ -969,6 +969,28 @@ export {
 } from "./showdownEngineArchiveBodyDownloadReadModelValidation";
 
 export {
+  createShowdownEngineArchiveSourcePolicy,
+  fetchShowdownEngineArchiveSourcePolicy,
+  type ShowdownEngineArchiveApprovedChecksumStatus,
+  type ShowdownEngineArchiveRevisionPinStatus,
+  type ShowdownEngineArchiveSourcePolicy,
+  type ShowdownEngineArchiveSourcePolicyChecksum,
+  type ShowdownEngineArchiveSourcePolicyInput,
+  type ShowdownEngineArchiveSourcePolicyPromotion,
+  type ShowdownEngineArchiveSourcePolicySafety,
+  type ShowdownEngineArchiveSourcePolicySource,
+  type ShowdownEngineArchiveSourcePolicyStatus,
+} from "./showdownEngineArchiveSourcePolicy";
+
+export {
+  validateShowdownEngineArchiveSourcePolicy,
+  type ShowdownEngineArchiveSourcePolicyValidationCode,
+  type ShowdownEngineArchiveSourcePolicyValidationIssue,
+  type ShowdownEngineArchiveSourcePolicyValidationResult,
+  type ShowdownEngineArchiveSourcePolicyValidationSeverity,
+} from "./showdownEngineArchiveSourcePolicyValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
