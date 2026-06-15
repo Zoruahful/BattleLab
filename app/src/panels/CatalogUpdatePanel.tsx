@@ -324,7 +324,7 @@ function applyResultToSections(
       downloaded: summary.generatedCount,
       total: summary.selectedCount,
       progressPercent: 100,
-      lastUpdatedAt: summary.status === 'skipped-current' ? section.lastUpdatedAt : finishedAt,
+      lastUpdatedAt: summary.status === 'skipped-current' ? summary.lastUpdatedAt ?? section.lastUpdatedAt : finishedAt,
       message: summary.status === 'skipped-current'
         ? `${formatCount(summary.generatedCount)} catalog records already current.`
         : hasRecordWarning

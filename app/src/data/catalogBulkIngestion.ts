@@ -79,6 +79,7 @@ export interface CatalogBulkIngestionSectionSummary {
   selectedCount: number;
   generatedCount: number;
   listSignature?: string;
+  lastUpdatedAt?: string;
 }
 
 export interface CatalogBulkIngestionResult {
@@ -464,6 +465,7 @@ const createSectionSummaries = (
   listCounts: Record<CatalogBulkIngestionSection, number>,
   listSignatures: Record<CatalogBulkIngestionSection, string>,
   skippedSections: Set<CatalogBulkIngestionSection>,
+  cachedLastUpdatedAtBySection: Partial<Record<CatalogBulkIngestionSection, string>>,
   snapshot: PokeApiCatalogSourceSnapshot,
   catalog: BattleLabCatalog,
 ): CatalogBulkIngestionSectionSummary[] => [
@@ -474,6 +476,7 @@ const createSectionSummaries = (
     selectedCount: snapshot.pokemon.length,
     generatedCount: catalog.pokemon.length,
     listSignature: listSignatures.pokemon,
+    lastUpdatedAt: cachedLastUpdatedAtBySection.pokemon,
   },
   {
     section: "moves",
@@ -482,6 +485,7 @@ const createSectionSummaries = (
     selectedCount: snapshot.moves.length,
     generatedCount: catalog.moves.length,
     listSignature: listSignatures.moves,
+    lastUpdatedAt: cachedLastUpdatedAtBySection.moves,
   },
   {
     section: "abilities",
@@ -490,6 +494,7 @@ const createSectionSummaries = (
     selectedCount: snapshot.abilities.length,
     generatedCount: catalog.abilities.length,
     listSignature: listSignatures.abilities,
+    lastUpdatedAt: cachedLastUpdatedAtBySection.abilities,
   },
   {
     section: "items",
@@ -498,6 +503,7 @@ const createSectionSummaries = (
     selectedCount: snapshot.items.length,
     generatedCount: catalog.items.length,
     listSignature: listSignatures.items,
+    lastUpdatedAt: cachedLastUpdatedAtBySection.items,
   },
   {
     section: "types",
@@ -506,6 +512,7 @@ const createSectionSummaries = (
     selectedCount: snapshot.types.length,
     generatedCount: catalog.types.length,
     listSignature: listSignatures.types,
+    lastUpdatedAt: cachedLastUpdatedAtBySection.types,
   },
   {
     section: "natures",
@@ -514,6 +521,7 @@ const createSectionSummaries = (
     selectedCount: snapshot.natures.length,
     generatedCount: catalog.natures.length,
     listSignature: listSignatures.natures,
+    lastUpdatedAt: cachedLastUpdatedAtBySection.natures,
   },
   {
     section: "assets",
@@ -731,6 +739,11 @@ export async function runCatalogBulkIngestion(
     const skippedSections = new Set(
       preparedSections.filter((section) => section.skipped).map((section) => section.section),
     );
+    const cachedLastUpdatedAtBySection = Object.fromEntries(
+      preparedSections
+        .filter((section) => section.skipped && section.metadata?.lastUpdatedAt)
+        .map((section) => [section.section, section.metadata!.lastUpdatedAt]),
+    ) as Partial<Record<CatalogBulkIngestionSection, string>>;
     const sectionSummaries = catalog
       ? createSectionSummaries(
           {
@@ -750,6 +763,7 @@ export async function runCatalogBulkIngestion(
             natures: lists.natures.listSignature,
           },
           skippedSections,
+          cachedLastUpdatedAtBySection,
           snapshot,
           catalog,
         )
