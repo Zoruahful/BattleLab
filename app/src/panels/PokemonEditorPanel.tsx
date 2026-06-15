@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import {
+  createCachedCatalogPickerProjection,
   createPlannedExpansionLocalPickerProjection,
   getAbilityPickerOptions,
   getCatalogPickerSearchText,
@@ -9,6 +10,7 @@ import {
   getPokemonPickerOptions,
   getTypePickerOptions,
   resolveCatalogAssetReference,
+  type CatalogCachedPickerProjectionOptionSets,
   type CatalogPlannedExpansionPickerProjectionOptionSets,
 } from '../data'
 import {
@@ -56,9 +58,14 @@ export type PokemonEditorPanelProps = {
 }
 
 type PickerProjectionLoadState =
-  | { status: 'loading'; optionSets: null; error: null }
-  | { status: 'ready'; optionSets: CatalogPlannedExpansionPickerProjectionOptionSets; error: null }
-  | { status: 'error'; optionSets: null; error: string }
+  | { status: 'loading'; optionSets: null; pokemonMoveIdsByShowdownId: null; error: null }
+  | {
+      status: 'ready'
+      optionSets: CatalogPlannedExpansionPickerProjectionOptionSets | CatalogCachedPickerProjectionOptionSets
+      pokemonMoveIdsByShowdownId: Record<string, string[]> | null
+      error: null
+    }
+  | { status: 'error'; optionSets: null; pokemonMoveIdsByShowdownId: null; error: string }
 
 const statKeys: Array<keyof StatSpread> = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
 const MAXED_IVS: StatSpread = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 }
@@ -147,6 +154,7 @@ const withSavedCatalogValue = (
 const moveIdByName: Record<string, string> = Object.fromEntries(
   editorMoves.map((move) => [move.name, move.showdownId]),
 )
+const toShowdownId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 
 const findMoveRef = (name: string, moveOptions: CatalogPickerOption[] = []): BuildCatalogReference | null => {
   const id = moveIdByName[name]
@@ -330,13 +338,37 @@ const createPokemonBuildFromOption = (
   }
 }
 
+function catalogMoveTooltip(option: CatalogPickerOption): ReactNode {
+  return (
+    <TooltipCard
+      icon={option.primaryType ? <TypeGem type={option.primaryType} /> : undefined}
+      title={option.displayName}
+      subtitle={[option.primaryType, option.tags.find((tag) => tag === 'physical' || tag === 'special' || tag === 'status')]
+        .filter(Boolean)
+        .join(' · ')}
+      description={option.description}
+    />
+  )
+}
+
 const findPokemonOptionKey = (pokemon: PokemonBuild | null, options: CatalogPickerOption[]) =>
   pokemon
     ? options.find(
         (option) =>
-          option.displayName === pokemon.species || option.showdownId === pokemon.species.toLowerCase(),
+          option.catalogKey === pokemon.speciesRef?.catalogKey ||
+          option.showdownId === pokemon.speciesRef?.showdownId ||
+          option.displayName === pokemon.species ||
+          option.showdownId === toShowdownId(pokemon.species),
       )?.catalogKey ?? ''
     : ''
+
+const getCatalogMoveCategory = (option: CatalogPickerOption): MoveCategory | null => {
+  const category = option.tags.find((tag): tag is MoveCategory =>
+    tag === 'physical' || tag === 'special' || tag === 'status',
+  )
+
+  return category ?? null
+}
 
 export function PokemonEditorPanel({
   open,
@@ -363,21 +395,44 @@ export function PokemonEditorPanel({
   const [pickerProjectionLoad, setPickerProjectionLoad] = useState<PickerProjectionLoadState>({
     status: 'loading',
     optionSets: null,
+    pokemonMoveIdsByShowdownId: null,
     error: null,
   })
 
   useEffect(() => {
     let cancelled = false
 
-    createPlannedExpansionLocalPickerProjection()
+    const loadPickerProjection = async () => {
+      const cachedProjection = await createCachedCatalogPickerProjection()
+      if (cachedProjection) {
+        return {
+          optionSets: cachedProjection.optionSets,
+          pokemonMoveIdsByShowdownId: cachedProjection.pokemonMoveIdsByShowdownId,
+        }
+      }
+
+      const plannedProjection = await createPlannedExpansionLocalPickerProjection()
+
+      return {
+        optionSets: plannedProjection.optionSets,
+        pokemonMoveIdsByShowdownId: null,
+      }
+    }
+
+    loadPickerProjection()
       .then((projection) => {
         if (!cancelled) {
-          setPickerProjectionLoad({ status: 'ready', optionSets: projection.optionSets, error: null })
+          setPickerProjectionLoad({ status: 'ready', ...projection, error: null })
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setPickerProjectionLoad({ status: 'error', optionSets: null, error: PICKER_PROJECTION_ERROR })
+          setPickerProjectionLoad({
+            status: 'error',
+            optionSets: null,
+            pokemonMoveIdsByShowdownId: null,
+            error: PICKER_PROJECTION_ERROR,
+          })
         }
       })
 
@@ -399,6 +454,8 @@ export function PokemonEditorPanel({
   )
   const activePickerOptions =
     pickerProjectionLoad.status === 'ready' ? pickerProjectionLoad.optionSets : bundledPickerOptions
+  const activePokemonMoveIdsByShowdownId =
+    pickerProjectionLoad.status === 'ready' ? pickerProjectionLoad.pokemonMoveIdsByShowdownId : null
   const pickerLoading = pickerProjectionLoad.status === 'loading'
   const pickerErrorText = pickerProjectionLoad.status === 'error' ? pickerProjectionLoad.error : undefined
   const pokemonPickerOptions = activePickerOptions.pokemon
@@ -449,12 +506,13 @@ export function PokemonEditorPanel({
   const handleMoveChange = (moveIndex: number, moveId: string) => {
     setDraftPokemon((current) => {
       if (!current) return current
+      const catalogOption = moveId === '__none__' ? null : movePickerOptions.find((option) => option.showdownId === moveId)
       const move = moveId === '__none__' ? null : editorMovesById[moveId]
-      const name = move?.name ?? ''
+      const name = catalogOption?.displayName ?? move?.name ?? ''
       const moves = current.moves.map((value, index) => (index === moveIndex ? name : value))
       const baseRefs = current.moveRefs ?? [null, null, null, null]
       const moveRefs = baseRefs.map((ref, index) =>
-        index === moveIndex ? findMoveRef(name, movePickerOptions) : ref,
+        index === moveIndex ? (catalogOption ? toBuildRef(catalogOption) ?? null : findMoveRef(name, movePickerOptions)) : ref,
       )
       return {
         ...current,
@@ -647,7 +705,6 @@ export function PokemonEditorPanel({
   )
 
   const moveOptions: ComboOption[] = useMemo(() => {
-    const learnset = getLearnsetMoves(speciesShowdownId)
     const catalogMovesById = new Map(
       movePickerOptions
         .filter((option) => option.showdownId)
@@ -659,6 +716,38 @@ export function PokemonEditorPanel({
       searchText: 'none empty clear',
       group: 'Selected',
     }
+    const downloadedLearnsetIds = activePokemonMoveIdsByShowdownId?.[speciesShowdownId]
+
+    if (downloadedLearnsetIds?.length) {
+      return [
+        noneOption,
+        ...downloadedLearnsetIds
+          .map((moveId) => catalogMovesById.get(moveId))
+          .filter((option): option is CatalogPickerOption => Boolean(option))
+          .map((option) => {
+            const category = getCatalogMoveCategory(option)
+
+            return {
+              value: option.showdownId ?? option.catalogKey,
+              label: option.displayName,
+              searchText: getCatalogPickerSearchText(option),
+              group: option.primaryType ?? 'Move',
+              disabled: isUnavailableOption(option),
+              disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
+              leading: (
+                <span className="bl-move-lead">
+                  {option.primaryType ? <TypeGem type={option.primaryType} /> : null}
+                  {category ? <CategoryIcon category={category} /> : null}
+                </span>
+              ),
+              tooltip: catalogMoveTooltip(option),
+            }
+          }),
+      ]
+    }
+
+    const learnset = getLearnsetMoves(speciesShowdownId)
+
     return [
       noneOption,
       ...learnset.map((move) => {
@@ -686,7 +775,7 @@ export function PokemonEditorPanel({
         }
       }),
     ]
-  }, [movePickerOptions, speciesShowdownId])
+  }, [activePokemonMoveIdsByShowdownId, movePickerOptions, speciesShowdownId])
 
   const base = getBaseStats(speciesShowdownId)
   const natureMods = getNatureMods(draftPokemon?.natureRef?.showdownId ?? draftPokemon?.nature.toLowerCase() ?? '')
@@ -852,7 +941,10 @@ export function PokemonEditorPanel({
                 </div>
                 <div className="bl-move-editor-list">
                   {draftPokemon.moves.map((moveName, index) => {
-                    const currentId = moveName ? moveIdByName[moveName] ?? '' : ''
+                    const currentRef = draftPokemon.moveRefs?.[index]
+                    const currentId = moveName
+                      ? currentRef?.showdownId ?? moveIdByName[moveName] ?? toShowdownId(moveName)
+                      : ''
                     return (
                       <label className="bl-editor-field" key={`${draftPokemon.id}-move-${index}`}>
                         <span>Move {index + 1}</span>

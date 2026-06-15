@@ -1,3 +1,6 @@
+import type { BattleLabCatalog } from '../types/catalog'
+import type { PokeApiCatalogSourceSnapshot } from '../types/pokeApiSource'
+
 export type CatalogUpdateDownloadSectionId =
   | 'pokemon'
   | 'moves'
@@ -39,10 +42,20 @@ export interface CatalogUpdateSectionPayload {
   payloadVersion: 1
 }
 
+export interface CatalogUpdateGeneratedCatalogCache {
+  id: 'latest'
+  catalog: BattleLabCatalog
+  pokemonMoveIdsByShowdownId: Record<string, string[]>
+  fetchedAt: string
+  sourceVersion: string
+  payloadVersion: 1
+}
+
 const catalogUpdateCacheDbName = 'battlelab-catalog-update-cache'
-const catalogUpdateCacheDbVersion = 1
+const catalogUpdateCacheDbVersion = 2
 const metadataStoreName = 'sectionMetadata'
 const payloadStoreName = 'sectionPayloads'
+const generatedCatalogStoreName = 'generatedCatalogs'
 
 function isIndexedDbAvailable() {
   return typeof indexedDB !== 'undefined'
@@ -80,6 +93,10 @@ function openCatalogUpdateCacheDb() {
 
       if (!db.objectStoreNames.contains(payloadStoreName)) {
         db.createObjectStore(payloadStoreName, { keyPath: 'section' })
+      }
+
+      if (!db.objectStoreNames.contains(generatedCatalogStoreName)) {
+        db.createObjectStore(generatedCatalogStoreName, { keyPath: 'id' })
       }
     }
 
@@ -149,6 +166,56 @@ export async function writeCatalogUpdateSectionCacheEntry(
     transaction.objectStore(metadataStoreName).put(metadata)
     transaction.objectStore(payloadStoreName).put(payload)
     await transactionDone(transaction)
+  } finally {
+    db.close()
+  }
+}
+
+const toShowdownId = (value: string) => value.replace(/[^a-z0-9]/g, '')
+
+function createPokemonMoveIdsByShowdownId(snapshot: PokeApiCatalogSourceSnapshot) {
+  return Object.fromEntries(
+    snapshot.pokemon.map((pokemon) => {
+      const moveIds = Array.from(
+        new Set((pokemon.moves ?? []).map((entry) => toShowdownId(entry.move.name)).filter(Boolean)),
+      ).sort((left, right) => left.localeCompare(right))
+
+      return [toShowdownId(pokemon.name), moveIds]
+    }),
+  )
+}
+
+export async function writeCatalogUpdateGeneratedCatalogCache(
+  catalog: BattleLabCatalog,
+  snapshot: PokeApiCatalogSourceSnapshot,
+) {
+  const cacheEntry: CatalogUpdateGeneratedCatalogCache = {
+    id: 'latest',
+    catalog,
+    pokemonMoveIdsByShowdownId: createPokemonMoveIdsByShowdownId(snapshot),
+    fetchedAt: snapshot.fetchedAt,
+    sourceVersion: snapshot.sourceVersion,
+    payloadVersion: 1,
+  }
+  const db = await openCatalogUpdateCacheDb()
+
+  try {
+    const transaction = db.transaction(generatedCatalogStoreName, 'readwrite')
+    transaction.objectStore(generatedCatalogStoreName).put(cacheEntry)
+    await transactionDone(transaction)
+  } finally {
+    db.close()
+  }
+}
+
+export async function readCatalogUpdateGeneratedCatalogCache() {
+  const db = await openCatalogUpdateCacheDb()
+
+  try {
+    const transaction = db.transaction(generatedCatalogStoreName, 'readonly')
+    const store = transaction.objectStore(generatedCatalogStoreName)
+    const cacheEntry = await requestToPromise<CatalogUpdateGeneratedCatalogCache | undefined>(store.get('latest'))
+    return cacheEntry ?? null
   } finally {
     db.close()
   }

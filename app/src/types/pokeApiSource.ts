@@ -35,6 +35,14 @@ export interface PokeApiPokemonResource {
   id: number;
   name: string;
   sprites: PokeApiPokemonSprites;
+  moves?: Array<{
+    move: PokeApiNamedResource;
+    version_group_details?: Array<{
+      level_learned_at?: number;
+      move_learn_method?: PokeApiNamedResource;
+      version_group?: PokeApiNamedResource;
+    }>;
+  }>;
   stats: Array<{
     base_stat: number;
     stat: PokeApiNamedResource;

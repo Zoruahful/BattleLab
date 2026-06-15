@@ -6,6 +6,7 @@ import {
   type CatalogBulkIngestionSection,
   type CatalogBulkIngestionSectionSummary,
 } from '../data/catalogBulkIngestion'
+import { writeCatalogUpdateGeneratedCatalogCache } from '../data/catalogUpdateCache'
 import type { CatalogSourceFetchIssue } from '../types/catalogFetch'
 import '../styles/settings-catalog-panels.css'
 
@@ -380,7 +381,7 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
 
     try {
       const result = await runCatalogBulkIngestion({
-        mode: 'bounded',
+        mode: 'full',
         signal: controller.signal,
         onProgress: (progress) => {
           if (mountedRef.current) {
@@ -388,6 +389,10 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
           }
         },
       })
+
+      if (result.status === 'complete' && result.catalog && result.snapshot) {
+        await writeCatalogUpdateGeneratedCatalogCache(result.catalog, result.snapshot)
+      }
 
       if (mountedRef.current) {
         setDownloadState((current) => applyResult(current, result))

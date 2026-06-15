@@ -20,6 +20,12 @@ export {
 } from "./catalogBulkIngestionValidation";
 
 export {
+  createCachedCatalogPickerProjection,
+  type CatalogCachedPickerProjection,
+  type CatalogCachedPickerProjectionOptionSets,
+} from "./catalogCachedPickerProjection";
+
+export {
   localCatalogSeed,
   localCatalogSeedAbilities,
   localCatalogSeedAssets,
