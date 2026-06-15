@@ -888,6 +888,27 @@ export {
 } from "./showdownEngineArchiveMetadataFetchProofValidation";
 
 export {
+  createFailedShowdownEngineArchiveMetadataReadModel,
+  createShowdownEngineArchiveMetadataReadModel,
+  fetchShowdownEngineArchiveMetadataReadModel,
+  type ShowdownEngineArchiveMetadataFetchSummary,
+  type ShowdownEngineArchiveMetadataHeadersSummary,
+  type ShowdownEngineArchiveMetadataPreservationSummary,
+  type ShowdownEngineArchiveMetadataReadModel,
+  type ShowdownEngineArchiveMetadataReadModelStatus,
+  type ShowdownEngineArchiveMetadataSafetySummary,
+  type ShowdownEngineArchiveMetadataSourceSummary,
+} from "./showdownEngineArchiveMetadataReadModel";
+
+export {
+  validateShowdownEngineArchiveMetadataReadModel,
+  type ShowdownEngineArchiveMetadataReadModelValidationCode,
+  type ShowdownEngineArchiveMetadataReadModelValidationIssue,
+  type ShowdownEngineArchiveMetadataReadModelValidationResult,
+  type ShowdownEngineArchiveMetadataReadModelValidationSeverity,
+} from "./showdownEngineArchiveMetadataReadModelValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
