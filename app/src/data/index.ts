@@ -116,6 +116,22 @@ export {
 } from "./catalogPlannedExpansionPickerCoverageValidation";
 
 export {
+  createPlannedExpansionBundleReadiness,
+  type CatalogPlannedExpansionBundleReadiness,
+  type CatalogPlannedExpansionBundleReadinessAssetReviewSummary,
+  type CatalogPlannedExpansionBundleReadinessSafety,
+  type CatalogPlannedExpansionBundleReadinessSectionSummary,
+} from "./catalogPlannedExpansionBundleReadiness";
+
+export {
+  validatePlannedExpansionBundleReadiness,
+  type CatalogPlannedExpansionBundleReadinessValidationCode,
+  type CatalogPlannedExpansionBundleReadinessValidationIssue,
+  type CatalogPlannedExpansionBundleReadinessValidationResult,
+  type CatalogPlannedExpansionBundleReadinessValidationSeverity,
+} from "./catalogPlannedExpansionBundleReadinessValidation";
+
+export {
   compareCatalogGeneratedSnapshots,
   sampleCatalogGeneratedSnapshotComparison,
   type CatalogGeneratedSnapshotAssetReviewStatus,
