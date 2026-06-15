@@ -1128,6 +1128,24 @@
   overflow: auto;
 }
 
+.bl-combo-list.is-virtualized {
+  position: relative;
+  padding: 0;
+}
+
+.bl-combo-virtual-spacer {
+  width: 1px;
+  pointer-events: none;
+}
+
+.bl-combo-virtual-row {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  left: 4px;
+  will-change: transform;
+}
+
 .bl-combo-group {
   padding: 8px 8px 4px;
   color: var(--text-3);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type UIEvent } from 'react'
 import { Tooltip } from './Tooltip'
 
 export interface ComboOption {
@@ -13,6 +13,12 @@ export interface ComboOption {
   selectedMeta?: ReactNode
   tooltip?: ReactNode
 }
+
+const VIRTUAL_OPTION_HEIGHT = 38
+const VIRTUAL_GROUP_HEIGHT = 22
+const VIRTUAL_VIEWPORT_HEIGHT = 320
+const VIRTUAL_OVERSCAN = 8
+const VIRTUALIZE_THRESHOLD = 80
 
 export function Combobox({
   value,
@@ -40,7 +46,9 @@ export function Combobox({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const [scrollTop, setScrollTop] = useState(0)
   const wrapRef = useRef<HTMLDivElement | null>(null)
+  const listRef = useRef<HTMLUListElement | null>(null)
 
   const selected = options.find((option) => option.value === value) ?? null
 
@@ -63,10 +71,51 @@ export function Combobox({
   const enabledVisibleOptions = visibleOptions.filter((option) => !option.disabled)
   const activeIndex = enabledVisibleOptions.length > 0 ? Math.min(active, enabledVisibleOptions.length - 1) : 0
   const visibleActiveOption = enabledVisibleOptions[activeIndex]
+  const activeVisibleIndex = visibleActiveOption
+    ? visibleOptions.findIndex((option) => option.value === visibleActiveOption.value)
+    : -1
   const limited = maxVisibleOptions > 0 && filtered.length > visibleOptions.length
+  const virtualized = maxVisibleOptions <= 0 && visibleOptions.length > VIRTUALIZE_THRESHOLD
   const footerText = limited
     ? `${resultLimitLabel} ${Math.min(filtered.length, visibleOptions.length)} of ${filtered.length} matches`
     : `${filtered.length} ${filtered.length === 1 ? 'match' : 'matches'}`
+
+  const virtualRows = useMemo(() => {
+    const rows: Array<{
+      height: number
+      index: number
+      offset: number
+      option: ComboOption
+      showGroup: boolean
+    }> = []
+
+    visibleOptions.reduce((offset, option, index) => {
+      const previous = visibleOptions[index - 1]
+      const showGroup = Boolean(option.group && option.group !== previous?.group)
+      const height = VIRTUAL_OPTION_HEIGHT + (showGroup ? VIRTUAL_GROUP_HEIGHT : 0)
+      rows.push({ height, index, offset, option, showGroup })
+
+      return offset + height
+    }, 0)
+
+    return rows
+  }, [visibleOptions])
+  const virtualTotalHeight = virtualRows.reduce((total, row) => total + row.height, 0)
+  const virtualStartIndex = virtualized
+    ? Math.max(
+        0,
+        virtualRows.findIndex((row) => row.offset + row.height >= scrollTop) - VIRTUAL_OVERSCAN,
+      )
+    : 0
+  const firstRowAfterViewport = virtualRows.findIndex((row) => row.offset > scrollTop + VIRTUAL_VIEWPORT_HEIGHT)
+  const virtualEndIndex = virtualized
+    ? Math.min(
+        virtualRows.length,
+        Math.max(virtualStartIndex + 1, firstRowAfterViewport >= 0 ? firstRowAfterViewport : virtualRows.length) +
+          VIRTUAL_OVERSCAN,
+      )
+    : visibleOptions.length
+  const renderedRows = virtualized ? virtualRows.slice(virtualStartIndex, virtualEndIndex) : virtualRows
 
   useEffect(() => {
     if (!open) return
@@ -76,6 +125,23 @@ export function Combobox({
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
+
+  useEffect(() => {
+    if (!open || !virtualized || activeVisibleIndex < 0) return
+
+    const row = virtualRows[activeVisibleIndex]
+    const list = listRef.current
+    if (!row || !list) return
+
+    const viewportTop = list.scrollTop
+    const viewportBottom = viewportTop + list.clientHeight
+
+    if (row.offset < viewportTop) {
+      list.scrollTop = row.offset
+    } else if (row.offset + row.height > viewportBottom) {
+      list.scrollTop = row.offset + row.height - list.clientHeight
+    }
+  }, [activeVisibleIndex, open, virtualRows, virtualized])
 
   const choose = (next: string) => {
     const option = options.find((candidate) => candidate.value === next)
@@ -109,6 +175,60 @@ export function Combobox({
     }
   }
 
+  const handleListScroll = (event: UIEvent<HTMLUListElement>) => {
+    if (virtualized) {
+      setScrollTop(event.currentTarget.scrollTop)
+    }
+  }
+
+  const renderOptionRow = (
+    option: ComboOption,
+    index: number,
+    showGroup: boolean,
+    style?: CSSProperties,
+  ) => {
+    const enabledIndex = option.disabled
+      ? -1
+      : enabledVisibleOptions.findIndex((candidate) => candidate.value === option.value)
+    const optionButton = (
+      <button
+        type="button"
+        className={`bl-combo-option ${enabledIndex === activeIndex ? 'is-active' : ''} ${
+          option.value === value ? 'is-selected' : ''
+        } ${option.disabled ? 'is-disabled' : ''}`}
+        disabled={option.disabled}
+        title={option.disabledReason}
+        onMouseEnter={() => {
+          if (enabledIndex >= 0) setActive(enabledIndex)
+        }}
+        onClick={() => choose(option.value)}
+      >
+        {option.leading}
+        <span className="bl-combo-option-label">{option.label}</span>
+        {option.meta ? <span className="bl-combo-option-meta">{option.meta}</span> : null}
+      </button>
+    )
+
+    return (
+      <li
+        className={virtualized ? 'bl-combo-virtual-row' : undefined}
+        key={`${option.group ?? 'ungrouped'}-${option.value}-${index}`}
+        style={style}
+      >
+        {showGroup ? <div className="bl-combo-group">{option.group}</div> : null}
+        <div role="option" aria-selected={option.value === value} aria-disabled={option.disabled}>
+          {option.tooltip && !option.disabled ? (
+            <Tooltip content={option.tooltip} className="bl-combo-option-tip">
+              {optionButton}
+            </Tooltip>
+          ) : (
+            optionButton
+          )}
+        </div>
+      </li>
+    )
+  }
+
   const triggerLabel = selected ? selected.label : placeholder ?? 'Select…'
   const triggerInner = (
     <span className="bl-combo-trigger-inner">
@@ -125,7 +245,10 @@ export function Combobox({
       aria-expanded={open}
       aria-label={ariaLabel}
       onClick={() => {
-        setOpen((prev) => !prev)
+        setOpen((prev) => {
+          if (!prev) setScrollTop(0)
+          return !prev
+        })
         setActive(0)
       }}
     >
@@ -157,11 +280,17 @@ export function Combobox({
             onChange={(event) => {
               setQuery(event.target.value)
               setActive(0)
+              setScrollTop(0)
             }}
             onKeyDown={onKeyDown}
             aria-label="Filter options"
           />
-          <ul className="bl-combo-list" role="listbox">
+          <ul
+            className={`bl-combo-list ${virtualized ? 'is-virtualized' : ''}`}
+            role="listbox"
+            ref={listRef}
+            onScroll={handleListScroll}
+          >
             {loading ? (
               <li className="bl-combo-empty is-loading">Loading catalog options…</li>
             ) : errorText ? (
@@ -169,45 +298,29 @@ export function Combobox({
             ) : filtered.length === 0 ? (
               <li className="bl-combo-empty">{emptyText ?? 'No matches'}</li>
             ) : (
-              visibleOptions.map((option, index) => {
-                const previous = visibleOptions[index - 1]
-                const showGroup = option.group && option.group !== previous?.group
-                const enabledIndex = option.disabled
-                  ? -1
-                  : enabledVisibleOptions.findIndex((candidate) => candidate.value === option.value)
-                const optionButton = (
-                  <button
-                    type="button"
-                    className={`bl-combo-option ${enabledIndex === activeIndex ? 'is-active' : ''} ${
-                      option.value === value ? 'is-selected' : ''
-                    } ${option.disabled ? 'is-disabled' : ''}`}
-                    disabled={option.disabled}
-                    title={option.disabledReason}
-                    onMouseEnter={() => {
-                      if (enabledIndex >= 0) setActive(enabledIndex)
-                    }}
-                    onClick={() => choose(option.value)}
-                  >
-                    {option.leading}
-                    <span className="bl-combo-option-label">{option.label}</span>
-                    {option.meta ? <span className="bl-combo-option-meta">{option.meta}</span> : null}
-                  </button>
-                )
-                return (
-                  <li key={`${option.group ?? 'ungrouped'}-${option.value}`}>
-                    {showGroup ? <div className="bl-combo-group">{option.group}</div> : null}
-                    <div role="option" aria-selected={option.value === value} aria-disabled={option.disabled}>
-                      {option.tooltip && !option.disabled ? (
-                        <Tooltip content={option.tooltip} className="bl-combo-option-tip">
-                          {optionButton}
-                        </Tooltip>
-                      ) : (
-                        optionButton
-                      )}
-                    </div>
-                  </li>
-                )
-              })
+              <>
+                {virtualized ? (
+                  <li
+                    className="bl-combo-virtual-spacer"
+                    key="virtual-spacer"
+                    style={{ height: virtualTotalHeight }}
+                    aria-hidden="true"
+                  />
+                ) : null}
+                {renderedRows.map((row) =>
+                  renderOptionRow(
+                    row.option,
+                    row.index,
+                    row.showGroup,
+                    virtualized
+                      ? {
+                          height: row.height,
+                          transform: `translateY(${row.offset}px)`,
+                        }
+                      : undefined,
+                  ),
+                )}
+              </>
             )}
           </ul>
           {!loading && !errorText && filtered.length > 0 ? (
