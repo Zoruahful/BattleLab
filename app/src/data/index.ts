@@ -595,6 +595,32 @@ export {
 } from "./showdownLegalityRuntimeProof";
 
 export {
+  sampleShowdownAbilityIllegalResponse,
+  sampleShowdownAbilityLegalResponse,
+  sampleShowdownCatalogHintDisagreementResponse,
+  sampleShowdownMoveIllegalResponse,
+  sampleShowdownMoveLegalResponse,
+  sampleShowdownRuntimeAdapterEnvironment,
+  sampleShowdownRuntimeAdapterRequest,
+  sampleShowdownRuntimeAdapterResponses,
+  sampleShowdownRuntimeAdapterSafetyPolicy,
+  sampleShowdownRuntimeAvailableResponse,
+  sampleShowdownRuntimeMetadataAvailable,
+  sampleShowdownRuntimeMetadataUnavailable,
+  sampleShowdownRuntimeUnavailableResponse,
+  sampleShowdownRuntimeUnavailableResult,
+} from "./showdownLegalityRuntimeAdapterFixtures";
+
+export {
+  sampleShowdownRuntimeAdapterValidation,
+  validateShowdownRuntimeAdapterFixtures,
+  type ShowdownRuntimeAdapterValidationCode,
+  type ShowdownRuntimeAdapterValidationIssue,
+  type ShowdownRuntimeAdapterValidationResult,
+  type ShowdownRuntimeAdapterValidationSeverity,
+} from "./showdownLegalityRuntimeAdapterValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,

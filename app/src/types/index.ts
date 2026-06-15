@@ -265,3 +265,4 @@ export type * from "./runtime";
 export type * from "./settingsCatalog";
 export type * from "./simulationPayload";
 export type * from "./showdownLegality";
+export type * from "./showdownRuntime";
