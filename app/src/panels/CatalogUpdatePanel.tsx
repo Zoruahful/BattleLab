@@ -19,6 +19,10 @@ import {
   type ShowdownEngineCatalogUpdateAggregateReadModel,
 } from '../data/showdownEngineCatalogUpdateAggregateReadModel'
 import {
+  createShowdownEngineInstalledFormatRegistryBridge,
+  type ShowdownEngineInstalledFormatRegistryBridge,
+} from '../data/showdownEngineInstalledFormatRegistryBridge'
+import {
   createShowdownEngineArchiveDownloadReadModel,
   sampleShowdownEngineArchiveDownloadReadModels,
   type ShowdownEngineArchiveDownloadReadModel,
@@ -183,6 +187,11 @@ const engineAggregateStatusLabels: Record<ShowdownEngineCatalogUpdateAggregateRe
   'blocked-preview': 'Blocked preview',
   'failed-preserves-active': 'Failed safely',
   'cancelled-preserves-active': 'Cancelled safely',
+}
+
+const installedRegistryStatusLabels: Record<ShowdownEngineInstalledFormatRegistryBridge['status'], string> = {
+  'installed-registry-available': 'Installed registry available',
+  'installed-registry-unavailable': 'Registry unavailable',
 }
 
 function isCatalogSectionId(sectionId: CatalogPanelSectionId): sectionId is CatalogBulkIngestionSection {
@@ -784,6 +793,8 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
   const [downloadState, setDownloadState] = useState<CatalogPanelState>(() => createInitialCatalogPanelState())
   const [storageBoundary, setStorageBoundary] = useState<CatalogStorageBoundaryReadModel | null>(null)
   const [engineAggregatePreview, setEngineAggregatePreview] = useState<ShowdownEngineCatalogUpdateAggregateReadModel | null>(null)
+  const [installedRegistryPreview, setInstalledRegistryPreview] =
+    useState<ShowdownEngineInstalledFormatRegistryBridge | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [cacheHydrated, setCacheHydrated] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -858,6 +869,31 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
       cancelled = true
     }
   }, [engineAggregatePreview, open])
+
+  useEffect(() => {
+    if (!open || installedRegistryPreview) return
+
+    let cancelled = false
+
+    createShowdownEngineInstalledFormatRegistryBridge({
+      bridgeId: 'catalog-update-installed-format-registry-preview',
+      proofId: 'catalog-update-installed-format-registry-proof',
+    })
+      .then((bridge) => {
+        if (!cancelled && mountedRef.current) {
+          setInstalledRegistryPreview(bridge)
+        }
+      })
+      .catch(() => {
+        if (!cancelled && mountedRef.current) {
+          setInstalledRegistryPreview(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [installedRegistryPreview, open])
 
   const runEngineUpdateWithUi = async (signal: AbortSignal, requestedAt: string) => {
     try {
@@ -1144,6 +1180,35 @@ export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelP
                   <span>Previous active Engine</span>
                   <strong>{engineAggregatePreview.revision.previousActivePreserved ? 'Preserved' : 'Needs review'}</strong>
                   <p>No extraction, file IO, loader execution, or simulation runs from this preview.</p>
+                </div>
+              </div>
+            ) : null}
+
+            {installedRegistryPreview ? (
+              <div className="bl-catalog-storage-boundary" aria-label="Installed Pokemon Showdown format registry preview">
+                <div>
+                  <span>Installed registry</span>
+                  <strong>{installedRegistryStatusLabels[installedRegistryPreview.status]}</strong>
+                  <p>
+                    {installedRegistryPreview.status === 'installed-registry-available'
+                      ? `${formatCount(installedRegistryPreview.officialFormatCount)} official formats available from the installed package.`
+                      : installedRegistryPreview.runtimeUnavailableFallback.message}
+                  </p>
+                </div>
+                <div>
+                  <span>Sample formats</span>
+                  <strong>{installedRegistryPreview.sampleOfficialFormats.length} shown</strong>
+                  <p>
+                    {installedRegistryPreview.sampleOfficialFormats
+                      .slice(0, 2)
+                      .map((format) => format.displayName)
+                      .join(' · ') || 'Runtime unavailable fallback is ready.'}
+                  </p>
+                </div>
+                <div>
+                  <span>Safety boundary</span>
+                  <strong>{installedRegistryPreview.safety.noSimulationExecution ? 'No simulation' : 'Needs review'}</strong>
+                  <p>No archive download, extraction, file IO, or downloaded-code import runs from this preview.</p>
                 </div>
               </div>
             ) : null}
