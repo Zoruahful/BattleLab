@@ -621,6 +621,20 @@ export {
 } from "./showdownLegalityRuntimeAdapterValidation";
 
 export {
+  createShowdownRuntimeUnavailableResponse,
+  runShowdownRuntimeAdapter,
+  type ShowdownRuntimeAdapterRunOptions,
+} from "./showdownRuntimeAdapter";
+
+export {
+  validateShowdownRuntimeAdapterSmokeProof,
+  type ShowdownRuntimeAdapterSmokeValidationCode,
+  type ShowdownRuntimeAdapterSmokeValidationIssue,
+  type ShowdownRuntimeAdapterSmokeValidationResult,
+  type ShowdownRuntimeAdapterSmokeValidationSeverity,
+} from "./showdownRuntimeAdapterSmokeValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
