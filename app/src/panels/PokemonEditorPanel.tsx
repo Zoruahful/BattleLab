@@ -866,7 +866,7 @@ export function PokemonEditorPanel({
                       options={itemOptions}
                       loading={pickerLoading}
                       errorText={pickerErrorText}
-                      maxVisibleOptions={50}
+                      maxVisibleOptions={0}
                       onChange={(catalogKey) => {
                         const option = itemPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
                         updateDraft({
@@ -884,7 +884,7 @@ export function PokemonEditorPanel({
                       options={abilityOptions}
                       loading={pickerLoading}
                       errorText={pickerErrorText}
-                      maxVisibleOptions={50}
+                      maxVisibleOptions={0}
                       onChange={(catalogKey) => {
                         const option = abilityPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
                         updateDraft({
@@ -902,7 +902,7 @@ export function PokemonEditorPanel({
                       options={natureOptions}
                       loading={pickerLoading}
                       errorText={pickerErrorText}
-                      maxVisibleOptions={30}
+                      maxVisibleOptions={0}
                       onChange={(catalogKey) => {
                         const option = naturePickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
                         updateDraft({
@@ -920,7 +920,7 @@ export function PokemonEditorPanel({
                       options={teraOptions}
                       loading={pickerLoading}
                       errorText={pickerErrorText}
-                      maxVisibleOptions={12}
+                      maxVisibleOptions={0}
                       onChange={(catalogKey) => {
                         const option = typePickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
                         if (!option) return
@@ -956,7 +956,7 @@ export function PokemonEditorPanel({
                           emptyText="No learnable moves match"
                           loading={pickerLoading}
                           errorText={pickerErrorText}
-                          maxVisibleOptions={40}
+                          maxVisibleOptions={0}
                           onChange={(moveId) => handleMoveChange(index, moveId)}
                         />
                       </label>
