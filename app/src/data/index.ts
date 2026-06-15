@@ -697,6 +697,41 @@ export {
 } from "./showdownEngineUpdateArchitectureValidation";
 
 export {
+  createShowdownEngineStorageRevisionMetadata,
+  sampleShowdownEngineActiveRevisionPointer,
+  sampleShowdownEngineRejectedRevisionPointer,
+  sampleShowdownEngineStagingRevisionPointer,
+  sampleShowdownEngineStorageAdapterContract,
+  sampleShowdownEngineStorageArchiveMetadata,
+  sampleShowdownEngineStorageOperations,
+  sampleShowdownEngineStorageRequiredFileManifest,
+  sampleShowdownEngineStorageScenarios,
+  showdownEngineStorageAdapterSafety,
+  showdownEngineStorageRootDescriptor,
+  type ShowdownEngineStorageAdapterContract,
+  type ShowdownEngineStorageAdapterKind,
+  type ShowdownEngineStorageAdapterSafety,
+  type ShowdownEngineStorageAdapterScenario,
+  type ShowdownEngineStorageArchiveMetadata,
+  type ShowdownEngineStorageOperation,
+  type ShowdownEngineStorageOperationKind,
+  type ShowdownEngineStorageOperationStatus,
+  type ShowdownEngineStorageRequiredFileManifest,
+  type ShowdownEngineStorageRevisionPointer,
+  type ShowdownEngineStorageRootDescriptor,
+  type ShowdownEngineStorageSafetyStatus,
+} from "./showdownEngineStorageAdapter";
+
+export {
+  sampleShowdownEngineStorageAdapterValidation,
+  validateShowdownEngineStorageAdapter,
+  type ShowdownEngineStorageAdapterValidationCode,
+  type ShowdownEngineStorageAdapterValidationIssue,
+  type ShowdownEngineStorageAdapterValidationResult,
+  type ShowdownEngineStorageAdapterValidationSeverity,
+} from "./showdownEngineStorageAdapterValidation";
+
+export {
   validateLocalCatalogSeedIntegrity,
   type CatalogSeedValidationCode,
   type CatalogSeedValidationIssue,
