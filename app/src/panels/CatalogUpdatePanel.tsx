@@ -1,39 +1,17 @@
-import { useState } from 'react'
-import { fakeCatalogUpdateSnapshot } from '../data'
-import type {
-  CatalogFetchExecutionStatus,
-  CatalogSourceFetchStatus,
-  CatalogUpdateCategory,
-  CatalogUpdateCategoryStatus,
-  CatalogUpdateSnapshot,
-} from '../types'
+import { useEffect, useRef, useState } from 'react'
+import {
+  createInitialCatalogUpdateDownloadState,
+  loadCatalogUpdateDownloadStateFromCache,
+  runCatalogUpdateDownload,
+  type CatalogUpdateDownloadSectionProgress,
+  type CatalogUpdateDownloadState,
+  type CatalogUpdateDownloadStatus,
+} from '../data/catalogUpdateDownloadService'
 import '../styles/settings-catalog-panels.css'
-
-export type CatalogRuntimeStatus =
-  | CatalogFetchExecutionStatus
-  | CatalogSourceFetchStatus
-  | CatalogUpdateSnapshot['progress']['status']
-  | 'local-preview'
-
-export type CatalogRuntimeCategoryProgress = Partial<Record<CatalogUpdateCategory['id'], {
-  progressPercent?: number
-  status?: CatalogRuntimeStatus
-}>>
 
 export type CatalogUpdatePanelProps = {
   open?: boolean
-  snapshot?: CatalogUpdateSnapshot
-  runtimeCategoryProgress?: CatalogRuntimeCategoryProgress
-  runtimeMessage?: string
-  runtimeStatus?: CatalogRuntimeStatus
-  onPreviewCheck?: () => void
   onClose?: () => void
-}
-
-const categoryStatusLabels: Record<CatalogUpdateCategoryStatus, string> = {
-  current: 'Current',
-  stale: 'Stale',
-  needsReview: 'Review required',
 }
 
 type CatalogProgressDisplayState =
@@ -50,192 +28,146 @@ type CatalogProgressDisplayState =
   | 'cancelled'
   | 'blocked'
 
-type CatalogProgressRawStatus =
-  | 'idle'
-  | 'disabled'
-  | 'planned'
-  | 'blocked'
-  | 'queued'
-  | 'fetching'
-  | 'using-cache'
-  | 'validating-source'
-  | 'normalizing'
-  | 'validating-catalog'
-  | 'validating-bundle'
-  | 'complete'
-  | 'complete-with-warnings'
-  | 'failed'
-  | 'cancelled'
-  | 'offline'
-  | 'rate-limited'
-  | 'retrying'
-  | 'production-disabled'
-  | 'development'
-  | 'test'
-  | 'local-preview'
-  | 'checking'
-  | 'downloading'
-  | 'applying'
-  | 'running'
-  | 'validating'
-  | 'warning'
-  | 'error'
-  | 'fetched'
-
-const progressStatusLabels: Record<CatalogProgressRawStatus, string> = {
-  idle: 'Local preview ready',
-  disabled: 'Catalog updates are off in this build',
-  planned: 'Checking preview…',
-  queued: 'Checking preview…',
-  checking: 'Checking preview…',
-  fetching: 'Download progress preview',
-  downloading: 'Download progress preview',
-  running: 'Download progress preview',
-  'using-cache': 'Using your saved copy',
-  fetched: 'Validation preview',
-  'validating-source': 'Validation preview',
-  normalizing: 'Validation preview',
-  'validating-catalog': 'Validation preview',
-  'validating-bundle': 'Validation preview',
-  applying: 'Validation preview',
-  validating: 'Validation preview',
-  complete: 'Complete preview',
-  'complete-with-warnings': 'Updated — some items need review',
-  warning: 'Updated — some items need review',
-  failed: 'Failed safely — kept your saved catalog',
-  error: 'Failed safely — kept your saved catalog',
-  offline: 'Offline — using your saved copy',
-  'rate-limited': 'Source busy — retrying…',
-  retrying: 'Source busy — retrying…',
-  blocked: 'Catalog updates are off in this build',
-  'production-disabled': 'Catalog updates are off in this build',
+const runStatusLabels: Record<CatalogUpdateDownloadState['status'], string> = {
+  idle: 'Ready to update',
+  checking: 'Checking catalog sections…',
+  fetching: 'Downloading catalog data…',
+  complete: 'Catalog up to date',
+  warning: 'Updated with warnings',
+  failed: 'Update failed safely',
   cancelled: 'Update cancelled',
-  development: 'Local preview ready',
-  test: 'Local preview ready',
-  'local-preview': 'Local preview ready',
 }
 
-const progressStateDescriptions: Record<CatalogProgressDisplayState, string> = {
-  preview: 'Local preview is waiting. No network sync is running.',
-  checking: 'Checking local preview state only. No live fetch is running.',
-  // Revise these temporary descriptions when live fetch wiring lands so they describe real download/validation state.
-  fetching: 'This label is reserved for a future real fetch. No download runs in this checkpoint.',
-  'using-cache': 'The app keeps working from the last saved or bundled catalog.',
-  'rate-limited': 'Future updates would wait or use cache. No request is being sent in this preview.',
-  validating: 'Future validation will check downloaded or cached data before using it.',
-  complete: 'Preview data is prepared for the current local snapshot.',
-  warning: 'Some catalog items may need review; the app keeps using safe local catalog data.',
-  failed: 'The app keeps working from the last saved or bundled catalog.',
-  cancelled: 'The update was cancelled. The app keeps using the last saved or bundled catalog.',
-  blocked: 'Catalog updates are disabled for this build. The bundled catalog remains available.',
-  disabled: 'Catalog updates are disabled for this build. The bundled catalog remains available.',
+const sectionStatusLabels: Record<CatalogUpdateDownloadStatus, string> = {
+  idle: 'Not checked',
+  checking: 'Checking',
+  fetching: 'Downloading',
+  current: 'Current',
+  complete: 'Updated',
+  warning: 'Warning',
+  failed: 'Failed safely',
+  cancelled: 'Cancelled',
 }
 
 function formatCount(value: number) {
   return new Intl.NumberFormat('en').format(value)
 }
 
-function normalizeProgressState(status?: string): CatalogProgressDisplayState {
-  if (status === 'blocked') return 'blocked'
-  if (status === 'production-disabled' || status === 'disabled') return 'disabled'
-  if (status === 'planned' || status === 'queued' || status === 'checking') return 'checking'
-  if (status === 'fetching' || status === 'downloading' || status === 'running') return 'fetching'
-  if (status === 'using-cache' || status === 'offline') return 'using-cache'
-  if (status === 'rate-limited' || status === 'retrying') return 'rate-limited'
-  if (
-    status === 'fetched' ||
-    status === 'validating-source' ||
-    status === 'normalizing' ||
-    status === 'validating-catalog' ||
-    status === 'validating-bundle' ||
-    status === 'applying'
-  ) {
-    return 'validating'
-  }
-  if (status === 'complete') return 'complete'
-  if (status === 'complete-with-warnings' || status === 'warning') {
-    return 'warning'
-  }
+function formatTimestamp(value?: string) {
+  if (!value) return 'Not yet'
+
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function getProgressState(status: CatalogUpdateDownloadStatus | CatalogUpdateDownloadState['status']): CatalogProgressDisplayState {
+  if (status === 'checking') return 'checking'
+  if (status === 'fetching') return 'fetching'
+  if (status === 'current' || status === 'complete') return 'complete'
+  if (status === 'warning') return 'warning'
+  if (status === 'failed') return 'failed'
   if (status === 'cancelled') return 'cancelled'
-  if (status === 'failed' || status === 'error') return 'failed'
   return 'preview'
 }
 
-function getProgressStatusLabel(status?: string) {
-  return progressStatusLabels[(status ?? 'idle') as CatalogProgressRawStatus] ?? progressStatusLabels.idle
+function getSectionRecordCopy(section: CatalogUpdateDownloadSectionProgress) {
+  if (section.total <= 0) return 'No records checked'
+  return `${formatCount(section.downloaded)} / ${formatCount(section.total)} records`
 }
 
-function getCategoryProgressState(
-  categoryStatus: CatalogUpdateCategoryStatus,
-  progressStatus: string | undefined,
-): CatalogProgressDisplayState {
-  if (categoryStatus === 'needsReview') return 'warning'
-  if (categoryStatus === 'stale' && !progressStatus) return 'warning'
-  return normalizeProgressState(progressStatus)
+function isRunning(status: CatalogUpdateDownloadState['status']) {
+  return status === 'checking' || status === 'fetching'
 }
 
-function getCategoryProgressStatus(categoryStatus: CatalogUpdateCategoryStatus, progressStatus: string | undefined) {
-  if (categoryStatus === 'needsReview') return 'complete-with-warnings'
-  if (categoryStatus === 'stale' && !progressStatus) return 'complete-with-warnings'
-  return progressStatus ?? 'idle'
-}
-
-export function CatalogUpdatePanel({
-  open = true,
-  snapshot = fakeCatalogUpdateSnapshot,
-  runtimeCategoryProgress,
-  runtimeMessage,
-  runtimeStatus,
-  onPreviewCheck,
-  onClose,
-}: CatalogUpdatePanelProps) {
-  const [draftSnapshot, setDraftSnapshot] = useState<CatalogUpdateSnapshot>(snapshot)
-  const [helpOpen, setHelpOpen] = useState(false)
-  const panelStatus = runtimeStatus ?? draftSnapshot.progress.status
-  const panelProgressState = normalizeProgressState(panelStatus)
-  const panelProgressLabel = getProgressStatusLabel(panelStatus)
-  const averageProgress = Math.round(
-    draftSnapshot.progress.categories.reduce((total, category) => {
-      const runtimeProgress = runtimeCategoryProgress?.[category.id]?.progressPercent
-      return total + (runtimeProgress ?? category.progressPercent)
-    }, 0) /
-      draftSnapshot.progress.categories.length,
+export function CatalogUpdatePanel({ open = true, onClose }: CatalogUpdatePanelProps) {
+  const [downloadState, setDownloadState] = useState<CatalogUpdateDownloadState>(() =>
+    createInitialCatalogUpdateDownloadState(),
   )
-  const completedCategories = draftSnapshot.progress.categories.filter((category) => {
-    const categoryProgressState = normalizeProgressState(runtimeCategoryProgress?.[category.id]?.status ?? category.status)
-    return categoryProgressState === 'complete' || categoryProgressState === 'warning'
-  }).length
-  const panelMessage = runtimeMessage ?? draftSnapshot.progress.message ?? progressStateDescriptions[panelProgressState]
+  const [helpOpen, setHelpOpen] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const mountedRef = useRef(true)
+  const cacheHydratedRef = useRef(false)
+  const running = isRunning(downloadState.status)
+  const panelProgressState = getProgressState(downloadState.status)
 
-  const handleCheck = () => {
-    setDraftSnapshot((current) => ({
-      ...current,
-      lastCheckedAt: new Date().toISOString(),
-      progress: {
-        ...current.progress,
-        status: current.progress.status === 'checking' ? 'idle' : 'checking',
-        activeSourceIds:
-          current.progress.status === 'checking' ? [] : current.sources.map((source) => source.sourceId),
-        message:
-          current.progress.status === 'checking'
-            ? 'Local preview is idle. No network sync is running.'
-            : 'Checking local preview state only. No download, live fetch, or network sync is running.',
-      },
-    }))
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+      abortRef.current?.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) {
+      cacheHydratedRef.current = false
+      return
+    }
+
+    if (running || cacheHydratedRef.current || downloadState.startedAt) return
+    let cancelled = false
+
+    loadCatalogUpdateDownloadStateFromCache()
+      .then((state) => {
+        if (!cancelled && mountedRef.current && !abortRef.current) {
+          cacheHydratedRef.current = true
+          setDownloadState(state)
+        }
+      })
+      .catch(() => {
+        if (!cancelled && mountedRef.current && !abortRef.current) {
+          cacheHydratedRef.current = true
+          setDownloadState(createInitialCatalogUpdateDownloadState())
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [downloadState.startedAt, open, running])
+
+  const handleUpdate = async () => {
+    if (abortRef.current || running) return
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      await runCatalogUpdateDownload({
+        signal: controller.signal,
+        onProgress: (state) => {
+          if (mountedRef.current) {
+            setDownloadState(state)
+          }
+        },
+      })
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null
+      }
+    }
+  }
+
+  const handleCancel = () => {
+    abortRef.current?.abort()
   }
 
   return (
     <aside
       className={`bl-catalog-panel side-panel ${open ? 'is-open' : ''}`}
-      aria-labelledby="catalog-update-title"
+      aria-label="Catalog Update"
       aria-hidden={!open}
     >
       <div className="bl-settings-shell">
         <header className="bl-settings-header">
           <div>
             <span className="eyebrow">Catalog Update</span>
-            <h2 id="catalog-update-title">Catalog update progress</h2>
-            <p>Local preview for future Pokemon, move, ability, item, type, nature, and picker data updates.</p>
+            <p>Download enrichment data for names, descriptions, picker options, and visual metadata candidates.</p>
           </div>
           <div className="bl-catalog-header-actions">
             <button
@@ -261,8 +193,8 @@ export function CatalogUpdatePanel({
               ?
               <span className="bl-catalog-help-popover" id="catalog-update-help" role="tooltip">
                 Catalog data fills names, picker options, descriptions, and visual metadata. Pokemon Showdown
-                remains the future source of truth for battle legality and simulation. Checking is a local preview
-                for now — no data is downloaded yet.
+                remains the source of truth for battle legality and simulation. Downloads start only when you click
+                Update.
               </span>
             </button>
             <button className="bl-panel-icon-button" type="button" aria-label="Close" onClick={onClose}>
@@ -274,62 +206,65 @@ export function CatalogUpdatePanel({
         <div className="bl-settings-body">
           <section className="bl-settings-section">
             <div className="bl-settings-section-heading">
-              <h3>Catalog areas</h3>
-              <span>No live fetch</span>
+              <h3>Catalog sections</h3>
+              <span>Browser cache</span>
             </div>
 
             <div className="bl-catalog-progress-overview" aria-label="Catalog update progress summary">
               <div>
                 <span>Current state</span>
                 <strong className={`bl-catalog-progress-state is-${panelProgressState}`}>
-                  {panelProgressLabel}
+                  {runStatusLabels[downloadState.status]}
                 </strong>
-                <p>{panelMessage}</p>
+                <p>{downloadState.message}</p>
               </div>
               <div>
-                <span>Prepared</span>
-                <strong>{averageProgress}%</strong>
+                <span>Overall progress</span>
+                <strong>{downloadState.aggregateProgressPercent}%</strong>
                 <p>
-                  {completedCategories} of {draftSnapshot.categories.length} areas marked complete in the local preview.
+                  {downloadState.finishedAt
+                    ? `Last run finished ${formatTimestamp(downloadState.finishedAt)}.`
+                    : 'No automatic downloads run on app load.'}
                 </p>
               </div>
             </div>
 
             <div className="bl-catalog-category-list">
-              {draftSnapshot.categories.map((category) => {
-                const progress = draftSnapshot.progress.categories.find((item) => item.id === category.id)
-                const runtimeProgress = runtimeCategoryProgress?.[category.id]
-                const progressPercent = runtimeProgress?.progressPercent ?? progress?.progressPercent ?? 0
-                const progressStatus = getCategoryProgressStatus(category.status, runtimeProgress?.status ?? progress?.status)
-                const progressState = getCategoryProgressState(category.status, progressStatus)
-                const progressLabel = getProgressStatusLabel(progressStatus)
+              {downloadState.sections.map((section) => {
+                const progressState = getProgressState(section.status)
 
                 return (
-                  <article className="bl-catalog-category" key={category.id}>
+                  <article className="bl-catalog-category" key={section.id}>
                     <div className="bl-catalog-category-topline">
                       <div>
-                        <strong>{category.label}</strong>
-                        <p>{category.description}</p>
+                        <strong>{section.label}</strong>
+                        <p>{section.description}</p>
                       </div>
-                      <span
-                        className={`bl-catalog-status is-${category.status} is-progress-${progressState}`}
-                        title={categoryStatusLabels[category.status]}
-                      >
-                        {progressLabel}
+                      <span className={`bl-catalog-status is-progress-${progressState}`}>
+                        {sectionStatusLabels[section.status]}
                       </span>
                     </div>
                     <div
                       className={`bl-catalog-meter is-${progressState}`}
-                      aria-label={`${category.label} progress`}
+                      aria-label={`${section.label} progress`}
                     >
-                      <span style={{ width: `${progressPercent}%` }} />
+                      <span style={{ width: `${section.progressPercent}%` }} />
                     </div>
                     <div className="bl-catalog-meta">
-                      <span>{formatCount(category.recordCount)} records</span>
-                      <span>
-                        {progressPercent}% prepared · {progressLabel}
-                      </span>
+                      <span>{getSectionRecordCopy(section)}</span>
+                      <span>{section.message}</span>
                     </div>
+                    <dl className="bl-catalog-section-times">
+                      <div>
+                        <dt>Last checked</dt>
+                        <dd>{formatTimestamp(section.lastCheckedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Last updated</dt>
+                        <dd>{formatTimestamp(section.lastUpdatedAt)}</dd>
+                      </div>
+                    </dl>
+                    {section.error ? <p className="bl-catalog-error-copy">{section.error}</p> : null}
                   </article>
                 )
               })}
@@ -338,12 +273,19 @@ export function CatalogUpdatePanel({
         </div>
 
         <footer className="bl-settings-footer">
-          <span className="bl-catalog-footer-copy">Preview only. No catalog data is downloaded or written.</span>
+          <span className="bl-catalog-footer-copy">
+            Frontend-only PokeAPI download. Existing cached sections are kept if an update fails.
+          </span>
           <button className="secondary-action" type="button" onClick={onClose}>
             Close
           </button>
-          <button className="secondary-action" type="button" onClick={onPreviewCheck ?? handleCheck}>
-            Check preview status
+          {running ? (
+            <button className="secondary-action" type="button" onClick={handleCancel}>
+              Cancel
+            </button>
+          ) : null}
+          <button className="primary-action" type="button" onClick={handleUpdate} disabled={running}>
+            {running ? 'Updating…' : 'Update'}
           </button>
         </footer>
       </div>

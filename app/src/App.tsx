@@ -5,15 +5,10 @@ import {
   opponentPools,
   performanceProfiles,
   reportHistoryEntries,
-  sampleCatalogRuntimeAdapterReadModel,
   simulationReportsById,
   submittedTeam as initialSubmittedTeam,
 } from './data'
-import type { CatalogRuntimeAdapterReadModel } from './data'
-import CatalogUpdatePanel, {
-  type CatalogRuntimeCategoryProgress,
-  type CatalogRuntimeStatus,
-} from './panels/CatalogUpdatePanel'
+import CatalogUpdatePanel from './panels/CatalogUpdatePanel'
 import PokemonEditorPanel, { type PokemonEditorDraft } from './panels/PokemonEditorPanel'
 import SettingsPanel from './panels/SettingsPanel'
 import SimulationSettingsPanel from './panels/SimulationSettingsPanel'
@@ -23,8 +18,6 @@ import TeamBuilderView from './screens/TeamBuilderView'
 import TheaterView from './screens/TheaterView'
 import type {
   BattleLabSettings,
-  CatalogUpdateCategory,
-  CatalogPipelineSectionProgress,
   PokemonMoveSlots,
   ReportHistoryEntry,
   SimulationSettings,
@@ -90,19 +83,6 @@ const viewCopy: Record<MainViewId, { title: string; subtitle: string }> = {
   },
 }
 
-const CATALOG_RUNTIME_PREVIEW_SEQUENCE: CatalogRuntimeStatus[] = [
-  'local-preview',
-  'checking',
-  'fetching',
-  'using-cache',
-  'validating-catalog',
-  'complete',
-  'rate-limited',
-  'complete-with-warnings',
-  'failed',
-  'cancelled',
-]
-
 function App() {
   const [shellState, setShellState] = useState<ShellPanelState>({
     activeView: 'team',
@@ -122,7 +102,6 @@ function App() {
   const [pendingLoadTeam, setPendingLoadTeam] = useState<SubmittedTeam | null>(null)
   const [loadTeamError, setLoadTeamError] = useState<string | null>(null)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
-  const [catalogPreviewIndex, setCatalogPreviewIndex] = useState(0)
 
   const { activeView, activePanel, editingSlot } = shellState
   const panelOpen = activePanel !== null
@@ -308,10 +287,6 @@ function App() {
               onBattleLabSettingsChange={setBattleLabSettings}
               onTeamChange={setActiveTeam}
               onSimulationSettingsChange={setSimulationSettings}
-              catalogPreviewIndex={catalogPreviewIndex}
-              onCatalogPreviewAdvance={() =>
-                setCatalogPreviewIndex((current) => (current + 1) % CATALOG_RUNTIME_PREVIEW_SEQUENCE.length)
-              }
             />
 
             {loadConfirmOpen ? (
@@ -592,24 +567,20 @@ function ActivePanelHost({
   battleLabSettings,
   team,
   simulationSettings,
-  catalogPreviewIndex,
   onClose,
   onBattleLabSettingsChange,
   onTeamChange,
   onSimulationSettingsChange,
-  onCatalogPreviewAdvance,
 }: {
   activePanel: ActivePanelId
   editingSlot: number | null
   battleLabSettings: BattleLabSettings
   team: SubmittedTeam
   simulationSettings: SimulationSettings | null
-  catalogPreviewIndex: number
   onClose: () => void
   onBattleLabSettingsChange: (settings: BattleLabSettings) => void
   onTeamChange: (team: SubmittedTeam) => void
   onSimulationSettingsChange: (settings: SimulationSettings) => void
-  onCatalogPreviewAdvance: () => void
 }) {
   if (activePanel === 'editor') {
     const slotNumber = (editingSlot ?? 0) + 1
@@ -669,21 +640,7 @@ function ActivePanelHost({
   }
 
   if (activePanel === 'sync') {
-    const catalogRuntimePreview = createCatalogRuntimePreview(
-      sampleCatalogRuntimeAdapterReadModel,
-      CATALOG_RUNTIME_PREVIEW_SEQUENCE[catalogPreviewIndex] ?? 'local-preview',
-    )
-
-    return (
-      <CatalogUpdatePanel
-        open
-        runtimeCategoryProgress={catalogRuntimePreview.categoryProgress}
-        runtimeMessage={catalogRuntimePreview.message}
-        runtimeStatus={catalogRuntimePreview.status}
-        onPreviewCheck={onCatalogPreviewAdvance}
-        onClose={onClose}
-      />
-    )
+    return <CatalogUpdatePanel open onClose={onClose} />
   }
 
   const panel = getPanelContent(activePanel)
@@ -718,150 +675,6 @@ function ActivePanelHost({
       </footer>
     </aside>
   )
-}
-
-function createCatalogRuntimePreview(readModel: CatalogRuntimeAdapterReadModel, previewStatus: CatalogRuntimeStatus): {
-  categoryProgress: CatalogRuntimeCategoryProgress
-  message: string
-  status: CatalogRuntimeStatus
-} {
-  const previewScenario = getCatalogRuntimePreviewScenario(readModel, previewStatus)
-
-  return {
-    categoryProgress: readModel.progress.sections.reduce<CatalogRuntimeCategoryProgress>((progressByCategory, section) => {
-      for (const categoryId of getCatalogCategoryIdsForSection(section.section)) {
-        progressByCategory[categoryId] = {
-          progressPercent: previewScenario.progressPercent,
-          status: previewScenario.categoryStatus,
-        }
-      }
-
-      return progressByCategory
-    }, {}),
-    message: previewScenario.message,
-    status: previewScenario.status,
-  }
-}
-
-function getCatalogRuntimePreviewScenario(
-  readModel: CatalogRuntimeAdapterReadModel,
-  previewStatus: CatalogRuntimeStatus,
-): {
-  categoryStatus: CatalogRuntimeStatus
-  message: string
-  progressPercent: number
-  status: CatalogRuntimeStatus
-} {
-  switch (previewStatus) {
-    case 'checking':
-    case 'queued':
-      return {
-        categoryStatus: 'checking',
-        message: 'Checking preview. This local read-model display does not contact any update source.',
-        progressPercent: 18,
-        status: 'checking',
-      }
-    case 'fetching':
-      return {
-        categoryStatus: 'fetching',
-        message:
-          'Download progress preview. Future real progress would report here; this checkpoint does not download catalog data.',
-        progressPercent: 38,
-        status: 'fetching',
-      }
-    case 'using-cache':
-      return {
-        categoryStatus: 'using-cache',
-        message: 'Using cache preview. The app keeps working from bundled or saved catalog data; no network sync is running.',
-        progressPercent: 72,
-        status: 'using-cache',
-      }
-    case 'validating-catalog':
-    case 'validating-source':
-    case 'validating-bundle':
-    case 'normalizing':
-      return {
-        categoryStatus: 'validating-catalog',
-        message:
-          'Validation preview. Future catalog checks would report here; Pokemon Showdown remains the battle authority.',
-        progressPercent: 86,
-        status: 'validating-catalog',
-      }
-    case 'complete':
-      return {
-        categoryStatus: 'complete',
-        message:
-          'Complete preview. This shows the final state shape only; no catalog update has run in this checkpoint.',
-        progressPercent: 100,
-        status: 'complete',
-      }
-    case 'rate-limited':
-      return {
-        categoryStatus: 'rate-limited',
-        message: 'Rate-limit preview. Future updates would wait or use cache; no request is being sent in this UI preview.',
-        progressPercent: 48,
-        status: 'rate-limited',
-      }
-    case 'complete-with-warnings':
-      return {
-        categoryStatus: 'complete-with-warnings',
-        message:
-          'Validation warning preview. Catalog data is enrichment only; Pokemon Showdown remains the legality and simulation authority.',
-        progressPercent: 100,
-        status: 'complete-with-warnings',
-      }
-    case 'failed':
-    case 'error':
-      return {
-        categoryStatus: 'failed',
-        message:
-          'Failed safely preview. BattleLab would keep the last trusted catalog; no download, write, or sync is running.',
-        progressPercent: 62,
-        status: 'failed',
-      }
-    case 'cancelled':
-      return {
-        categoryStatus: 'cancelled',
-        message: 'Cancelled preview. The current bundled catalog remains in use and no changes are applied.',
-        progressPercent: 34,
-        status: 'cancelled',
-      }
-    case 'local-preview':
-    case 'planned':
-    case 'idle':
-    default:
-      return {
-        categoryStatus: 'local-preview',
-        message: `${readModel.statusLabel}. Runtime adapter preview only; no download, live fetch, or network sync is running.`,
-        progressPercent: 0,
-        status: 'local-preview',
-      }
-  }
-}
-
-function getCatalogCategoryIdsForSection(
-  section: CatalogPipelineSectionProgress['section'],
-): CatalogUpdateCategory['id'][] {
-  switch (section) {
-    case 'pokemon':
-      return ['pokemon']
-    case 'moves':
-      return ['move']
-    case 'abilities':
-      return ['ability']
-    case 'items':
-      return ['item']
-    case 'types':
-      return ['type']
-    case 'natures':
-      return ['nature']
-    case 'assets':
-      return ['picker-assets', 'visual-assets']
-    case 'searchIndex':
-      return ['search-index']
-    default:
-      return []
-  }
 }
 
 function AppCloseIcon() {
