@@ -91,6 +91,22 @@ export {
 } from "./catalogPlannedExpansionGeneratedCatalogValidation";
 
 export {
+  createPlannedExpansionLocalPickerProjection,
+  type CatalogPlannedExpansionPickerProjection,
+  type CatalogPlannedExpansionPickerProjectionOptionSets,
+  type CatalogPlannedExpansionPickerProjectionSection,
+  type CatalogPlannedExpansionPickerProjectionSectionSummary,
+} from "./catalogPlannedExpansionPickerProjection";
+
+export {
+  validatePlannedExpansionLocalPickerProjection,
+  type CatalogPlannedExpansionPickerProjectionValidationCode,
+  type CatalogPlannedExpansionPickerProjectionValidationIssue,
+  type CatalogPlannedExpansionPickerProjectionValidationResult,
+  type CatalogPlannedExpansionPickerProjectionValidationSeverity,
+} from "./catalogPlannedExpansionPickerProjectionValidation";
+
+export {
   compareCatalogGeneratedSnapshots,
   sampleCatalogGeneratedSnapshotComparison,
   type CatalogGeneratedSnapshotAssetReviewStatus,
