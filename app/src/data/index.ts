@@ -145,6 +145,27 @@ export {
 } from "./catalogSourceManifestBridgeValidation";
 
 export {
+  catalogCoverageExpansionPlan,
+  type CatalogCoverageExpansionAuthority,
+  type CatalogCoverageExpansionExecutionBoundary,
+  type CatalogCoverageExpansionPlan,
+  type CatalogCoverageExpansionSectionTarget,
+  type CatalogCoverageExpansionSourceRole,
+  type CatalogCoverageExpansionSpritePolicy,
+  type CatalogCoverageExpansionStage,
+  type CatalogCoverageExpansionStageGate,
+} from "./catalogCoverageExpansionPlan";
+
+export {
+  catalogCoverageExpansionPlanValidation,
+  validateCatalogCoverageExpansionPlan,
+  type CatalogCoverageExpansionPlanValidationCode,
+  type CatalogCoverageExpansionPlanValidationIssue,
+  type CatalogCoverageExpansionPlanValidationResult,
+  type CatalogCoverageExpansionPlanValidationSeverity,
+} from "./catalogCoverageExpansionPlanValidation";
+
+export {
   catalogLiveFetchPrototypeResourceIds,
   runCatalogLiveFetchPrototype,
   type CatalogLiveFetchPrototypeProgress,
