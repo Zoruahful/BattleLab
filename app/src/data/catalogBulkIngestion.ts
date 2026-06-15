@@ -36,6 +36,7 @@ export type CatalogBulkIngestionStatus =
   | "generating-catalog"
   | "validating-catalog"
   | "complete"
+  | "cancelled"
   | "failed";
 
 export interface CatalogBulkIngestionLimits {
@@ -54,6 +55,9 @@ export interface CatalogBulkIngestionProgress {
   totalRequests: number;
   progressPercent: number;
   message: string;
+  sectionCompletedRequests?: number;
+  sectionTotalRequests?: number;
+  sectionProgressPercent?: number;
 }
 
 export interface CatalogBulkIngestionSectionSummary {
@@ -82,6 +86,8 @@ export interface CatalogBulkIngestionOptions {
   mode?: CatalogBulkIngestionMode;
   limits?: Partial<CatalogBulkIngestionLimits>;
   concurrency?: number;
+  signal?: AbortSignal;
+  onProgress?: (progress: CatalogBulkIngestionProgress) => void;
 }
 
 type PokeApiMoveResourceWithEffectEntries = PokeApiMoveResource & {
@@ -231,6 +237,8 @@ const createProgress = (
   totalRequests: number,
   message: string,
   section?: CatalogBulkIngestionSection,
+  sectionCompletedRequests?: number,
+  sectionTotalRequests?: number,
 ): CatalogBulkIngestionProgress => ({
   status,
   ...(section ? { section } : {}),
@@ -238,6 +246,14 @@ const createProgress = (
   totalRequests,
   progressPercent: totalRequests > 0 ? Math.round((completedRequests / totalRequests) * 100) : 0,
   message,
+  ...(sectionCompletedRequests !== undefined ? { sectionCompletedRequests } : {}),
+  ...(sectionTotalRequests !== undefined ? { sectionTotalRequests } : {}),
+  ...(sectionCompletedRequests !== undefined && sectionTotalRequests !== undefined
+    ? {
+        sectionProgressPercent:
+          sectionTotalRequests > 0 ? Math.round((sectionCompletedRequests / sectionTotalRequests) * 100) : 0,
+      }
+    : {}),
 });
 
 const createIssue = (
@@ -264,8 +280,15 @@ const getSectionLimit = (
   limits: CatalogBulkIngestionLimits,
 ) => (mode === "full" ? fullFetchLimit : limits[section]);
 
-async function fetchJson<TValue>(url: string): Promise<TValue> {
-  const response = await fetch(url);
+function assertNotAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw new DOMException("Catalog bulk ingestion cancelled.", "AbortError");
+  }
+}
+
+async function fetchJson<TValue>(url: string, signal?: AbortSignal): Promise<TValue> {
+  assertNotAborted(signal);
+  const response = await fetch(url, { signal });
 
   if (!response.ok) {
     throw new Error(`${url} failed with HTTP ${response.status}.`);
@@ -278,10 +301,11 @@ async function fetchResourceList(
   section: CatalogBulkIngestionSection,
   mode: CatalogBulkIngestionMode,
   limits: CatalogBulkIngestionLimits,
+  signal?: AbortSignal,
 ): Promise<FetchListResult> {
   const endpoint = endpointBySection[section];
   const limit = getSectionLimit(section, mode, limits);
-  const list = await fetchJson<PokeApiListResponse>(`${pokeApiBaseUrl}/${endpoint}/?limit=${limit}&offset=0`);
+  const list = await fetchJson<PokeApiListResponse>(`${pokeApiBaseUrl}/${endpoint}/?limit=${limit}&offset=0`, signal);
   const results =
     section === "types"
       ? list.results.filter((resource) => battleLabTypeNames.has(resource.name))
@@ -318,23 +342,42 @@ async function mapWithConcurrency<TInput, TOutput>(
 async function fetchDetails<TResource>(
   section: CatalogBulkIngestionSection,
   resources: readonly PokeApiNamedResource[],
-  progress: CatalogBulkIngestionProgress[],
+  pushProgress: (entry: CatalogBulkIngestionProgress) => void,
   completedRequests: { value: number },
   totalRequests: number,
   concurrency: number,
+  signal?: AbortSignal,
 ): Promise<TResource[]> {
+  let sectionCompletedRequests = 0;
+  const sectionTotalRequests = resources.length;
+
   return mapWithConcurrency(resources, concurrency, async (resource) => {
-    progress.push(
+    assertNotAborted(signal);
+    pushProgress(
       createProgress(
         "fetching-details",
         completedRequests.value,
         totalRequests,
         `Fetching ${section}/${resource.name}.`,
         section,
+        sectionCompletedRequests,
+        sectionTotalRequests,
       ),
     );
-    const record = await fetchJson<TResource>(resource.url);
+    const record = await fetchJson<TResource>(resource.url, signal);
     completedRequests.value += 1;
+    sectionCompletedRequests += 1;
+    pushProgress(
+      createProgress(
+        "fetching-details",
+        completedRequests.value,
+        totalRequests,
+        `Fetched ${section}/${resource.name}.`,
+        section,
+        sectionCompletedRequests,
+        sectionTotalRequests,
+      ),
+    );
     return record;
   });
 }
@@ -398,20 +441,39 @@ export async function runCatalogBulkIngestion(
   const mode = options.mode ?? "bounded";
   const limits = mode === "bounded" ? mergeLimits(options.limits) : mergeLimits();
   const concurrency = options.concurrency ?? 6;
+  const signal = options.signal;
   const fetchedAt = new Date().toISOString();
   const sourceVersion = `pokeapi-bulk-ingestion-${mode}-${fetchedAt}`;
   const issues: CatalogSourceFetchIssue[] = [];
-  const progress: CatalogBulkIngestionProgress[] = [
-    createProgress("idle", 0, 0, `PokeAPI bulk ingestion prepared in ${mode} mode.`),
-  ];
+  const progress: CatalogBulkIngestionProgress[] = [];
+  const pushProgress = (entry: CatalogBulkIngestionProgress) => {
+    progress.push(entry);
+    options.onProgress?.(entry);
+  };
+
+  pushProgress(createProgress("idle", 0, 0, `PokeAPI bulk ingestion prepared in ${mode} mode.`));
 
   try {
-    progress.push(createProgress("fetching-lists", 0, 6, "Fetching PokeAPI section resource lists."));
+    assertNotAborted(signal);
+    pushProgress(createProgress("fetching-lists", 0, 6, "Fetching PokeAPI section resource lists."));
+    let completedListRequests = 0;
     const listEntries = await Promise.all(
-      (Object.keys(endpointBySection) as CatalogBulkIngestionSection[]).map(async (section) => [
-        section,
-        await fetchResourceList(section, mode, limits),
-      ] as const),
+      (Object.keys(endpointBySection) as CatalogBulkIngestionSection[]).map(async (section) => {
+        const list = await fetchResourceList(section, mode, limits, signal);
+        completedListRequests += 1;
+        pushProgress(
+          createProgress(
+            "fetching-lists",
+            completedListRequests,
+            6,
+            `Fetched ${section} resource list.`,
+            section,
+            completedListRequests,
+            6,
+          ),
+        );
+        return [section, list] as const;
+      }),
     );
     const lists = Object.fromEntries(listEntries) as Record<CatalogBulkIngestionSection, FetchListResult>;
     const totalRequests = Object.values(lists).reduce((total, list) => total + list.results.length, 0);
@@ -420,50 +482,56 @@ export async function runCatalogBulkIngestion(
     const pokemon = await fetchDetails<PokeApiPokemonResource>(
       "pokemon",
       lists.pokemon.results,
-      progress,
+      pushProgress,
       completedRequests,
       totalRequests,
       concurrency,
+      signal,
     );
     const moves = await fetchDetails<PokeApiMoveResourceWithEffectEntries>(
       "moves",
       lists.moves.results,
-      progress,
+      pushProgress,
       completedRequests,
       totalRequests,
       concurrency,
+      signal,
     );
     const abilities = await fetchDetails<PokeApiAbilityResourceWithEffectEntries>(
       "abilities",
       lists.abilities.results,
-      progress,
+      pushProgress,
       completedRequests,
       totalRequests,
       concurrency,
+      signal,
     );
     const items = await fetchDetails<PokeApiItemResourceWithEffectEntries>(
       "items",
       lists.items.results,
-      progress,
+      pushProgress,
       completedRequests,
       totalRequests,
       concurrency,
+      signal,
     );
     const types = await fetchDetails<PokeApiTypeResource>(
       "types",
       lists.types.results,
-      progress,
+      pushProgress,
       completedRequests,
       totalRequests,
       concurrency,
+      signal,
     );
     const natures = await fetchDetails<PokeApiNatureResource>(
       "natures",
       lists.natures.results,
-      progress,
+      pushProgress,
       completedRequests,
       totalRequests,
       concurrency,
+      signal,
     );
 
     const snapshot: PokeApiCatalogSourceSnapshot = {
@@ -477,7 +545,7 @@ export async function runCatalogBulkIngestion(
       natures,
     };
 
-    progress.push(
+    pushProgress(
       createProgress("validating-source", completedRequests.value, totalRequests, "Validating bulk PokeAPI DTO snapshot."),
     );
     const sourceValidation = validatePokeApiSourceSnapshot(snapshot);
@@ -487,12 +555,12 @@ export async function runCatalogBulkIngestion(
         issues.push(createIssue("response-invalid", "error", issue.message, issue.path));
       });
 
-    progress.push(
+    pushProgress(
       createProgress("generating-catalog", completedRequests.value, totalRequests, "Generating BattleLab catalog records."),
     );
     const catalog = sourceValidation.isValid ? generateCatalogFromPokeApiSnapshot(snapshot) : null;
 
-    progress.push(
+    pushProgress(
       createProgress("validating-catalog", completedRequests.value, totalRequests, "Validating bulk generated catalog."),
     );
     const generatedCatalogValidation = catalog ? validateGeneratedPokeApiCatalogPrototype(catalog) : null;
@@ -518,7 +586,7 @@ export async function runCatalogBulkIngestion(
         )
       : [];
 
-    progress.push(
+    pushProgress(
       createProgress(
         isValid ? "complete" : "failed",
         completedRequests.value,
@@ -549,6 +617,30 @@ export async function runCatalogBulkIngestion(
       ],
     };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      issues.push(createIssue("source-unavailable", "warning", "PokeAPI bulk catalog ingestion was cancelled."));
+      pushProgress(createProgress("cancelled", 0, 0, "Bulk catalog ingestion cancelled."));
+
+      return {
+        status: "cancelled",
+        mode,
+        fetchedAt,
+        sourceVersion,
+        limits: mode === "bounded" ? limits : null,
+        fullModeAvailable: true,
+        progress,
+        snapshot: null,
+        catalog: null,
+        sectionSummaries: [],
+        issues,
+        notes: [
+          "PokeAPI/catalog data remains enrichment-only.",
+          "Pokemon Showdown remains legality and simulation source of truth.",
+          "No UI wiring, .bl writing, loader execution, persistence, or simulation work is performed.",
+        ],
+      };
+    }
+
     issues.push(
       createIssue(
         "source-unavailable",
@@ -556,7 +648,7 @@ export async function runCatalogBulkIngestion(
         error instanceof Error ? error.message : "PokeAPI bulk catalog ingestion failed.",
       ),
     );
-    progress.push(createProgress("failed", 0, 0, "Bulk catalog ingestion failed."));
+    pushProgress(createProgress("failed", 0, 0, "Bulk catalog ingestion failed."));
 
     return {
       status: "failed",
