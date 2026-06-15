@@ -1,5 +1,6 @@
-import { useMemo, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import {
+  createPlannedExpansionLocalPickerProjection,
   getAbilityPickerOptions,
   getCatalogPickerSearchText,
   getItemPickerOptions,
@@ -8,6 +9,7 @@ import {
   getPokemonPickerOptions,
   getTypePickerOptions,
   resolveCatalogAssetReference,
+  type CatalogPlannedExpansionPickerProjectionOptionSets,
 } from '../data'
 import {
   CATEGORY_META,
@@ -53,9 +55,16 @@ export type PokemonEditorPanelProps = {
   onSave?: (draft: PokemonEditorDraft) => void
 }
 
+type PickerProjectionLoadState =
+  | { status: 'loading'; optionSets: null; error: null }
+  | { status: 'ready'; optionSets: CatalogPlannedExpansionPickerProjectionOptionSets; error: null }
+  | { status: 'error'; optionSets: null; error: string }
+
 const statKeys: Array<keyof StatSpread> = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
 const MAXED_IVS: StatSpread = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 }
 const ZERO_EVS: StatSpread = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }
+const PICKER_PROJECTION_ERROR =
+  'Planned catalog preview is unavailable. Keeping bundled picker options for this session.'
 
 const getInitials = (species: string) =>
   species
@@ -351,13 +360,53 @@ export function PokemonEditorPanel({
   const [standardIvs, setStandardIvs] = useState<StatSpread>(pokemon?.ivs ?? { ...MAXED_IVS })
   const [trimNotice, setTrimNotice] = useState(false)
   const [savePulseKey, setSavePulseKey] = useState(0)
+  const [pickerProjectionLoad, setPickerProjectionLoad] = useState<PickerProjectionLoadState>({
+    status: 'loading',
+    optionSets: null,
+    error: null,
+  })
 
-  const pokemonPickerOptions = useMemo(() => getPokemonPickerOptions(), [])
-  const movePickerOptions = useMemo(() => getMovePickerOptions(), [])
-  const itemPickerOptions = useMemo(() => getItemPickerOptions(), [])
-  const abilityPickerOptions = useMemo(() => getAbilityPickerOptions(), [])
-  const naturePickerOptions = useMemo(() => getNaturePickerOptions(), [])
-  const typePickerOptions = useMemo(() => getTypePickerOptions(), [])
+  useEffect(() => {
+    let cancelled = false
+
+    createPlannedExpansionLocalPickerProjection()
+      .then((projection) => {
+        if (!cancelled) {
+          setPickerProjectionLoad({ status: 'ready', optionSets: projection.optionSets, error: null })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPickerProjectionLoad({ status: 'error', optionSets: null, error: PICKER_PROJECTION_ERROR })
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const bundledPickerOptions = useMemo<CatalogPlannedExpansionPickerProjectionOptionSets>(
+    () => ({
+      pokemon: getPokemonPickerOptions(),
+      moves: getMovePickerOptions(),
+      abilities: getAbilityPickerOptions(),
+      items: getItemPickerOptions(),
+      types: getTypePickerOptions(),
+      natures: getNaturePickerOptions(),
+    }),
+    [],
+  )
+  const activePickerOptions =
+    pickerProjectionLoad.status === 'ready' ? pickerProjectionLoad.optionSets : bundledPickerOptions
+  const pickerLoading = pickerProjectionLoad.status === 'loading'
+  const pickerErrorText = pickerProjectionLoad.status === 'error' ? pickerProjectionLoad.error : undefined
+  const pokemonPickerOptions = activePickerOptions.pokemon
+  const movePickerOptions = activePickerOptions.moves
+  const itemPickerOptions = activePickerOptions.items
+  const abilityPickerOptions = activePickerOptions.abilities
+  const naturePickerOptions = activePickerOptions.natures
+  const typePickerOptions = activePickerOptions.types
 
   const panelOpen = open ?? isOpen ?? true
   const visualKey = draftPokemon?.iconKey ?? draftPokemon?.spriteKey
@@ -712,6 +761,8 @@ export function PokemonEditorPanel({
                     ariaLabel="Pokemon"
                     value={selectedPokemonOptionKey}
                     options={pokemonOptions}
+                    loading={pickerLoading}
+                    errorText={pickerErrorText}
                     maxVisibleOptions={40}
                     onChange={handleSelectPokemon}
                   />
@@ -724,6 +775,8 @@ export function PokemonEditorPanel({
                       ariaLabel="Held item"
                       value={selectedItemValue}
                       options={itemOptions}
+                      loading={pickerLoading}
+                      errorText={pickerErrorText}
                       maxVisibleOptions={50}
                       onChange={(catalogKey) => {
                         const option = itemPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
@@ -740,6 +793,8 @@ export function PokemonEditorPanel({
                       ariaLabel="Ability"
                       value={selectedAbilityValue}
                       options={abilityOptions}
+                      loading={pickerLoading}
+                      errorText={pickerErrorText}
                       maxVisibleOptions={50}
                       onChange={(catalogKey) => {
                         const option = abilityPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
@@ -756,6 +811,8 @@ export function PokemonEditorPanel({
                       ariaLabel="Nature"
                       value={selectedNatureValue}
                       options={natureOptions}
+                      loading={pickerLoading}
+                      errorText={pickerErrorText}
                       maxVisibleOptions={30}
                       onChange={(catalogKey) => {
                         const option = naturePickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
@@ -772,6 +829,8 @@ export function PokemonEditorPanel({
                       ariaLabel="Tera type"
                       value={selectedTeraValue}
                       options={teraOptions}
+                      loading={pickerLoading}
+                      errorText={pickerErrorText}
                       maxVisibleOptions={12}
                       onChange={(catalogKey) => {
                         const option = typePickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
@@ -803,6 +862,8 @@ export function PokemonEditorPanel({
                           options={moveOptions}
                           placeholder="Add a move"
                           emptyText="No learnable moves match"
+                          loading={pickerLoading}
+                          errorText={pickerErrorText}
                           maxVisibleOptions={40}
                           onChange={(moveId) => handleMoveChange(index, moveId)}
                         />
@@ -848,6 +909,8 @@ export function PokemonEditorPanel({
                   value=""
                   options={pokemonOptions}
                   placeholder="Choose a Pokemon"
+                  loading={pickerLoading}
+                  errorText={pickerErrorText}
                   maxVisibleOptions={40}
                   onChange={handleSelectPokemon}
                 />
