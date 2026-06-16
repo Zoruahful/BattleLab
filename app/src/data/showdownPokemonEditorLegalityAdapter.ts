@@ -89,7 +89,7 @@ const evidenceMessage = (evidence: ShowdownRuntimeAdapterFieldEvidence) => {
   }
 
   if (evidence.source === 'catalog-preview') {
-    return 'Catalog hint is preview-only; Pokemon Showdown must confirm final legality.'
+    return evidence.showdownDetail ?? 'Catalog hint is preview-only; Pokemon Showdown must confirm final legality.'
   }
 
   if (evidence.status === 'legal') {
@@ -110,7 +110,7 @@ const evidenceToReadModel = (evidence: ShowdownRuntimeAdapterFieldEvidence): Pok
   label: fieldLabel(evidence.field, evidence.slotIndex),
   message: evidenceMessage(evidence),
   selectable: true,
-  legalityDefining: evidence.field === 'move' || evidence.field === 'ability',
+  legalityDefining: evidence.field === 'move' || evidence.field === 'ability' || evidence.field === 'teraType',
   optionKind: fieldOptionKind(evidence.field),
   option: optionPreview(evidence.value),
 })

@@ -1,16 +1,23 @@
 import type {
+  BattleFormat,
   BuildCatalogReference,
-  PokemonEditorLegalityFieldReadModel,
   PokemonEditorLegalityReadModel,
-  ShowdownLegalityFieldResult,
-  ShowdownLegalityResult,
+  ShowdownLegalityRequest,
 } from '../types'
-import { runPokemonEditorShowdownLegalityRuntimeProof } from './showdownLegalityRuntimeProof'
+import type {
+  ShowdownRuntimeAdapterEvent,
+  ShowdownRuntimeAdapterFieldEvidence,
+  ShowdownRuntimeAdapterResponse,
+  ShowdownRuntimeAdapterSafetyPolicy,
+  ShowdownRuntimeUnavailableResult,
+} from '../types/showdownRuntime'
+import { createPokemonEditorShowdownLegalityRequest } from './showdownLegalityRuntimeProof'
+import { createShowdownPokemonEditorLegalityReadModel } from './showdownPokemonEditorLegalityAdapter'
 
 type MoveSlot = 0 | 1 | 2 | 3
 
 export type PokemonEditorLegalityPreviewInput = {
-  format?: 'vgc-regulation-h' | 'vgc-regulation-g' | 'custom'
+  format?: BattleFormat
   species: BuildCatalogReference | null
   ability?: BuildCatalogReference | null
   previewAbilityIds?: string[]
@@ -25,189 +32,186 @@ export type PokemonEditorLegalityPreviewInput = {
   previewLearnsetMoveIds?: string[]
 }
 
-const optionPreview = (option?: BuildCatalogReference | null) =>
-  option
-    ? {
-        catalogKey: option.catalogKey,
-        showdownId: option.showdownId,
-        displayName: option.displayName,
-      }
-    : undefined
-
-const fieldLabel = (field: ShowdownLegalityFieldResult) => {
-  if (field.field === 'move') return `Move ${(field.slotIndex ?? 0) + 1}`
-  if (field.field === 'ability') return 'Ability'
-  if (field.field === 'item') return 'Item'
-  if (field.field === 'teraType') return 'Tera type'
-  if (field.field === 'nature') return 'Nature'
-  return 'Species'
+const safetyPolicy: ShowdownRuntimeAdapterSafetyPolicy = {
+  pokemonShowdownAuthority: 'pokemon-showdown-legality-source-of-truth',
+  catalogRole: 'enrichment-only',
+  allowCatalogOnlyFinalLegality: false,
+  allowSimulationExecution: false,
+  allowPersistentStorage: false,
+  allowNetworkFetch: false,
+  preserveRuntimeUnavailableFallback: true,
 }
 
-const fieldOptionKind = (field: ShowdownLegalityFieldResult) => {
-  if (field.field === 'teraType') return 'type'
-  if (field.field === 'move' || field.field === 'ability' || field.field === 'item' || field.field === 'nature') {
-    return field.field
+const optionId = (option: BuildCatalogReference, prefix: string) =>
+  option.showdownId ?? option.catalogKey.replace(new RegExp(`^${prefix}-`), '')
+
+const previewSignalMessage = (
+  option: BuildCatalogReference,
+  previewIds: Set<string>,
+  prefix: string,
+  matchText: string,
+  mismatchText: string,
+  unavailableText: string,
+) => {
+  if (!previewIds.size) {
+    return unavailableText
   }
-  return undefined
+
+  return previewIds.has(optionId(option, prefix)) ? matchText : mismatchText
 }
 
-const fieldResultToReadModel = (field: ShowdownLegalityFieldResult): PokemonEditorLegalityFieldReadModel => ({
-  field: field.field,
-  ...(field.slotIndex !== undefined ? { slotIndex: field.slotIndex } : {}),
-  status: field.status,
-  label: fieldLabel(field),
-  message: field.messages.map((message) => message.message).join(' '),
-  selectable: field.selectable,
-  legalityDefining: field.legalityDefining,
-  optionKind: fieldOptionKind(field),
-  option: optionPreview(field.value),
+const createEvent = (
+  request: ShowdownLegalityRequest,
+  kind: ShowdownRuntimeAdapterEvent['kind'],
+  status: ShowdownRuntimeAdapterEvent['status'],
+  message: string,
+): ShowdownRuntimeAdapterEvent => ({
+  eventId: `${request.requestId}-${kind}`,
+  requestId: request.requestId,
+  kind,
+  status,
+  emittedAt: request.requestedAt,
+  message,
 })
 
-const runtimeResultToReadModel = (
+const createCatalogEvidence = (
+  field: ShowdownRuntimeAdapterFieldEvidence['field'],
+  value: BuildCatalogReference,
+  showdownDetail: string,
+  slotIndex?: MoveSlot,
+  catalogHintDisagrees = false,
+): ShowdownRuntimeAdapterFieldEvidence => ({
+  field,
+  ...(slotIndex !== undefined ? { slotIndex } : {}),
+  value,
+  status: 'unknown',
+  source: 'catalog-preview',
+  showdownDetail,
+  ...(catalogHintDisagrees ? { catalogHintDisagrees } : {}),
+})
+
+const createCatalogPreviewEvidence = (
   input: PokemonEditorLegalityPreviewInput,
-  result: ShowdownLegalityResult,
-): PokemonEditorLegalityReadModel => ({
-  status: result.status,
-  format: input.format ?? 'custom',
-  species: input.species,
-  fieldResults: result.fields.map(fieldResultToReadModel),
-  runtimeUnavailableFallback:
-    result.status === 'runtime-unavailable'
-      ? {
-          status: 'runtime-unavailable',
-          reason: result.runtimeMetadata.runtimeUnavailableReason ?? 'runtime-not-implemented',
-          preserveCurrentUiBehavior: true,
-          allowCatalogSelection: true,
-          markLegalityAsUnknown: true,
-          blockSimulationStart: true,
-          message: 'Pokemon Showdown legality runtime is not wired yet. Local signals are preview-only.',
-        }
-      : undefined,
-  notes: [
-    'Pokemon Showdown remains the legality and simulation source of truth.',
-    'PokeAPI and catalog data are enrichment only.',
+): ShowdownRuntimeAdapterFieldEvidence[] => {
+  const previewLearnsetMoveIds = new Set(input.previewLearnsetMoveIds ?? [])
+  const previewAbilityIds = new Set(input.previewAbilityIds ?? [])
+  const evidence: ShowdownRuntimeAdapterFieldEvidence[] = []
+
+  input.moves.forEach((move, index) => {
+    if (!move) return
+
+    const message = previewSignalMessage(
+      move,
+      previewLearnsetMoveIds,
+      'move',
+      'Appears in the local learnset preview. Pokemon Showdown must confirm final legality.',
+      'Not found in the local learnset preview. Pokemon Showdown must confirm final legality.',
+      'Local learnset preview is unavailable; Pokemon Showdown must confirm final legality.',
+    )
+
+    evidence.push(createCatalogEvidence('move', move, message, index as MoveSlot, message.startsWith('Not found')))
+  })
+
+  if (input.ability) {
+    const message = previewSignalMessage(
+      input.ability,
+      previewAbilityIds,
+      'ability',
+      'Appears in catalog ability list. Pokemon Showdown must confirm final legality.',
+      'Not found in catalog ability list. Pokemon Showdown must confirm final legality.',
+      'Catalog ability list is unavailable for this Pokemon/form. Pokemon Showdown must confirm final legality.',
+    )
+
+    evidence.push(createCatalogEvidence('ability', input.ability, message, undefined, message.startsWith('Not found')))
+  }
+
+  if (input.item) {
+    evidence.push(
+      createCatalogEvidence(
+        'item',
+        input.item,
+        'Item is selectable in the catalog; this preview does not treat item selection as a legality-defining check.',
+      ),
+    )
+  }
+
+  if (input.teraType) {
+    evidence.push(
+      createCatalogEvidence(
+        'teraType',
+        input.teraType,
+        'Tera type remains catalog-selectable; format legality is Pokemon Showdown-owned.',
+      ),
+    )
+  }
+
+  return evidence
+}
+
+const createRuntimeUnavailableResult = (): ShowdownRuntimeUnavailableResult => ({
+  status: 'runtime-unavailable',
+  reason: 'runtime-not-implemented',
+  runtimeMetadata: {
+    boundaryKind: 'runtime-contract-only',
+    contractVersion: 'phase3-showdown-legality-v1',
+    runtimeUnavailableReason: 'runtime-not-implemented',
+  },
+  messages: [
+    {
+      code: 'showdown-runtime-unavailable',
+      severity: 'warning',
+      message: 'Pokemon Showdown legality runtime is not wired yet. Local signals are preview-only.',
+      showdownDetail: 'Wire a Showdown runtime adapter before marking legality as final.',
+    },
   ],
 })
 
-const toMovePreviewField = (
-  move: BuildCatalogReference | null,
-  slotIndex: MoveSlot,
-  previewLearnsetMoveIds: Set<string>,
-): PokemonEditorLegalityFieldReadModel => {
-  if (!move) {
-    return {
-      field: 'move',
-      slotIndex,
-      status: 'not-checked',
-      label: `Move ${slotIndex + 1}`,
-      message: 'No move selected.',
-      selectable: true,
-      legalityDefining: true,
-      optionKind: 'move',
-    }
-  }
-
-  const moveId = move.showdownId ?? move.catalogKey.replace(/^move-/, '')
-  const foundInPreview = previewLearnsetMoveIds.has(moveId)
+const createRuntimeUnavailableAdapterResponse = (
+  input: PokemonEditorLegalityPreviewInput,
+): ShowdownRuntimeAdapterResponse => {
+  const request = createPokemonEditorShowdownLegalityRequest({
+    ...input,
+    format: input.format ?? 'custom',
+    requestedAt: new Date().toISOString(),
+  })
+  const unavailableResult = createRuntimeUnavailableResult()
 
   return {
-    field: 'move',
-    slotIndex,
-    status: 'warning',
-    label: `Move ${slotIndex + 1}`,
-    message: foundInPreview
-      ? 'Appears in the local learnset preview. Pokemon Showdown must confirm final legality.'
-      : 'Not found in the local learnset preview. Pokemon Showdown must confirm final legality.',
-    selectable: true,
-    legalityDefining: true,
-    optionKind: 'move',
-    option: optionPreview(move),
+    requestId: request.requestId,
+    status: 'runtime-unavailable',
+    checkedAt: request.requestedAt,
+    runtimeMetadata: unavailableResult.runtimeMetadata,
+    unavailableResult,
+    fieldEvidence: createCatalogPreviewEvidence(input),
+    events: [
+      createEvent(request, 'adapter-planned', 'not-started', 'Pokemon Editor legality preview prepared a safe adapter fallback.'),
+      createEvent(
+        request,
+        'runtime-unavailable',
+        'runtime-unavailable',
+        'Pokemon Showdown runtime is unavailable in this UI surface; local catalog hints remain non-authoritative.',
+      ),
+    ],
+    messages: unavailableResult.messages,
+    safetyPolicy,
   }
-}
-
-const toAbilityPreviewMessage = (ability?: BuildCatalogReference | null, previewAbilityIds: Set<string> = new Set()) => {
-  if (!ability) return 'No ability selected.'
-
-  const abilityId = ability.showdownId ?? ability.catalogKey.replace(/^ability-/, '')
-  const abilityListSignal = previewAbilityIds.size
-    ? previewAbilityIds.has(abilityId)
-      ? 'Appears in catalog ability list.'
-      : 'Not found in catalog ability list.'
-    : 'Catalog ability list is unavailable for this Pokemon/form.'
-
-  return `${abilityListSignal} Pokemon Showdown must confirm final legality.`
 }
 
 export function createPokemonEditorLegalityPreviewReadModel(
   input: PokemonEditorLegalityPreviewInput,
 ): PokemonEditorLegalityReadModel {
-  const runtimeResult = runPokemonEditorShowdownLegalityRuntimeProof(input)
-
-  if (runtimeResult.fields.length) {
-    return runtimeResultToReadModel(input, runtimeResult)
-  }
-
-  const previewLearnsetMoveIds = new Set(input.previewLearnsetMoveIds ?? [])
-  const previewAbilityIds = new Set(input.previewAbilityIds ?? [])
-  const moveResults = input.moves.map((move, index) =>
-    toMovePreviewField(move, index as MoveSlot, previewLearnsetMoveIds),
-  )
-
-  const fieldResults: PokemonEditorLegalityFieldReadModel[] = [
-    ...moveResults,
-    {
-      field: 'ability',
-      status: input.ability ? 'runtime-unavailable' : 'not-checked',
-      label: 'Ability',
-      message: toAbilityPreviewMessage(input.ability, previewAbilityIds),
-      selectable: true,
-      legalityDefining: true,
-      optionKind: 'ability',
-      option: optionPreview(input.ability),
-    },
-    {
-      field: 'item',
-      status: input.item ? 'unknown' : 'not-checked',
-      label: 'Item',
-      message: input.item
-        ? 'Items are catalog-selectable here, but this preview does not treat the item as legality-defining.'
-        : 'No held item selected.',
-      selectable: true,
-      legalityDefining: false,
-      optionKind: 'item',
-      option: optionPreview(input.item),
-    },
-    {
-      field: 'teraType',
-      status: input.teraType ? 'runtime-unavailable' : 'not-checked',
-      label: 'Tera type',
-      message: input.teraType
-        ? 'Tera types remain catalog-selectable; format legality is Pokemon Showdown-owned.'
-        : 'No Tera type selected.',
-      selectable: true,
-      legalityDefining: true,
-      optionKind: 'type',
-      option: optionPreview(input.teraType),
-    },
-  ]
+  const response = createRuntimeUnavailableAdapterResponse(input)
+  const adapterResult = createShowdownPokemonEditorLegalityReadModel({
+    response,
+    format: input.format ?? 'custom',
+    species: input.species,
+  })
 
   return {
-    status: 'runtime-unavailable',
-    format: 'custom',
-    species: input.species,
-    fieldResults,
-    runtimeUnavailableFallback: {
-      status: 'runtime-unavailable',
-      reason: 'runtime-not-implemented',
-      preserveCurrentUiBehavior: true,
-      allowCatalogSelection: true,
-      markLegalityAsUnknown: true,
-      blockSimulationStart: true,
-      message: 'Pokemon Showdown legality runtime is not wired yet. Local signals are preview-only.',
-    },
+    ...adapterResult.readModel,
     notes: [
-      'Local catalog and learnset data are enrichment only.',
-      'Pokemon Showdown remains the legality and simulation source of truth.',
+      ...adapterResult.readModel.notes,
+      'Pokemon Editor preview is currently using the runtime-unavailable adapter bridge.',
     ],
   }
 }
