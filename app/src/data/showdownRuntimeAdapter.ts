@@ -156,6 +156,7 @@ const toShowdownId = (value: BuildCatalogReference) =>
   (value.showdownId ?? value.catalogKey).toLowerCase().replace(/[^a-z0-9]+/g, '')
 
 const toShowdownIdFromName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '')
+const toMoveSlot = (index: number): MoveSlot | undefined => (index >= 0 && index <= 3 ? (index as MoveSlot) : undefined)
 
 const getDisplayName = (value: BuildCatalogReference) => value.displayName || value.showdownId || value.catalogKey
 
@@ -529,8 +530,8 @@ const runBrowserDataShowdownChecks = (
   const learnset = getBrowserLearnset(showdown, speciesId)
   const defaultAbility = getBrowserDefaultAbility(showdown, speciesId, getDisplayName(species))
 
-  request.moveCheck?.candidateMoves.forEach((move, index) => {
-    const slotIndex = index as MoveSlot
+    request.moveCheck?.candidateMoves.forEach((move, index) => {
+    const slotIndex = toMoveSlot(index)
     const moveId = toShowdownId(move)
     const status = learnset?.[moveId] ? 'legal' : 'illegal'
     const detail =
@@ -717,8 +718,8 @@ export async function runShowdownRuntimeAdapter(
 
     const defaultAbility = getDefaultAbility(showdown, species)
 
-    request.moveCheck?.candidateMoves.forEach((move, index) => {
-      const slotIndex = index as MoveSlot
+  request.moveCheck?.candidateMoves.forEach((move, index) => {
+      const slotIndex = toMoveSlot(index)
       const problems = getShowdownProblems(validator, createSmokeSet(species, defaultAbility, getDisplayName(move)))
       const status = problems.some((problem) => problem.toLowerCase().includes("can't learn")) ? 'illegal' : 'legal'
       const detail = problemsToDetail(problems)

@@ -359,6 +359,26 @@ const toPickerLegalityStatus = (
   return 'catalog-preview'
 }
 
+const uniqueBuildRefs = (refs: BuildCatalogReference[]) => {
+  const seen = new Set<string>()
+
+  return refs.filter((ref) => {
+    const key = ref.showdownId ?? ref.catalogKey
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+const sameBuildRef = (left?: BuildCatalogReference | null, right?: BuildCatalogReference | null) =>
+  Boolean(
+    left &&
+      right &&
+      (left.catalogKey === right.catalogKey ||
+        (left.showdownId && left.showdownId === right.showdownId) ||
+        left.displayName === right.displayName),
+  )
+
 function moveTooltip(move: (typeof editorMoves)[number], catalogOption?: CatalogPickerOption): ReactNode {
   return (
     <TooltipCard
@@ -1018,7 +1038,12 @@ export function PokemonEditorPanel({
     : null
   const activeLegalityReadModel = showdownLegality.readModel ?? legalityPreview
   const legalityPreviewRows = activeLegalityReadModel
-    ? activeLegalityReadModel.fieldResults.filter((field) => field.status !== 'not-checked')
+    ? activeLegalityReadModel.fieldResults.filter((field) => {
+        if (field.status === 'not-checked') return false
+        if (field.field !== 'move') return true
+
+        return selectedMoveRefs.some((move) => sameBuildRef(move, field.option))
+      })
     : []
   const showdownCheckDisabled = !draftPokemon || showdownLegality.status === 'checking'
   const handleLegalityFormatChange = (nextFormat: BattleFormat) => {
@@ -1032,6 +1057,20 @@ export function PokemonEditorPanel({
     const species = toBuildRef(selectedPokemonOption) ?? draftPokemon.speciesRef ?? null
     const ability = toBuildRef(selectedAbilityOption) ?? draftPokemon.abilityRef ?? null
     const selectedMoves = selectedMoveRefs.filter((move): move is BuildCatalogReference => Boolean(move))
+    const pickerCandidateMoves = moveOptions
+      .filter((option) => option.value !== '__none__')
+      .map((option): BuildCatalogReference => {
+        const catalogOption = movePickerOptions.find(
+          (candidate) => candidate.showdownId === option.value || candidate.catalogKey === option.value,
+        )
+
+        return toBuildRef(catalogOption) ?? {
+          catalogKey: `move-${option.value}`,
+          showdownId: option.value,
+          displayName: option.label,
+        }
+      })
+    const candidateMoves = uniqueBuildRefs([...selectedMoves, ...pickerCandidateMoves])
 
     if (!species) {
       setShowdownLegality({
@@ -1065,7 +1104,7 @@ export function PokemonEditorPanel({
         checkKind: 'pokemon-editor-move-ability',
         format: legalityFormat,
         legalityRequest,
-        ...(selectedMoves.length > 0 ? { moveCheck: { species, candidateMoves: selectedMoves, format: legalityFormat } } : {}),
+        ...(candidateMoves.length > 0 ? { moveCheck: { species, candidateMoves, format: legalityFormat } } : {}),
         ...(ability ? { abilityCheck: { species, candidateAbilities: [ability], format: legalityFormat } } : {}),
         environment: sampleShowdownRuntimeAdapterEnvironment,
         safetyPolicy: sampleShowdownRuntimeAdapterSafetyPolicy,
