@@ -170,17 +170,8 @@ export const sampleShowdownEngineFormatRegistry: ShowdownEngineFormatRegistryRea
   battleLabCustomFormatCount: battleLabCustomFormatPlaceholders.length,
   formats: [
     {
-      formatId: 'gen9doublesou',
-      displayName: '[Gen 9] Doubles OU',
-      source: 'official-pokemon-showdown',
-      gameType: 'doubles',
-      generation: 9,
-      section: 'S/V Doubles',
-      available: true,
-    },
-    {
-      formatId: 'gen9vgc2024regg',
-      displayName: '[Gen 9] VGC 2024 Regulation G',
+      formatId: 'gen9vgc2025regg',
+      displayName: '[Gen 9] VGC 2025 Reg G',
       source: 'official-pokemon-showdown',
       gameType: 'doubles',
       generation: 9,

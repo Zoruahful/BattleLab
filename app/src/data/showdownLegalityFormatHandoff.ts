@@ -24,7 +24,7 @@ export interface ShowdownLegalityFormatMapping {
   source: ShowdownLegalityFormatSource
   requiresOfficialFormat: boolean
   requiresCustomOverlay: boolean
-  fallbackShowdownFormatId?: string
+  unsupportedMessage?: string
 }
 
 export interface ShowdownLegalityFormatInstalledRegistryHandoff {
@@ -96,7 +96,8 @@ export const showdownLegalityFormatMappings: Record<BattleFormat, ShowdownLegali
     source: 'official-pokemon-showdown',
     requiresOfficialFormat: true,
     requiresCustomOverlay: false,
-    fallbackShowdownFormatId: 'gen9doublesou',
+    unsupportedMessage:
+      'VGC Regulation H does not map to an installed Pokemon Showdown format in this package; legality must remain unavailable until an official format ID is present.',
   },
   'vgc-regulation-g': {
     appFormat: 'vgc-regulation-g',
@@ -105,7 +106,6 @@ export const showdownLegalityFormatMappings: Record<BattleFormat, ShowdownLegali
     source: 'official-pokemon-showdown',
     requiresOfficialFormat: true,
     requiresCustomOverlay: false,
-    fallbackShowdownFormatId: 'gen9doublesou',
   },
   custom: {
     appFormat: 'custom',
@@ -114,7 +114,8 @@ export const showdownLegalityFormatMappings: Record<BattleFormat, ShowdownLegali
     source: 'battlelab-custom-overlay',
     requiresOfficialFormat: false,
     requiresCustomOverlay: true,
-    fallbackShowdownFormatId: 'gen9doublesou',
+    unsupportedMessage:
+      'BattleLab custom formats remain overlay-only and are not executable Pokemon Showdown formats until an approved adapter overlay is implemented.',
   },
 }
 
@@ -192,7 +193,7 @@ const createRuntimeFallback = (
     preserveCurrentUiBehavior: true,
     message:
       status === 'unsupported-format'
-        ? `${mapping.displayName} is not mapped to an available Pokemon Showdown format yet.`
+        ? mapping.unsupportedMessage ?? `${mapping.displayName} is not mapped to an available Pokemon Showdown format yet.`
         : 'Installed Pokemon Showdown format registry is unavailable; Pokemon Editor legality must remain unknown.',
   }
 }

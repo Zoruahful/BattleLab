@@ -9,6 +9,8 @@ export type ShowdownLegalityFormatHandoffValidationSeverity = 'error' | 'warning
 
 export type ShowdownLegalityFormatHandoffValidationCode =
   | 'official-format-invalid'
+  | 'regulation-g-mapping-invalid'
+  | 'regulation-h-mapping-invalid'
   | 'custom-overlay-invalid'
   | 'runtime-unavailable-invalid'
   | 'fallback-invalid'
@@ -35,6 +37,21 @@ export interface ShowdownLegalityFormatHandoffValidationResult {
       customOverlayRequired: boolean
     }
   >
+  installedRegistryLookup: {
+    status: ShowdownLegalityFormatHandoff['installedRegistry']['status']
+    officialFormatCount: number
+    regulationG: {
+      targetShowdownFormatId: string
+      status: ShowdownLegalityFormatHandoff['status']
+      officialFormatAvailable: boolean
+    }
+    regulationH: {
+      targetShowdownFormatId: string
+      status: ShowdownLegalityFormatHandoff['status']
+      officialFormatAvailable: boolean
+      fallbackReason: NonNullable<ShowdownLegalityFormatHandoff['runtimeFallback']>['reason'] | null
+    }
+  }
   casesCovered: string[]
 }
 
@@ -121,7 +138,6 @@ const createBridgeFixture = (
 })
 
 const availableBridge = createBridgeFixture('installed-registry-available', [
-  showdownLegalityFormatMappings['vgc-regulation-h'].targetShowdownFormatId,
   showdownLegalityFormatMappings['vgc-regulation-g'].targetShowdownFormatId,
 ])
 
@@ -206,6 +222,73 @@ const validateOfficialHandoff = (
         'error',
         path,
         'Official BattleLab formats must map to available Pokemon Showdown format IDs without requiring custom overlays.',
+      ),
+    )
+  }
+}
+
+const validateRegulationGMapping = (
+  handoff: ShowdownLegalityFormatHandoff,
+  issues: ShowdownLegalityFormatHandoffValidationIssue[],
+  path: string,
+) => {
+  if (
+    handoff.mapping.targetShowdownFormatId !== 'gen9vgc2025regg' ||
+    handoff.status !== 'official-format-available' ||
+    !handoff.officialFormatAvailable
+  ) {
+    issues.push(
+      createIssue(
+        'regulation-g-mapping-invalid',
+        'error',
+        path,
+        'VGC Regulation G must map to the installed Pokemon Showdown format gen9vgc2025regg.',
+      ),
+    )
+  }
+}
+
+const validateRegulationHMapping = (
+  handoff: ShowdownLegalityFormatHandoff,
+  issues: ShowdownLegalityFormatHandoffValidationIssue[],
+  path: string,
+) => {
+  if (handoff.status === 'official-format-available') {
+    if (!handoff.officialFormatAvailable || handoff.mapping.source !== 'official-pokemon-showdown') {
+      issues.push(
+        createIssue(
+          'regulation-h-mapping-invalid',
+          'error',
+          path,
+          'VGC Regulation H supported mapping must point to an available official Pokemon Showdown format.',
+        ),
+      )
+    }
+
+    return
+  }
+
+  if (
+    handoff.status !== 'unsupported-format' &&
+    handoff.status !== 'runtime-unavailable'
+  ) {
+    issues.push(
+      createIssue(
+        'regulation-h-mapping-invalid',
+        'error',
+        path,
+        'VGC Regulation H must be either supported by the installed registry or clearly unavailable/unsupported.',
+      ),
+    )
+  }
+
+  if (!handoff.runtimeFallback?.message.includes('Regulation H')) {
+    issues.push(
+      createIssue(
+        'regulation-h-mapping-invalid',
+        'error',
+        `${path}.runtimeFallback`,
+        'Unsupported VGC Regulation H must return a useful fallback message that names Regulation H.',
       ),
     )
   }
@@ -300,13 +383,24 @@ export async function validateShowdownLegalityFormatHandoff(): Promise<ShowdownL
     handoffId: 'showdown-legality-format-handoff-validation-unavailable',
     installedRegistryBridge: unavailableBridge,
   })
+  const installedRegulationG = await createShowdownLegalityFormatHandoff('vgc-regulation-g', {
+    handoffId: 'showdown-legality-format-handoff-validation-installed-reg-g',
+  })
+  const installedRegulationH = await createShowdownLegalityFormatHandoff('vgc-regulation-h', {
+    handoffId: 'showdown-legality-format-handoff-validation-installed-reg-h',
+  })
   const handoffs = [regulationH, regulationG, custom, runtimeUnavailable]
 
-  validateOfficialHandoff(regulationH, issues, 'regulationH')
   validateOfficialHandoff(regulationG, issues, 'regulationG')
+  validateRegulationHMapping(regulationH, issues, 'regulationH')
+  validateRegulationGMapping(regulationG, issues, 'regulationG')
   validateCustomHandoff(custom, issues, 'custom')
   validateUnavailableHandoff(runtimeUnavailable, issues)
   validateFallbacks(handoffs, issues)
+  validateCommonBoundary(installedRegulationG, issues, 'installedRegistry.regulationG')
+  validateCommonBoundary(installedRegulationH, issues, 'installedRegistry.regulationH')
+  validateRegulationGMapping(installedRegulationG, issues, 'installedRegistry.regulationG')
+  validateRegulationHMapping(installedRegulationH, issues, 'installedRegistry.regulationH')
 
   return {
     isValid: issues.every((issue) => issue.severity !== 'error'),
@@ -331,7 +425,23 @@ export async function validateShowdownLegalityFormatHandoff(): Promise<ShowdownL
         customOverlayRequired: custom.customOverlay.required,
       },
     },
+    installedRegistryLookup: {
+      status: installedRegulationG.installedRegistry.status,
+      officialFormatCount: installedRegulationG.installedRegistry.officialFormatCount,
+      regulationG: {
+        targetShowdownFormatId: installedRegulationG.mapping.targetShowdownFormatId,
+        status: installedRegulationG.status,
+        officialFormatAvailable: installedRegulationG.officialFormatAvailable,
+      },
+      regulationH: {
+        targetShowdownFormatId: installedRegulationH.mapping.targetShowdownFormatId,
+        status: installedRegulationH.status,
+        officialFormatAvailable: installedRegulationH.officialFormatAvailable,
+        fallbackReason: installedRegulationH.runtimeFallback?.reason ?? null,
+      },
+    },
     casesCovered: [
+      'installed Pokemon Showdown registry lookup',
       'VGC Regulation H official format handoff',
       'VGC Regulation G official format handoff',
       'BattleLab custom format overlay handoff',
