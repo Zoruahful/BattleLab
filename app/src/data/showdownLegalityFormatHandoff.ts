@@ -4,6 +4,10 @@ import {
   createShowdownEngineInstalledFormatRegistryBridge,
   type ShowdownEngineInstalledFormatRegistryBridge,
 } from './showdownEngineInstalledFormatRegistryBridge'
+import {
+  createShowdownEngineFormatRegistryReadModel,
+  type ShowdownEngineFormatRegistryReadModel,
+} from './showdownEngineUpdateService'
 
 export type ShowdownLegalityFormatHandoffStatus =
   | 'official-format-available'
@@ -79,7 +83,9 @@ export interface ShowdownLegalityFormatHandoff {
 export interface ShowdownLegalityFormatHandoffOptions {
   handoffId?: string
   installedRegistryBridge?: ShowdownEngineInstalledFormatRegistryBridge
+  formatRegistry?: ShowdownEngineFormatRegistryReadModel
   loadInstalledRegistryBridge?: () => Promise<ShowdownEngineInstalledFormatRegistryBridge>
+  loadFormatRegistry?: (checkedAt: string) => Promise<ShowdownEngineFormatRegistryReadModel>
 }
 
 export const showdownLegalityFormatMappings: Record<BattleFormat, ShowdownLegalityFormatMapping> = {
@@ -95,7 +101,7 @@ export const showdownLegalityFormatMappings: Record<BattleFormat, ShowdownLegali
   'vgc-regulation-g': {
     appFormat: 'vgc-regulation-g',
     displayName: 'VGC Regulation G',
-    targetShowdownFormatId: 'gen9vgc2024regg',
+    targetShowdownFormatId: 'gen9vgc2025regg',
     source: 'official-pokemon-showdown',
     requiresOfficialFormat: true,
     requiresCustomOverlay: false,
@@ -150,9 +156,15 @@ const createRegistryHandoff = (
 const isOfficialFormatAvailable = (
   mapping: ShowdownLegalityFormatMapping,
   bridge: ShowdownEngineInstalledFormatRegistryBridge,
+  registry?: ShowdownEngineFormatRegistryReadModel,
 ) =>
   bridge.status === 'installed-registry-available' &&
-  bridge.sampleOfficialFormats.some((format) => format.formatId === mapping.targetShowdownFormatId)
+  (registry?.formats ?? bridge.sampleOfficialFormats).some(
+    (format) =>
+      format.formatId === mapping.targetShowdownFormatId &&
+      format.source === 'official-pokemon-showdown' &&
+      (!('available' in format) || format.available),
+  )
 
 const createCustomOverlay = (
   mapping: ShowdownLegalityFormatMapping,
@@ -208,7 +220,12 @@ export async function createShowdownLegalityFormatHandoff(
   const bridge =
     options.installedRegistryBridge ??
     (await (options.loadInstalledRegistryBridge ?? createShowdownEngineInstalledFormatRegistryBridge)())
-  const officialFormatAvailable = isOfficialFormatAvailable(mapping, bridge)
+  const registry =
+    options.formatRegistry ??
+    (!options.installedRegistryBridge && bridge.status === 'installed-registry-available'
+      ? await (options.loadFormatRegistry ?? createShowdownEngineFormatRegistryReadModel)(bridge.checkedAt)
+      : undefined)
+  const officialFormatAvailable = isOfficialFormatAvailable(mapping, bridge, registry)
   const customOverlay = createCustomOverlay(mapping, bridge)
   const status = createStatus(mapping, bridge, officialFormatAvailable, customOverlay)
 

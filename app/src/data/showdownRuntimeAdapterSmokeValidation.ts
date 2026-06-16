@@ -13,6 +13,7 @@ export type ShowdownRuntimeAdapterSmokeValidationCode =
   | 'showdown-check-not-complete'
   | 'expected-evidence-missing'
   | 'runtime-unavailable-fallback-invalid'
+  | 'format-handoff-fallback-invalid'
   | 'authority-boundary-invalid'
   | 'unsafe-policy-enabled'
 
@@ -79,7 +80,7 @@ const createIssue = (
 const createSmokeRequest = () => {
   const legalityRequest = createPokemonEditorShowdownLegalityRequest({
     requestedAt: checkedAt,
-    format: 'vgc-regulation-h',
+    format: 'vgc-regulation-g',
     species: tyranitar,
     ability: sandStream,
     item: null,
@@ -91,20 +92,41 @@ const createSmokeRequest = () => {
     requestId: 'showdown-runtime-smoke-proof',
     requestedAt: checkedAt,
     checkKind: 'pokemon-editor-move-ability' as const,
-    format: 'vgc-regulation-h' as const,
+    format: 'vgc-regulation-g' as const,
     legalityRequest,
     moveCheck: {
       species: tyranitar,
       candidateMoves: [rockSlide, spore],
-      format: 'vgc-regulation-h' as const,
+      format: 'vgc-regulation-g' as const,
     },
     abilityCheck: {
       species: tyranitar,
       candidateAbilities: [sandStream, stench],
-      format: 'vgc-regulation-h' as const,
+      format: 'vgc-regulation-g' as const,
     },
     environment: sampleShowdownRuntimeAdapterEnvironment,
     safetyPolicy: sampleShowdownRuntimeAdapterSafetyPolicy,
+  }
+}
+
+const createCustomFormatSmokeRequest = () => {
+  const request = createSmokeRequest()
+
+  return {
+    ...request,
+    requestId: 'showdown-runtime-smoke-proof-custom-format',
+    format: 'custom' as const,
+    legalityRequest: {
+      ...request.legalityRequest,
+      requestId: 'showdown-runtime-smoke-proof-custom-format',
+      format: 'custom' as const,
+      build: {
+        ...request.legalityRequest.build,
+        format: 'custom' as const,
+      },
+    },
+    moveCheck: request.moveCheck ? { ...request.moveCheck, format: 'custom' as const } : undefined,
+    abilityCheck: request.abilityCheck ? { ...request.abilityCheck, format: 'custom' as const } : undefined,
   }
 }
 
@@ -170,6 +192,7 @@ export async function validateShowdownRuntimeAdapterSmokeProof(): Promise<Showdo
   const issues: ShowdownRuntimeAdapterSmokeValidationIssue[] = []
   const request = createSmokeRequest()
   const response = await runShowdownRuntimeAdapter(request, { checkedAt })
+  const customFormatFallback = await runShowdownRuntimeAdapter(createCustomFormatSmokeRequest(), { checkedAt })
   const fallback = createShowdownRuntimeUnavailableResponse(
     request,
     'runtime-start-failed',
@@ -178,6 +201,7 @@ export async function validateShowdownRuntimeAdapterSmokeProof(): Promise<Showdo
   )
 
   validateResponseSafety(response, issues)
+  validateResponseSafety(customFormatFallback, issues)
   validateResponseSafety(fallback, issues)
 
   if (response.status !== 'complete') {
@@ -222,6 +246,20 @@ export async function validateShowdownRuntimeAdapterSmokeProof(): Promise<Showdo
     )
   }
 
+  if (
+    customFormatFallback.status !== 'runtime-unavailable' ||
+    customFormatFallback.unavailableResult?.reason !== 'runtime-start-failed'
+  ) {
+    issues.push(
+      createIssue(
+        'format-handoff-fallback-invalid',
+        'error',
+        'customFormatFallback',
+        'Custom overlay format must preserve runtime-unavailable fallback until it becomes executable.',
+      ),
+    )
+  }
+
   return {
     isValid: issues.every((issue) => issue.severity !== 'error'),
     issues,
@@ -231,6 +269,7 @@ export async function validateShowdownRuntimeAdapterSmokeProof(): Promise<Showdo
       'Tyranitar + Spore',
       'Tyranitar + Sand Stream',
       'Tyranitar + Stench',
+      'custom format runtime-unavailable fallback',
       'runtime unavailable fallback',
     ],
     responseStatus: response.status,

@@ -1,5 +1,4 @@
 import type {
-  BattleFormat,
   BuildCatalogReference,
   ShowdownLegalityFieldResult,
   ShowdownLegalityMessage,
@@ -14,6 +13,10 @@ import type {
   ShowdownRuntimeAdapterResponse,
   ShowdownRuntimeUnavailableResult,
 } from '../types/showdownRuntime'
+import {
+  createShowdownLegalityFormatHandoff,
+  type ShowdownLegalityFormatHandoff,
+} from './showdownLegalityFormatHandoff'
 
 type MoveSlot = 0 | 1 | 2 | 3
 
@@ -57,6 +60,8 @@ interface ShowdownRuntimeSet {
 export interface ShowdownRuntimeAdapterRunOptions {
   checkedAt?: string
   loadShowdown?: () => Promise<ShowdownPackageApi>
+  formatHandoff?: ShowdownLegalityFormatHandoff
+  loadFormatHandoff?: () => Promise<ShowdownLegalityFormatHandoff>
 }
 
 const runtimeMetadataAvailable: ShowdownLegalityRuntimeMetadata = {
@@ -77,12 +82,6 @@ const toShowdownId = (value: BuildCatalogReference) =>
   (value.showdownId ?? value.catalogKey).toLowerCase().replace(/[^a-z0-9]+/g, '')
 
 const getDisplayName = (value: BuildCatalogReference) => value.displayName || value.showdownId || value.catalogKey
-
-const getFormatId = (format: BattleFormat) => {
-  if (format === 'custom') return 'gen9doublesou'
-
-  return 'gen9doublesou'
-}
 
 const createEvent = (
   request: ShowdownRuntimeAdapterRequest,
@@ -199,6 +198,19 @@ const loadOfficialPokemonShowdown = async (): Promise<ShowdownPackageApi> => {
   return showdown
 }
 
+const createFormatHandoffUnavailableResponse = (
+  request: ShowdownRuntimeAdapterRequest,
+  handoff: ShowdownLegalityFormatHandoff,
+  checkedAt: string,
+) =>
+  createShowdownRuntimeUnavailableResponse(
+    request,
+    handoff.runtimeFallback?.reason === 'unsupported-format' ? 'unsupported-format' : 'runtime-start-failed',
+    handoff.runtimeFallback?.message ??
+      `${handoff.mapping.displayName} is not available as an executable Pokemon Showdown format for this adapter.`,
+    checkedAt,
+  )
+
 export function createShowdownRuntimeUnavailableResponse(
   request: ShowdownRuntimeAdapterRequest,
   reason: ShowdownRuntimeUnavailableResult['reason'] = 'runtime-start-failed',
@@ -243,6 +255,24 @@ export async function runShowdownRuntimeAdapter(
 ): Promise<ShowdownRuntimeAdapterResponse> {
   const checkedAt = options.checkedAt ?? new Date().toISOString()
 
+  let formatHandoff: ShowdownLegalityFormatHandoff
+  try {
+    formatHandoff =
+      options.formatHandoff ??
+      (await (options.loadFormatHandoff ?? (() => createShowdownLegalityFormatHandoff(request.format)))())
+  } catch (error) {
+    return createShowdownRuntimeUnavailableResponse(
+      request,
+      'runtime-start-failed',
+      error instanceof Error ? error.message : 'Unknown Pokemon Showdown format handoff failure.',
+      checkedAt,
+    )
+  }
+
+  if (formatHandoff.status !== 'official-format-available') {
+    return createFormatHandoffUnavailableResponse(request, formatHandoff, checkedAt)
+  }
+
   let showdown: ShowdownPackageApi
   try {
     showdown = await (options.loadShowdown ?? loadOfficialPokemonShowdown)()
@@ -256,7 +286,7 @@ export async function runShowdownRuntimeAdapter(
   }
 
   try {
-    const format = showdown.Dex.formats.get(getFormatId(request.format))
+    const format = showdown.Dex.formats.get(formatHandoff.mapping.targetShowdownFormatId)
     const validator = new showdown.TeamValidator(format)
     const fieldEvidence: ShowdownRuntimeAdapterFieldEvidence[] = []
     const fields: ShowdownLegalityFieldResult[] = []
