@@ -634,6 +634,29 @@ export {
 } from "./showdownPokemonEditorLegalityAdapter";
 
 export {
+  createShowdownLegalityFormatHandoff,
+  showdownLegalityFormatHandoffSafetyPolicy,
+  showdownLegalityFormatMappings,
+  type ShowdownLegalityFormatCustomOverlayHandoff,
+  type ShowdownLegalityFormatHandoff,
+  type ShowdownLegalityFormatHandoffOptions,
+  type ShowdownLegalityFormatHandoffSafety,
+  type ShowdownLegalityFormatHandoffStatus,
+  type ShowdownLegalityFormatInstalledRegistryHandoff,
+  type ShowdownLegalityFormatMapping,
+  type ShowdownLegalityFormatRuntimeFallback,
+  type ShowdownLegalityFormatSource,
+} from "./showdownLegalityFormatHandoff";
+
+export {
+  validateShowdownLegalityFormatHandoff,
+  type ShowdownLegalityFormatHandoffValidationCode,
+  type ShowdownLegalityFormatHandoffValidationIssue,
+  type ShowdownLegalityFormatHandoffValidationResult,
+  type ShowdownLegalityFormatHandoffValidationSeverity,
+} from "./showdownLegalityFormatHandoffValidation";
+
+export {
   validateShowdownPokemonEditorLegalityAdapter,
   type ShowdownPokemonEditorLegalityAdapterValidationCode,
   type ShowdownPokemonEditorLegalityAdapterValidationIssue,
