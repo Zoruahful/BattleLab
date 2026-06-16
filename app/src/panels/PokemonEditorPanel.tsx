@@ -296,8 +296,8 @@ function NatureModChip({
 const legalityStatusLabel: Record<PokemonEditorLegalityFieldReadModel['status'], string> = {
   'not-checked': 'Not checked',
   checking: 'Checking',
-  legal: 'Legal',
-  illegal: 'Illegal',
+  legal: 'Showdown legal',
+  illegal: 'Showdown illegal',
   warning: 'Preview',
   unknown: 'Selectable',
   'runtime-unavailable': 'Showdown needed',

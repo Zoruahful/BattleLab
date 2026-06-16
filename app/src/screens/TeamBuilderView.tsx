@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { TeamSlotCard } from '../components/TeamSlotCard'
 import { detailedSimulationReport, submittedTeam } from '../data'
+import type { ShowdownTeamLegalityReadModel } from '../data'
 import { exportShowdownTeam, parseShowdownTeam } from '../utils/showdownTeam'
 import type { BattleFormat, SimulationReport, SubmittedTeam } from '../types'
 import '../styles/team-builder.css'
@@ -12,6 +13,11 @@ export type TeamBuilderViewProps = {
   onClearTeam?: () => void
   onSlotClear?: (slotIndex: number) => void
   onImportTeam?: (team: SubmittedTeam) => void
+  onFormatChange?: (format: BattleFormat) => void
+  onCheckTeamLegality?: () => void
+  legalityReadModel?: ShowdownTeamLegalityReadModel | null
+  legalityStatus?: 'not-checked' | 'checking' | 'complete' | 'runtime-unavailable' | 'failed'
+  legalityError?: string | null
 }
 
 type IoMode = 'export' | 'import' | null
@@ -41,6 +47,11 @@ export function TeamBuilderView({
   onClearTeam,
   onSlotClear,
   onImportTeam,
+  onFormatChange,
+  onCheckTeamLegality,
+  legalityReadModel,
+  legalityStatus = 'not-checked',
+  legalityError,
 }: TeamBuilderViewProps) {
   const [ioMode, setIoMode] = useState<IoMode>(null)
   const [importText, setImportText] = useState('')
@@ -61,6 +72,7 @@ export function TeamBuilderView({
   }))
 
   const exportText = exportShowdownTeam(team)
+  const checkingLegality = legalityStatus === 'checking'
 
   const openExport = () => {
     setCopied(false)
@@ -141,7 +153,19 @@ export function TeamBuilderView({
           Pokemon
         </span>
         <span className="bl-team-pill">
-          <strong>{formatLabels[team.format]}</strong>
+          <label className="bl-team-format-select">
+            <span>Format</span>
+            <select
+              value={team.format}
+              onChange={(event) => onFormatChange?.(event.target.value as BattleFormat)}
+            >
+              {Object.entries(formatLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
         </span>
         <span className="bl-team-pill">
           <strong>Gen 9</strong>
@@ -149,6 +173,14 @@ export function TeamBuilderView({
         <span className="bl-team-meta-spacer" aria-hidden="true" />
         <button className="secondary-action" type="button" onClick={openImport}>
           Import
+        </button>
+        <button
+          className="secondary-action"
+          type="button"
+          disabled={filledCount === 0 || checkingLegality}
+          onClick={onCheckTeamLegality}
+        >
+          {checkingLegality ? 'Checking legality' : 'Check team legality'}
         </button>
         <button
           className="secondary-action"
@@ -167,6 +199,12 @@ export function TeamBuilderView({
           Clear team
         </button>
       </div>
+
+      <TeamLegalityPanel
+        error={legalityError}
+        readModel={legalityReadModel}
+        status={legalityStatus}
+      />
 
       <div className="bl-team-grid" aria-label="Pokemon team slots">
         {stableSlots.map((pokemon, index) => (
@@ -299,6 +337,92 @@ export function TeamBuilderView({
           </div>
         </div>
       ) : null}
+    </section>
+  )
+}
+
+function TeamLegalityPanel({
+  error,
+  readModel,
+  status,
+}: {
+  error?: string | null
+  readModel?: ShowdownTeamLegalityReadModel | null
+  status: NonNullable<TeamBuilderViewProps['legalityStatus']>
+}) {
+  if (status === 'not-checked' && !readModel && !error) {
+    return (
+      <section className="bl-team-legality-panel is-idle" aria-label="Pokemon Showdown team legality">
+        <div>
+          <h3>Pokemon Showdown legality</h3>
+          <p>Run a team-level check when you want Pokemon Showdown to validate selected moves and ability.</p>
+        </div>
+        <span>Not checked</span>
+      </section>
+    )
+  }
+
+  if (status === 'checking') {
+    return (
+      <section className="bl-team-legality-panel is-checking" aria-label="Pokemon Showdown team legality">
+        <div>
+          <h3>Checking team legality</h3>
+          <p>Pokemon Showdown is checking the selected team format. No simulation is running.</p>
+        </div>
+        <span>Checking</span>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section className="bl-team-legality-panel is-failed" aria-label="Pokemon Showdown team legality">
+        <div>
+          <h3>Legality check failed</h3>
+          <p>{error}</p>
+        </div>
+        <span>Failed</span>
+      </section>
+    )
+  }
+
+  if (!readModel) return null
+
+  return (
+    <section
+      className={`bl-team-legality-panel is-${readModel.runtimeUnavailable ? 'runtime-unavailable' : 'complete'}`}
+      aria-label="Pokemon Showdown team legality"
+    >
+      <div className="bl-team-legality-summary">
+        <div>
+          <h3>Pokemon Showdown legality</h3>
+          <p>{readModel.message}</p>
+        </div>
+        <div className="bl-team-legality-counts" aria-label="Legality result counts">
+          <span><strong>{readModel.legalCount}</strong> legal</span>
+          <span><strong>{readModel.illegalCount}</strong> illegal</span>
+          <span><strong>{readModel.unknownCount}</strong> unknown</span>
+        </div>
+      </div>
+
+      <div className="bl-team-legality-results">
+        {readModel.slotResults.map((slot) => (
+          <article className="bl-team-legality-slot" key={`${slot.slot}-${slot.pokemon.id}`}>
+            <strong>Slot {slot.slot}: {slot.pokemon.species}</strong>
+            <ul>
+              {slot.readModel.rows.map((row) => (
+                <li
+                  className={`is-${row.status}`}
+                  key={`${row.field}-${row.slotIndex ?? 'ability'}-${row.option.catalogKey}`}
+                >
+                  <span>{row.option.displayName}</span>
+                  <em>{row.label}</em>
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
     </section>
   )
 }

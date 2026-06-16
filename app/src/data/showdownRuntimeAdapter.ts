@@ -428,16 +428,23 @@ const loadOfficialPokemonShowdown = async (): Promise<ShowdownPackageApi> => {
     { TypeChart?: Record<string, unknown> },
     { PokemonGoData?: Record<string, unknown> },
   ])
+  const getModuleExport = (module: unknown, key: string) => {
+    const record = module as Record<string, unknown>
+    const defaultRecord = record.default as Record<string, unknown> | undefined
+    const moduleExportsRecord = record['module.exports'] as Record<string, unknown> | undefined
+
+    return record[key] ?? defaultRecord?.[key] ?? moduleExportsRecord?.[key]
+  }
   const showdown =
-    dexModule.Dex && teamValidatorModule.TeamValidator
-      ? { Dex: dexModule.Dex, TeamValidator: teamValidatorModule.TeamValidator }
+    getModuleExport(dexModule, 'Dex') && getModuleExport(teamValidatorModule, 'TeamValidator')
+      ? { Dex: getModuleExport(dexModule, 'Dex'), TeamValidator: getModuleExport(teamValidatorModule, 'TeamValidator') }
       : undefined
 
   if (!showdown?.Dex || !showdown.TeamValidator) {
     throw new Error('pokemon-showdown did not expose Dex and TeamValidator.')
   }
 
-  hydrateBrowserShowdownDex(showdown, formatsModule.Formats ?? [], {
+  hydrateBrowserShowdownDex(showdown as ShowdownPackageApi, (getModuleExport(formatsModule, 'Formats') ?? []) as ShowdownFormatRecord[], {
     Abilities: toInstalledShowdownData(abilitiesModule, 'Abilities'),
     Aliases: toInstalledShowdownData(aliasesModule, 'Aliases'),
     Rulesets: toInstalledShowdownData(rulesetsModule, 'Rulesets'),
@@ -453,7 +460,7 @@ const loadOfficialPokemonShowdown = async (): Promise<ShowdownPackageApi> => {
     PokemonGoData: toInstalledShowdownData(pokemonGoModule, 'PokemonGoData'),
   })
 
-  return showdown
+  return showdown as ShowdownPackageApi
 }
 
 const isBrowserRuntime = () => typeof window !== 'undefined' && typeof document !== 'undefined'

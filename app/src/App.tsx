@@ -6,7 +6,10 @@ import {
   performanceProfiles,
   reportHistoryEntries,
   simulationReportsById,
+  createShowdownTeamLegalityReadModel,
   submittedTeam as initialSubmittedTeam,
+  type ShowdownTeamLegalityReadModel,
+  type ShowdownTeamLegalityStatus,
 } from './data'
 import CatalogUpdatePanel from './panels/CatalogUpdatePanel'
 import PokemonEditorPanel, { type PokemonEditorDraft } from './panels/PokemonEditorPanel'
@@ -102,6 +105,11 @@ function App() {
   const [pendingLoadTeam, setPendingLoadTeam] = useState<SubmittedTeam | null>(null)
   const [loadTeamError, setLoadTeamError] = useState<string | null>(null)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
+  const [teamLegalityStatus, setTeamLegalityStatus] =
+    useState<ShowdownTeamLegalityStatus>('not-checked')
+  const [teamLegalityReadModel, setTeamLegalityReadModel] =
+    useState<ShowdownTeamLegalityReadModel | null>(null)
+  const [teamLegalityError, setTeamLegalityError] = useState<string | null>(null)
 
   const { activeView, activePanel, editingSlot } = shellState
   const panelOpen = activePanel !== null
@@ -179,7 +187,7 @@ function App() {
       return
     }
 
-    setActiveTeam(pendingLoadTeam)
+    updateActiveTeam(pendingLoadTeam)
     setLoadConfirmOpen(false)
     setPendingLoadTeam(null)
   }
@@ -191,6 +199,40 @@ function App() {
 
   const dismissLoadTeamError = () => {
     setLoadTeamError(null)
+  }
+
+  const updateActiveTeam = (team: SubmittedTeam) => {
+    setActiveTeam(team)
+    setTeamLegalityStatus('not-checked')
+    setTeamLegalityReadModel(null)
+    setTeamLegalityError(null)
+  }
+
+  const handleTeamFormatChange = (format: SubmittedTeam['format']) => {
+    updateActiveTeam({
+      ...activeTeam,
+      format,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  const handleCheckTeamLegality = async () => {
+    setTeamLegalityStatus('checking')
+    setTeamLegalityError(null)
+
+    try {
+      const readModel = await createShowdownTeamLegalityReadModel(activeTeam, {
+        runtimeLoader: 'browser-data',
+      })
+      setTeamLegalityReadModel(readModel)
+      setTeamLegalityStatus(readModel.status)
+    } catch (error) {
+      setTeamLegalityReadModel(null)
+      setTeamLegalityStatus('failed')
+      setTeamLegalityError(
+        error instanceof Error ? error.message : 'Pokemon Showdown team legality check failed.',
+      )
+    }
   }
 
   useEffect(() => {
@@ -265,7 +307,12 @@ function App() {
                   (entry) => setSelectedReportId(entry.reportId),
                   () => setSelectedReportId(null),
                   activeTeam,
-                  setActiveTeam,
+                  updateActiveTeam,
+                  handleTeamFormatChange,
+                  handleCheckTeamLegality,
+                  teamLegalityReadModel,
+                  teamLegalityStatus,
+                  teamLegalityError,
                 )}
               </section>
             </main>
@@ -285,7 +332,7 @@ function App() {
               simulationSettings={simulationSettings}
               onClose={closePanel}
               onBattleLabSettingsChange={setBattleLabSettings}
-              onTeamChange={setActiveTeam}
+              onTeamChange={updateActiveTeam}
               onSimulationSettingsChange={setSimulationSettings}
             />
 
@@ -528,6 +575,11 @@ function renderMainView(
   onBackToReports: () => void,
   team: SubmittedTeam,
   onTeamChange: (team: SubmittedTeam) => void,
+  onTeamFormatChange: (format: SubmittedTeam['format']) => void,
+  onCheckTeamLegality: () => void,
+  teamLegalityReadModel: ShowdownTeamLegalityReadModel | null,
+  teamLegalityStatus: ShowdownTeamLegalityStatus,
+  teamLegalityError: string | null,
 ) {
   if (activeView === 'team') {
     return (
@@ -537,6 +589,11 @@ function renderMainView(
         onClearTeam={() => onTeamChange(clearSubmittedTeam(team))}
         onSlotClear={(slotIndex) => onTeamChange(clearSubmittedTeamSlot(team, slotIndex))}
         onImportTeam={onTeamChange}
+        onFormatChange={onTeamFormatChange}
+        onCheckTeamLegality={onCheckTeamLegality}
+        legalityReadModel={teamLegalityReadModel}
+        legalityStatus={teamLegalityStatus}
+        legalityError={teamLegalityError}
       />
     )
   }

@@ -669,6 +669,22 @@ export {
 } from "./showdownFormatAwareLegalityReadModel";
 
 export {
+  createShowdownTeamLegalityReadModel,
+  type CreateShowdownTeamLegalityReadModelOptions,
+  type ShowdownTeamLegalityReadModel,
+  type ShowdownTeamLegalitySlotResult,
+  type ShowdownTeamLegalityStatus,
+} from "./showdownTeamLegality";
+
+export {
+  validateShowdownTeamLegality,
+  type ShowdownTeamLegalityValidationCode,
+  type ShowdownTeamLegalityValidationIssue,
+  type ShowdownTeamLegalityValidationResult,
+  type ShowdownTeamLegalityValidationSeverity,
+} from "./showdownTeamLegalityValidation";
+
+export {
   validateShowdownFormatAwareLegalityReadModel,
   type ShowdownFormatAwareLegalityReadModelValidationCode,
   type ShowdownFormatAwareLegalityReadModelValidationIssue,
