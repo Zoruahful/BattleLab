@@ -288,12 +288,9 @@ const unwrapShowdownDataModule = <T extends object>(module: unknown, exportName:
 
 export const loadBrowserPokemonShowdownData = async (): Promise<ShowdownBrowserDataApi> => {
   const [aliasesModule, learnsetsModule, pokedexModule] = await Promise.all([
-    // @ts-expect-error pokemon-showdown data modules do not publish declaration files.
-    import('pokemon-showdown/dist/data/aliases'),
-    // @ts-expect-error pokemon-showdown data modules do not publish declaration files.
-    import('pokemon-showdown/dist/data/learnsets'),
-    // @ts-expect-error pokemon-showdown data modules do not publish declaration files.
-    import('pokemon-showdown/dist/data/pokedex'),
+    import('pokemon-showdown/dist/data/aliases.js'),
+    import('pokemon-showdown/dist/data/learnsets.js'),
+    import('pokemon-showdown/dist/data/pokedex.js'),
   ])
 
   return {
