@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import {
   createCachedCatalogPickerProjection,
   createPlannedExpansionLocalPickerProjection,
-  createPokemonEditorShowdownLegalityRequest,
-  createShowdownPokemonEditorLegalityReadModel,
   findCatalogPokemonByShowdownId,
   getAbilityPickerOptions,
   getCatalogPickerSearchText,
@@ -12,10 +10,7 @@ import {
   getNaturePickerOptions,
   getPokemonPickerOptions,
   getTypePickerOptions,
-  runShowdownRuntimeAdapter,
   resolveCatalogAssetReference,
-  sampleShowdownRuntimeAdapterEnvironment,
-  sampleShowdownRuntimeAdapterSafetyPolicy,
   type CatalogCachedPickerProjectionOptionSets,
   type CatalogPlannedExpansionPickerProjectionOptionSets,
 } from '../data'
@@ -48,11 +43,9 @@ import { NotesEditor } from '../components/NotesEditor'
 import { Tooltip, TooltipCard } from '../components/Tooltip'
 import type { CatalogPickerOption } from '../types/catalog'
 import type {
-  BattleFormat,
   BuildCatalogReference,
   PokemonBuild,
   PokemonEditorLegalityFieldReadModel,
-  PokemonEditorLegalityReadModel,
   PokemonType,
   StatSpread,
 } from '../types'
@@ -89,7 +82,6 @@ const MAXED_IVS: StatSpread = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe:
 const ZERO_EVS: StatSpread = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }
 const PICKER_PROJECTION_ERROR =
   'Planned catalog preview is unavailable. Keeping bundled picker options for this session.'
-const DEFAULT_LEGALITY_FORMAT: BattleFormat = 'vgc-regulation-h'
 
 const getInitials = (species: string) =>
   species
@@ -311,26 +303,6 @@ const legalityStatusLabel: Record<PokemonEditorLegalityFieldReadModel['status'],
   'runtime-unavailable': 'Showdown needed',
 }
 
-type PickerLegalityStatus =
-  | 'catalog-preview'
-  | Extract<PokemonEditorLegalityFieldReadModel['status'], 'legal' | 'illegal' | 'unknown' | 'runtime-unavailable'>
-
-const pickerLegalityLabel: Record<PickerLegalityStatus, string> = {
-  'catalog-preview': 'Catalog preview',
-  legal: 'Legal',
-  illegal: 'Illegal',
-  unknown: 'Unknown',
-  'runtime-unavailable': 'Runtime unavailable',
-}
-
-function LegalityBadge({ status }: { status: PickerLegalityStatus }) {
-  return <span className={`bl-picker-legality is-${status}`}>{pickerLegalityLabel[status]}</span>
-}
-
-function PickerMetaStack({ children }: { children: ReactNode }) {
-  return <span className="bl-picker-meta-stack">{children}</span>
-}
-
 function LegalityPreviewRow({ field }: { field: PokemonEditorLegalityFieldReadModel }) {
   return (
     <li className={`bl-legality-row is-${field.status}`}>
@@ -342,32 +314,6 @@ function LegalityPreviewRow({ field }: { field: PokemonEditorLegalityFieldReadMo
       {field.option?.displayName && field.message ? <p>{field.message}</p> : null}
     </li>
   )
-}
-
-const formatLabels: Record<BattleFormat, string> = {
-  'vgc-regulation-h': 'VGC Regulation H',
-  'vgc-regulation-g': 'VGC Regulation G',
-  custom: 'Custom',
-}
-
-const toPickerLegalityStatus = (
-  field?: PokemonEditorLegalityFieldReadModel,
-  runtimeUnavailable = false,
-): PickerLegalityStatus => {
-  if (field?.status === 'legal' || field?.status === 'illegal' || field?.status === 'unknown') return field.status
-  if (field?.status === 'runtime-unavailable' || runtimeUnavailable) return 'runtime-unavailable'
-  return 'catalog-preview'
-}
-
-const uniqueBuildRefs = (refs: BuildCatalogReference[]) => {
-  const seen = new Set<string>()
-
-  return refs.filter((ref) => {
-    const key = ref.showdownId ?? ref.catalogKey
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
 }
 
 const sameBuildRef = (left?: BuildCatalogReference | null, right?: BuildCatalogReference | null) =>
@@ -506,16 +452,6 @@ export function PokemonEditorPanel({
   const [standardIvs, setStandardIvs] = useState<StatSpread>(pokemon?.ivs ?? { ...MAXED_IVS })
   const [trimNotice, setTrimNotice] = useState(false)
   const [savePulseKey, setSavePulseKey] = useState(0)
-  const [legalityFormat, setLegalityFormat] = useState<BattleFormat>(DEFAULT_LEGALITY_FORMAT)
-  const [showdownLegality, setShowdownLegality] = useState<{
-    status: 'idle' | 'checking' | 'ready' | 'error'
-    readModel: PokemonEditorLegalityReadModel | null
-    checkedAt?: string
-    error?: string
-  }>({
-    status: 'idle',
-    readModel: null,
-  })
   const [pickerProjectionLoad, setPickerProjectionLoad] = useState<PickerProjectionLoadState>({
     status: 'loading',
     optionSets: null,
@@ -620,19 +556,13 @@ export function PokemonEditorPanel({
     [activePokemonMoveIdsByShowdownId, speciesShowdownId],
   )
 
-  const clearShowdownLegality = () => {
-    setShowdownLegality({ status: 'idle', readModel: null })
-  }
-
   const updateDraft = (updates: Partial<PokemonBuild>) => {
-    clearShowdownLegality()
     setDraftPokemon((current) => (current ? { ...current, ...updates } : current))
   }
 
   const handleSelectPokemon = (catalogKey: string) => {
     const next = pokemonPickerOptions.find((candidate) => candidate.catalogKey === catalogKey)
     if (next) {
-      clearShowdownLegality()
       setDraftPokemon((current) =>
         createPokemonBuildFromOption(next, selectedSlot, typePickerOptions, movePickerOptions, current),
       )
@@ -641,7 +571,6 @@ export function PokemonEditorPanel({
   }
 
   const handleMoveChange = (moveIndex: number, moveId: string) => {
-    clearShowdownLegality()
     setDraftPokemon((current) => {
       if (!current) return current
       const catalogOption = moveId === '__none__' ? null : movePickerOptions.find((option) => option.showdownId === moveId)
@@ -733,40 +662,10 @@ export function PokemonEditorPanel({
   }
 
   // ---- Derived data for pickers + stats ----
-  const legalityRuntimeUnavailable = showdownLegality.readModel?.status === 'runtime-unavailable'
-  const pickerLegalityLookup = useMemo(() => {
-    const lookup = new Map<string, PickerLegalityStatus>()
-    showdownLegality.readModel?.fieldResults.forEach((field) => {
-      if (!field.optionKind) return
-      const status = toPickerLegalityStatus(field, legalityRuntimeUnavailable)
-      const parts = [
-        field.option?.catalogKey,
-        field.option?.showdownId,
-        field.option?.displayName,
-      ].filter(Boolean)
-
-      parts.forEach((part) => {
-        lookup.set(`${field.optionKind}:${part}`, status)
-      })
-    })
-
-    return lookup
-  }, [legalityRuntimeUnavailable, showdownLegality.readModel])
-  const getPickerLegalityStatus = useCallback((
-    kind: NonNullable<PokemonEditorLegalityFieldReadModel['optionKind']>,
-    option: Pick<CatalogPickerOption, 'catalogKey' | 'showdownId' | 'displayName'>,
-  ): PickerLegalityStatus => (
-    pickerLegalityLookup.get(`${kind}:${option.catalogKey}`) ??
-    (option.showdownId ? pickerLegalityLookup.get(`${kind}:${option.showdownId}`) : undefined) ??
-    pickerLegalityLookup.get(`${kind}:${option.displayName}`) ??
-    (legalityRuntimeUnavailable ? 'runtime-unavailable' : 'catalog-preview')
-  ), [legalityRuntimeUnavailable, pickerLegalityLookup])
-
   const pokemonOptions: ComboOption[] = useMemo(
     () =>
       pokemonPickerOptions.map((option) => {
         const types = [option.primaryType, option.secondaryType].filter(Boolean) as PokemonType[]
-        const legalityStatus = getPickerLegalityStatus('pokemon', option)
         return {
           value: option.catalogKey,
           label: option.displayName,
@@ -781,37 +680,10 @@ export function PokemonEditorPanel({
               ))}
             </span>
           ),
-          meta: <LegalityBadge status={legalityStatus} />,
-          selectedMeta: <LegalityBadge status={legalityStatus} />,
           tooltip: optionTooltip(option, types.join(' / ') || 'Pokemon'),
         }
       }),
-    [getPickerLegalityStatus, pokemonPickerOptions],
-  )
-
-  const buildSimpleOptions = useCallback(
-    (options: CatalogPickerOption[], kindLabel: string): ComboOption[] => [
-      EMPTY_OPTION,
-      ...options.map((option) => {
-        const optionKind = option.kind === 'ability' || option.kind === 'item' || option.kind === 'nature'
-          ? option.kind
-          : undefined
-        const legalityStatus = optionKind ? getPickerLegalityStatus(optionKind, option) : 'catalog-preview'
-
-        return {
-          value: option.catalogKey,
-          label: option.displayName,
-          searchText: getCatalogPickerSearchText(option),
-          group: getCatalogOptionGroup(option, kindLabel),
-          disabled: isUnavailableOption(option),
-          disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
-          meta: <LegalityBadge status={legalityStatus} />,
-          selectedMeta: <LegalityBadge status={legalityStatus} />,
-          tooltip: optionTooltip(option, kindLabel),
-        }
-      }),
-    ],
-    [getPickerLegalityStatus],
+    [pokemonPickerOptions],
   )
 
   const itemOptions = useMemo(
@@ -827,59 +699,55 @@ export function PokemonEditorPanel({
             disabled: isUnavailableOption(option),
             disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
             leading: <ItemIconSlot option={option} />,
-            meta: <LegalityBadge status={getPickerLegalityStatus('item', option)} />,
-            selectedMeta: <LegalityBadge status={getPickerLegalityStatus('item', option)} />,
             tooltip: optionTooltip(option, 'Held item'),
           })),
         ],
         selectedItemOptionKey,
         draftPokemon?.item,
       ),
-    [draftPokemon?.item, getPickerLegalityStatus, itemPickerOptions, selectedItemOptionKey],
+    [draftPokemon?.item, itemPickerOptions, selectedItemOptionKey],
   )
   const abilityOptions = useMemo(
     () =>
       withSavedCatalogValue(
-        buildSimpleOptions(abilityPickerOptions, 'Ability'),
+        [
+          EMPTY_OPTION,
+          ...abilityPickerOptions.map((option) => ({
+            value: option.catalogKey,
+            label: option.displayName,
+            searchText: getCatalogPickerSearchText(option),
+            group: getCatalogOptionGroup(option, 'Ability'),
+            disabled: isUnavailableOption(option),
+            disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
+            tooltip: optionTooltip(option, 'Ability'),
+          })),
+        ],
         selectedAbilityOptionKey,
         draftPokemon?.ability,
       ),
-    [abilityPickerOptions, buildSimpleOptions, draftPokemon?.ability, selectedAbilityOptionKey],
+    [abilityPickerOptions, draftPokemon?.ability, selectedAbilityOptionKey],
   )
   const natureOptions = useMemo(
     () =>
       withSavedCatalogValue(
         [
           EMPTY_OPTION,
-          ...naturePickerOptions.map((option) => {
-            const legalityStatus = getPickerLegalityStatus('nature', option)
-            return {
-              value: option.catalogKey,
-              label: option.displayName,
-              searchText: getCatalogPickerSearchText(option),
-              group: getCatalogOptionGroup(option, 'Nature'),
-              disabled: isUnavailableOption(option),
-              disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
-              meta: (
-                <PickerMetaStack>
-                  <NatureModChip option={option} />
-                  <LegalityBadge status={legalityStatus} />
-                </PickerMetaStack>
-              ),
-              selectedMeta: (
-                <PickerMetaStack>
-                  <NatureModChip option={option} />
-                  <LegalityBadge status={legalityStatus} />
-                </PickerMetaStack>
-              ),
-              tooltip: natureTooltip(option),
-            }
-          }),
+          ...naturePickerOptions.map((option) => ({
+            value: option.catalogKey,
+            label: option.displayName,
+            searchText: getCatalogPickerSearchText(option),
+            group: getCatalogOptionGroup(option, 'Nature'),
+            disabled: isUnavailableOption(option),
+            disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
+            meta: <NatureModChip option={option} />,
+            selectedMeta: <NatureModChip option={option} />,
+            tooltip: natureTooltip(option),
+          })),
         ],
         selectedNatureOptionKey,
         draftPokemon?.nature,
       ),
-    [draftPokemon?.nature, getPickerLegalityStatus, naturePickerOptions, selectedNatureOptionKey],
+    [draftPokemon?.nature, naturePickerOptions, selectedNatureOptionKey],
   )
   const teraOptions: ComboOption[] = useMemo(
     () =>
@@ -892,14 +760,12 @@ export function PokemonEditorPanel({
           disabled: isUnavailableOption(option),
           disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
           leading: option.primaryType ? <TypeGem type={option.primaryType} /> : undefined,
-          meta: <LegalityBadge status={getPickerLegalityStatus('type', option)} />,
-          selectedMeta: <LegalityBadge status={getPickerLegalityStatus('type', option)} />,
           tooltip: optionTooltip(option, 'Tera type'),
         })),
         selectedTeraOptionKey,
         draftPokemon?.teraType,
       ),
-    [draftPokemon?.teraType, getPickerLegalityStatus, selectedTeraOptionKey, typePickerOptions],
+    [draftPokemon?.teraType, selectedTeraOptionKey, typePickerOptions],
   )
 
   const moveOptions: ComboOption[] = useMemo(() => {
@@ -922,7 +788,6 @@ export function PokemonEditorPanel({
           .filter((option) => option.showdownId)
           .map((option) => {
             const category = getCatalogMoveCategory(option)
-            const legalityStatus = getPickerLegalityStatus('move', option)
             const inLearnset = option.showdownId ? activeLearnsetMoveIdSet.has(option.showdownId) : false
 
             return {
@@ -938,8 +803,6 @@ export function PokemonEditorPanel({
                   {category ? <CategoryIcon category={category} /> : null}
                 </span>
               ),
-              meta: <LegalityBadge status={legalityStatus} />,
-              selectedMeta: <LegalityBadge status={legalityStatus} />,
               tooltip: catalogMoveTooltip(option),
             }
           }),
@@ -952,7 +815,6 @@ export function PokemonEditorPanel({
       noneOption,
       ...learnset.map((move) => {
         const catalogOption = catalogMovesById.get(move.showdownId)
-        const legalityStatus = catalogOption ? getPickerLegalityStatus('move', catalogOption) : 'catalog-preview'
 
         return {
           value: move.showdownId,
@@ -971,18 +833,12 @@ export function PokemonEditorPanel({
               <CategoryIcon category={move.category} />
             </span>
           ),
-          meta: (
-            <PickerMetaStack>
-              <LegalityBadge status={legalityStatus} />
-              <span className="bl-move-power">{move.power ?? '—'}</span>
-            </PickerMetaStack>
-          ),
-          selectedMeta: <LegalityBadge status={legalityStatus} />,
+          meta: <span className="bl-move-power">{move.power ?? '—'}</span>,
           tooltip: moveTooltip(move, catalogOption),
         }
       }),
     ]
-  }, [activeLearnsetMoveIds, getPickerLegalityStatus, movePickerOptions, speciesShowdownId])
+  }, [activeLearnsetMoveIds, movePickerOptions, speciesShowdownId])
 
   const selectedItemOption = selectedItemOptionKey
     ? itemPickerOptions.find((candidate) => candidate.catalogKey === selectedItemOptionKey)
@@ -1036,114 +892,14 @@ export function PokemonEditorPanel({
         previewLearnsetMoveIds,
       })
     : null
-  const activeLegalityReadModel = showdownLegality.readModel ?? legalityPreview
-  const legalityPreviewRows = activeLegalityReadModel
-    ? activeLegalityReadModel.fieldResults.filter((field) => {
+  const legalityPreviewRows = legalityPreview
+    ? legalityPreview.fieldResults.filter((field) => {
         if (field.status === 'not-checked') return false
         if (field.field !== 'move') return true
 
         return selectedMoveRefs.some((move) => sameBuildRef(move, field.option))
       })
     : []
-  const showdownCheckDisabled = !draftPokemon || showdownLegality.status === 'checking'
-  const handleLegalityFormatChange = (nextFormat: BattleFormat) => {
-    setLegalityFormat(nextFormat)
-    clearShowdownLegality()
-  }
-  const handleShowdownLegalityCheck = async () => {
-    if (!draftPokemon) return
-
-    const checkedAt = new Date().toISOString()
-    const species = toBuildRef(selectedPokemonOption) ?? draftPokemon.speciesRef ?? null
-    const ability = toBuildRef(selectedAbilityOption) ?? draftPokemon.abilityRef ?? null
-    const selectedMoves = selectedMoveRefs.filter((move): move is BuildCatalogReference => Boolean(move))
-    const pickerCandidateMoves = moveOptions
-      .filter((option) => option.value !== '__none__')
-      .map((option): BuildCatalogReference => {
-        const catalogOption = movePickerOptions.find(
-          (candidate) => candidate.showdownId === option.value || candidate.catalogKey === option.value,
-        )
-
-        return toBuildRef(catalogOption) ?? {
-          catalogKey: `move-${option.value}`,
-          showdownId: option.value,
-          displayName: option.label,
-        }
-      })
-    const candidateMoves = uniqueBuildRefs([...selectedMoves, ...pickerCandidateMoves])
-
-    if (!species) {
-      setShowdownLegality({
-        status: 'error',
-        readModel: null,
-        checkedAt,
-        error: 'Choose a Pokemon before checking with Pokemon Showdown.',
-      })
-      return
-    }
-
-    setShowdownLegality({ status: 'checking', readModel: null, checkedAt })
-
-    const legalityRequest = createPokemonEditorShowdownLegalityRequest({
-      format: legalityFormat,
-      species,
-      ability,
-      item: toBuildRef(selectedItemOption) ?? draftPokemon.itemRef ?? null,
-      nature: toBuildRef(selectedNatureOption) ?? draftPokemon.natureRef ?? null,
-      teraType: toBuildRef(selectedTeraOption) ?? draftPokemon.teraTypeRef ?? null,
-      moves: selectedMoveRefs,
-      previewLearnsetMoveIds,
-      previewAbilityIds,
-      requestedAt: checkedAt,
-    })
-
-    try {
-      const response = await runShowdownRuntimeAdapter({
-        requestId: `pokemon-editor-showdown-runtime-${checkedAt}`,
-        requestedAt: checkedAt,
-        checkKind: 'pokemon-editor-move-ability',
-        format: legalityFormat,
-        legalityRequest,
-        ...(candidateMoves.length > 0 ? { moveCheck: { species, candidateMoves, format: legalityFormat } } : {}),
-        ...(ability ? { abilityCheck: { species, candidateAbilities: [ability], format: legalityFormat } } : {}),
-        environment: sampleShowdownRuntimeAdapterEnvironment,
-        safetyPolicy: sampleShowdownRuntimeAdapterSafetyPolicy,
-      })
-      const result = createShowdownPokemonEditorLegalityReadModel({
-        response,
-        format: legalityFormat,
-        species,
-      })
-      const readModel =
-        result.readModel.status === 'runtime-unavailable' && result.readModel.fieldResults.length === 0 && legalityPreview
-          ? {
-              ...result.readModel,
-              fieldResults: legalityPreview.fieldResults.map((field) =>
-                field.status === 'not-checked'
-                  ? field
-                  : {
-                      ...field,
-                      status: 'runtime-unavailable' as const,
-                      message: 'Pokemon Showdown runtime is unavailable; legality remains unknown.',
-                    },
-              ),
-            }
-          : result.readModel
-
-      setShowdownLegality({
-        status: 'ready',
-        readModel,
-        checkedAt: response.checkedAt,
-      })
-    } catch (error) {
-      setShowdownLegality({
-        status: 'error',
-        readModel: null,
-        checkedAt,
-        error: error instanceof Error ? error.message : 'Pokemon Showdown check failed.',
-      })
-    }
-  }
 
   return (
     <aside
@@ -1318,51 +1074,15 @@ export function PokemonEditorPanel({
                 </div>
               </section>
 
-              <section className="bl-editor-section bl-legality-preview" aria-label="Showdown legality preview">
+              <section className="bl-editor-section bl-legality-preview" aria-label="Legality preview">
                 <div className="bl-editor-section-heading">
                   <h3>Legality</h3>
-                  <span>{showdownLegality.status === 'ready' ? 'Showdown checked' : 'Catalog preview'}</span>
-                </div>
-                <div className="bl-legality-controls">
-                  <label className="bl-legality-format">
-                    <span>Format</span>
-                    <select
-                      value={legalityFormat}
-                      onChange={(event) => handleLegalityFormatChange(event.target.value as BattleFormat)}
-                    >
-                      {(Object.keys(formatLabels) as BattleFormat[]).map((format) => (
-                        <option value={format} key={format}>
-                          {formatLabels[format]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    className="secondary-action bl-showdown-check-action"
-                    type="button"
-                    disabled={showdownCheckDisabled}
-                    onClick={handleShowdownLegalityCheck}
-                  >
-                    {showdownLegality.status === 'checking' ? 'Checking…' : 'Check with Pokemon Showdown'}
-                  </button>
+                  <span>Catalog preview</span>
                 </div>
                 <p className="bl-legality-note">
-                  Legal and illegal labels appear only after a Pokemon Showdown check. Catalog badges are preview-only,
-                  and this action does not run a simulation.
+                  Local catalog data can show preview signals for selected fields, but Pokemon Showdown remains the
+                  source of truth for legality and simulation.
                 </p>
-                {showdownLegality.status === 'ready' && showdownLegality.checkedAt ? (
-                  <p className="bl-legality-note">
-                    Last checked {new Intl.DateTimeFormat('en', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    }).format(new Date(showdownLegality.checkedAt))} for {formatLabels[legalityFormat]}.
-                  </p>
-                ) : null}
-                {showdownLegality.status === 'error' && showdownLegality.error ? (
-                  <p className="bl-legality-error">{showdownLegality.error}</p>
-                ) : null}
                 {legalityPreviewRows.length > 0 ? (
                   <ul className="bl-legality-list">
                     {legalityPreviewRows.map((field) => (
