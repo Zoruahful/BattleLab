@@ -677,6 +677,24 @@ export {
 } from "./showdownFormatAwareLegalityReadModelValidation";
 
 export {
+  createShowdownCentralizedLegalityReadModel,
+  type ShowdownCentralizedLegalityFormatSource,
+  type ShowdownCentralizedLegalityInput,
+  type ShowdownCentralizedLegalityReadModel,
+  type ShowdownCentralizedLegalityReadModelOptions,
+  type ShowdownCentralizedLegalitySafety,
+  type ShowdownCentralizedLegalityStatus,
+} from "./showdownCentralizedLegalityReadModel";
+
+export {
+  validateShowdownCentralizedLegalityReadModel,
+  type ShowdownCentralizedLegalityReadModelValidationCode,
+  type ShowdownCentralizedLegalityReadModelValidationIssue,
+  type ShowdownCentralizedLegalityReadModelValidationResult,
+  type ShowdownCentralizedLegalityReadModelValidationSeverity,
+} from "./showdownCentralizedLegalityReadModelValidation";
+
+export {
   validateShowdownPokemonEditorLegalityAdapter,
   type ShowdownPokemonEditorLegalityAdapterValidationCode,
   type ShowdownPokemonEditorLegalityAdapterValidationIssue,
