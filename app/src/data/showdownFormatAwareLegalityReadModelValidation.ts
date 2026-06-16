@@ -158,7 +158,7 @@ export async function validateShowdownFormatAwareLegalityReadModel(): Promise<Sh
     species: tyranitar,
     candidateMoves: [{ option: rockSlide }, { option: spore }, { option: knockOff, previewOnly: true }],
     candidateAbilities: [{ option: sandStream }, { option: stench }],
-  })
+  }, { runtimeLoader: 'browser-data' })
   const fallback = await createShowdownFormatAwareLegalityReadModel({
     requestId: 'showdown-format-aware-legality-validation-fallback',
     requestedAt: checkedAt,

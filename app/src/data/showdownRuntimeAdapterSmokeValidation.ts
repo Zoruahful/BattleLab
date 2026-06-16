@@ -191,7 +191,7 @@ const validateResponseSafety = (
 export async function validateShowdownRuntimeAdapterSmokeProof(): Promise<ShowdownRuntimeAdapterSmokeValidationResult> {
   const issues: ShowdownRuntimeAdapterSmokeValidationIssue[] = []
   const request = createSmokeRequest()
-  const response = await runShowdownRuntimeAdapter(request, { checkedAt })
+  const response = await runShowdownRuntimeAdapter(request, { checkedAt, runtimeLoader: 'browser-data' })
   const customFormatFallback = await runShowdownRuntimeAdapter(createCustomFormatSmokeRequest(), { checkedAt })
   const fallback = createShowdownRuntimeUnavailableResponse(
     request,
