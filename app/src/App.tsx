@@ -87,6 +87,7 @@ const viewCopy: Record<MainViewId, { title: string; subtitle: string }> = {
 }
 
 function App() {
+  const desktopRuntime = typeof window !== 'undefined' && Boolean(window.battleLabDesktop)
   const [shellState, setShellState] = useState<ShellPanelState>({
     activeView: 'team',
     activePanel: null,
@@ -256,7 +257,10 @@ function App() {
   }, [panelOpen])
 
   return (
-    <div className="stage" data-animations={battleLabSettings.animationsEnabled ? 'on' : 'off'}>
+    <div
+      className={`stage ${desktopRuntime ? 'is-desktop-runtime' : ''}`}
+      data-animations={battleLabSettings.animationsEnabled ? 'on' : 'off'}
+    >
       <div className="stage-inner">
         <div className="desktop-window">
           <TitleBar activeTitle={activeItem.label} />
@@ -418,6 +422,38 @@ function App() {
 }
 
 function TitleBar({ activeTitle }: { activeTitle: string }) {
+  const desktopReady = typeof window !== 'undefined' && Boolean(window.battleLabDesktop)
+  const [maximized, setMaximized] = useState(false)
+
+  useEffect(() => {
+    const desktop = window.battleLabDesktop
+    if (!desktop) return
+
+    desktop.windowControls
+      .isMaximized()
+      .then(setMaximized)
+      .catch(() => setMaximized(false))
+  }, [])
+
+  const handleOpenDataFolder = () => {
+    void window.battleLabDesktop?.app.openDataFolder()
+  }
+
+  const handleMinimize = () => {
+    void window.battleLabDesktop?.windowControls.minimize()
+  }
+
+  const handleToggleMaximize = () => {
+    window.battleLabDesktop?.windowControls
+      .toggleMaximize()
+      .then(setMaximized)
+      .catch(() => setMaximized(false))
+  }
+
+  const handleClose = () => {
+    void window.battleLabDesktop?.windowControls.close()
+  }
+
   return (
     <div className="win-titlebar">
       <div className="titlebar-title">
@@ -425,10 +461,44 @@ function TitleBar({ activeTitle }: { activeTitle: string }) {
         <span>BattleLab</span>
         <span className="titlebar-team">Sandstorm Hyper Offense / {activeTitle}</span>
       </div>
-      <div className="titlebar-controls" aria-hidden="true">
-        <span />
-        <span />
-        <span />
+      <div className="titlebar-controls">
+        <button
+          className="titlebar-data-button"
+          type="button"
+          disabled={!desktopReady}
+          title={desktopReady ? 'Open BattleLab data folder' : 'Desktop data folder is available in the app runtime.'}
+          onClick={handleOpenDataFolder}
+        >
+          Data
+        </button>
+        <button
+          type="button"
+          disabled={!desktopReady}
+          aria-label="Minimize window"
+          title="Minimize"
+          onClick={handleMinimize}
+        >
+          <span aria-hidden="true">-</span>
+        </button>
+        <button
+          type="button"
+          disabled={!desktopReady}
+          aria-label={maximized ? 'Restore window' : 'Maximize window'}
+          title={maximized ? 'Restore' : 'Maximize'}
+          onClick={handleToggleMaximize}
+        >
+          <span aria-hidden="true">{maximized ? 'R' : 'M'}</span>
+        </button>
+        <button
+          className="titlebar-close"
+          type="button"
+          disabled={!desktopReady}
+          aria-label="Close window"
+          title="Close"
+          onClick={handleClose}
+        >
+          <span aria-hidden="true">X</span>
+        </button>
       </div>
     </div>
   )

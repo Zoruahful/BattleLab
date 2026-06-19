@@ -51,11 +51,65 @@ export interface CatalogUpdateGeneratedCatalogCache {
   payloadVersion: 1
 }
 
+export interface CatalogUpdateShowdownEngineMetadata {
+  id: 'active'
+  status: 'current' | 'warning' | 'failed' | 'cancelled'
+  source: 'pokemon-showdown-github-archive' | 'pokemon-showdown-npm-package'
+  sourceUrl: string
+  resolvedUrl: string | null
+  revision: string
+  versionLabel: string
+  fetchedAt: string
+  lastCheckedAt: string
+  contentLength: string | null
+  etag: string | null
+  lastModified: string | null
+  sha256: string | null
+  npmIntegrity?: string | null
+  npmShasum?: string | null
+  downloadedByteLength: number
+  checksumStatus: 'observed-sha256' | 'metadata-only' | 'unavailable'
+  archivePayloadStored: boolean
+  requiredFilesStatus: 'validated-from-installed-package' | 'deferred-archive-inspection' | 'failed'
+  formatRegistryStatus: 'available' | 'unavailable'
+  officialFormatCount: number
+  learnsetDataStatus: 'available' | 'unavailable'
+  previousActivePreserved: true
+  message: string
+  payloadVersion: 1
+}
+
+export interface CatalogUpdateShowdownEnginePayload {
+  id: 'active'
+  sourceUrl: string
+  resolvedUrl: string | null
+  revision: string
+  fetchedAt: string
+  sha256: string
+  byteLength: number
+  payload: ArrayBuffer
+  payloadVersion: 1
+}
+
 const catalogUpdateCacheDbName = 'battlelab-catalog-update-cache'
-const catalogUpdateCacheDbVersion = 2
+const catalogUpdateCacheDbVersion = 3
 const metadataStoreName = 'sectionMetadata'
 const payloadStoreName = 'sectionPayloads'
 const generatedCatalogStoreName = 'generatedCatalogs'
+const showdownEngineMetadataStoreName = 'showdownEngineMetadata'
+const showdownEnginePayloadStoreName = 'showdownEnginePayloads'
+
+function getDesktopBridge() {
+  return typeof window !== 'undefined' ? window.battleLabDesktop : undefined
+}
+
+function getDesktopCatalogBridge() {
+  return getDesktopBridge()?.catalog
+}
+
+function getDesktopEngineBridge() {
+  return getDesktopBridge()?.showdownEngine
+}
 
 function isIndexedDbAvailable() {
   return typeof indexedDB !== 'undefined'
@@ -98,6 +152,14 @@ function openCatalogUpdateCacheDb() {
       if (!db.objectStoreNames.contains(generatedCatalogStoreName)) {
         db.createObjectStore(generatedCatalogStoreName, { keyPath: 'id' })
       }
+
+      if (!db.objectStoreNames.contains(showdownEngineMetadataStoreName)) {
+        db.createObjectStore(showdownEngineMetadataStoreName, { keyPath: 'id' })
+      }
+
+      if (!db.objectStoreNames.contains(showdownEnginePayloadStoreName)) {
+        db.createObjectStore(showdownEnginePayloadStoreName, { keyPath: 'id' })
+      }
     }
 
     request.onsuccess = () => resolve(request.result)
@@ -106,6 +168,11 @@ function openCatalogUpdateCacheDb() {
 }
 
 export async function readCatalogUpdateCacheMetadata() {
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    return desktopCatalog.readAllMetadata()
+  }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -118,6 +185,11 @@ export async function readCatalogUpdateCacheMetadata() {
 }
 
 export async function readCatalogUpdateSectionMetadata(section: CatalogUpdateDownloadSectionId) {
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    return desktopCatalog.readSectionMetadata(section)
+  }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -131,6 +203,11 @@ export async function readCatalogUpdateSectionMetadata(section: CatalogUpdateDow
 }
 
 export async function hasCatalogUpdateSectionPayload(section: CatalogUpdateDownloadSectionId) {
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    return desktopCatalog.hasSectionPayload(section)
+  }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -144,6 +221,11 @@ export async function hasCatalogUpdateSectionPayload(section: CatalogUpdateDownl
 }
 
 export async function readCatalogUpdateSectionPayload(section: CatalogUpdateDownloadSectionId) {
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    return desktopCatalog.readSectionPayload(section)
+  }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -157,6 +239,12 @@ export async function readCatalogUpdateSectionPayload(section: CatalogUpdateDown
 }
 
 export async function writeCatalogUpdateSectionMetadata(metadata: CatalogUpdateSectionCacheMetadata) {
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    await desktopCatalog.writeSectionMetadata(metadata)
+    return
+  }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -172,6 +260,12 @@ export async function writeCatalogUpdateSectionCacheEntry(
   metadata: CatalogUpdateSectionCacheMetadata,
   payload: CatalogUpdateSectionPayload,
 ) {
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    await desktopCatalog.writeSectionCacheEntry(metadata, payload)
+    return
+  }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -198,18 +292,31 @@ function createPokemonMoveIdsByShowdownId(snapshot: PokeApiCatalogSourceSnapshot
   )
 }
 
-export async function writeCatalogUpdateGeneratedCatalogCache(
+function createGeneratedCatalogCacheEntry(
   catalog: BattleLabCatalog,
   snapshot: PokeApiCatalogSourceSnapshot,
 ) {
-  const cacheEntry: CatalogUpdateGeneratedCatalogCache = {
+  return {
     id: 'latest',
     catalog,
     pokemonMoveIdsByShowdownId: createPokemonMoveIdsByShowdownId(snapshot),
     fetchedAt: snapshot.fetchedAt,
     sourceVersion: snapshot.sourceVersion,
     payloadVersion: 1,
+  } satisfies CatalogUpdateGeneratedCatalogCache
+}
+
+export async function writeCatalogUpdateGeneratedCatalogCache(
+  catalog: BattleLabCatalog,
+  snapshot: PokeApiCatalogSourceSnapshot,
+) {
+  const cacheEntry = createGeneratedCatalogCacheEntry(catalog, snapshot)
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    await desktopCatalog.writeGeneratedCatalogCache(cacheEntry)
+    return
   }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -222,6 +329,11 @@ export async function writeCatalogUpdateGeneratedCatalogCache(
 }
 
 export async function readCatalogUpdateGeneratedCatalogCache() {
+  const desktopCatalog = getDesktopCatalogBridge()
+  if (desktopCatalog) {
+    return desktopCatalog.readGeneratedCatalogCache()
+  }
+
   const db = await openCatalogUpdateCacheDb()
 
   try {
@@ -229,6 +341,102 @@ export async function readCatalogUpdateGeneratedCatalogCache() {
     const store = transaction.objectStore(generatedCatalogStoreName)
     const cacheEntry = await requestToPromise<CatalogUpdateGeneratedCatalogCache | undefined>(store.get('latest'))
     return cacheEntry ?? null
+  } finally {
+    db.close()
+  }
+}
+
+export async function readCatalogUpdateShowdownEngineMetadata() {
+  const desktopEngine = getDesktopEngineBridge()
+  if (desktopEngine) {
+    return desktopEngine.readMetadata()
+  }
+
+  const db = await openCatalogUpdateCacheDb()
+
+  try {
+    const transaction = db.transaction(showdownEngineMetadataStoreName, 'readonly')
+    const store = transaction.objectStore(showdownEngineMetadataStoreName)
+    const metadata = await requestToPromise<CatalogUpdateShowdownEngineMetadata | undefined>(store.get('active'))
+    return metadata ?? null
+  } finally {
+    db.close()
+  }
+}
+
+export async function writeCatalogUpdateShowdownEngineMetadata(metadata: CatalogUpdateShowdownEngineMetadata) {
+  const desktopEngine = getDesktopEngineBridge()
+  if (desktopEngine) {
+    await desktopEngine.writeMetadata(metadata)
+    return
+  }
+
+  const db = await openCatalogUpdateCacheDb()
+
+  try {
+    const transaction = db.transaction(showdownEngineMetadataStoreName, 'readwrite')
+    transaction.objectStore(showdownEngineMetadataStoreName).put(metadata)
+    await transactionDone(transaction)
+  } finally {
+    db.close()
+  }
+}
+
+export async function writeCatalogUpdateShowdownEngineCacheEntry(
+  metadata: CatalogUpdateShowdownEngineMetadata,
+  payload?: CatalogUpdateShowdownEnginePayload,
+) {
+  const desktopEngine = getDesktopEngineBridge()
+  if (desktopEngine) {
+    await desktopEngine.writeCacheEntry(metadata, payload)
+    return
+  }
+
+  const db = await openCatalogUpdateCacheDb()
+
+  try {
+    const stores = payload
+      ? [showdownEngineMetadataStoreName, showdownEnginePayloadStoreName]
+      : [showdownEngineMetadataStoreName]
+    const transaction = db.transaction(stores, 'readwrite')
+    transaction.objectStore(showdownEngineMetadataStoreName).put(metadata)
+
+    if (payload) {
+      transaction.objectStore(showdownEnginePayloadStoreName).put(payload)
+    }
+
+    await transactionDone(transaction)
+  } finally {
+    db.close()
+  }
+}
+
+export async function readCatalogUpdateShowdownEnginePayload() {
+  const desktopEngine = getDesktopEngineBridge()
+  if (desktopEngine) {
+    const payloadMetadata = await desktopEngine.readPayloadMetadata()
+    if (!payloadMetadata) return null
+
+    return {
+      id: 'active',
+      sourceUrl: '',
+      resolvedUrl: null,
+      revision: '',
+      fetchedAt: '',
+      sha256: '',
+      byteLength: payloadMetadata.byteLength,
+      payload: new ArrayBuffer(0),
+      payloadVersion: 1,
+    } satisfies CatalogUpdateShowdownEnginePayload
+  }
+
+  const db = await openCatalogUpdateCacheDb()
+
+  try {
+    const transaction = db.transaction(showdownEnginePayloadStoreName, 'readonly')
+    const store = transaction.objectStore(showdownEnginePayloadStoreName)
+    const payload = await requestToPromise<CatalogUpdateShowdownEnginePayload | undefined>(store.get('active'))
+    return payload ?? null
   } finally {
     db.close()
   }
