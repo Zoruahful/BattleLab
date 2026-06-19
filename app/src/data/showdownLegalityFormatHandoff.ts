@@ -6,6 +6,8 @@ import {
 } from './showdownEngineInstalledFormatRegistryBridge'
 import {
   createShowdownEngineFormatRegistryReadModel,
+  readShowdownEngineMetadata,
+  type CatalogUpdateShowdownEngineMetadata,
   type ShowdownEngineFormatRegistryReadModel,
 } from './showdownEngineUpdateService'
 
@@ -32,6 +34,25 @@ export interface ShowdownLegalityFormatInstalledRegistryHandoff {
   officialFormatCount: number
   packageStatus: ShowdownEngineInstalledFormatRegistryBridge['packageSummary']['status']
   checkedAt: string
+}
+
+export type ShowdownLegalityActiveEngineSource =
+  | 'active-app-managed-engine'
+  | 'installed-package-fallback'
+  | 'unavailable'
+
+export interface ShowdownLegalityActiveEngineHandoff {
+  source: ShowdownLegalityActiveEngineSource
+  active: boolean
+  revision: string | null
+  versionLabel: string | null
+  checkedAt: string | null
+  metadataStatus: CatalogUpdateShowdownEngineMetadata['status'] | 'unavailable'
+  formatRegistryStatus: CatalogUpdateShowdownEngineMetadata['formatRegistryStatus'] | 'unavailable'
+  requiredFilesStatus: CatalogUpdateShowdownEngineMetadata['requiredFilesStatus'] | 'unavailable'
+  learnsetDataStatus: CatalogUpdateShowdownEngineMetadata['learnsetDataStatus'] | 'unavailable'
+  officialFormatCount: number
+  message: string
 }
 
 export interface ShowdownLegalityFormatCustomOverlayHandoff {
@@ -71,6 +92,7 @@ export interface ShowdownLegalityFormatHandoff {
   appFormat: BattleFormat
   status: ShowdownLegalityFormatHandoffStatus
   mapping: ShowdownLegalityFormatMapping
+  activeEngine: ShowdownLegalityActiveEngineHandoff
   installedRegistry: ShowdownLegalityFormatInstalledRegistryHandoff
   officialFormatAvailable: boolean
   customOverlay: ShowdownLegalityFormatCustomOverlayHandoff
@@ -83,9 +105,12 @@ export interface ShowdownLegalityFormatHandoff {
 export interface ShowdownLegalityFormatHandoffOptions {
   handoffId?: string
   installedRegistryBridge?: ShowdownEngineInstalledFormatRegistryBridge
+  activeEngineMetadata?: CatalogUpdateShowdownEngineMetadata | null
   formatRegistry?: ShowdownEngineFormatRegistryReadModel
+  loadActiveEngineMetadata?: () => Promise<CatalogUpdateShowdownEngineMetadata | null>
   loadInstalledRegistryBridge?: () => Promise<ShowdownEngineInstalledFormatRegistryBridge>
   loadFormatRegistry?: (checkedAt: string) => Promise<ShowdownEngineFormatRegistryReadModel>
+  preferActiveEngine?: boolean
 }
 
 export const showdownLegalityFormatMappings: Record<BattleFormat, ShowdownLegalityFormatMapping> = {
@@ -154,6 +179,118 @@ const createRegistryHandoff = (
   checkedAt: bridge.checkedAt,
 })
 
+const createActiveEngineUnavailable = (
+  source: Extract<ShowdownLegalityActiveEngineSource, 'installed-package-fallback' | 'unavailable'>,
+  message: string,
+): ShowdownLegalityActiveEngineHandoff => ({
+  source,
+  active: false,
+  revision: null,
+  versionLabel: null,
+  checkedAt: null,
+  metadataStatus: 'unavailable',
+  formatRegistryStatus: 'unavailable',
+  requiredFilesStatus: 'unavailable',
+  learnsetDataStatus: 'unavailable',
+  officialFormatCount: 0,
+  message,
+})
+
+const isActiveEngineReady = (metadata: CatalogUpdateShowdownEngineMetadata | null | undefined) =>
+  Boolean(
+    metadata &&
+      metadata.status === 'current' &&
+      metadata.formatRegistryStatus === 'available' &&
+      metadata.requiredFilesStatus === 'validated-from-installed-package' &&
+      metadata.learnsetDataStatus === 'available',
+  )
+
+const createActiveEngineHandoff = (
+  metadata: CatalogUpdateShowdownEngineMetadata | null,
+): ShowdownLegalityActiveEngineHandoff => {
+  if (!metadata) {
+    return createActiveEngineUnavailable(
+      'installed-package-fallback',
+      'No active app-managed Pokemon Showdown Engine metadata is available; using installed package fallback.',
+    )
+  }
+
+  const active = isActiveEngineReady(metadata)
+
+  return {
+    source: active ? 'active-app-managed-engine' : 'installed-package-fallback',
+    active,
+    revision: metadata.revision,
+    versionLabel: metadata.versionLabel,
+    checkedAt: metadata.lastCheckedAt,
+    metadataStatus: metadata.status,
+    formatRegistryStatus: metadata.formatRegistryStatus,
+    requiredFilesStatus: metadata.requiredFilesStatus,
+    learnsetDataStatus: metadata.learnsetDataStatus,
+    officialFormatCount: metadata.officialFormatCount,
+    message: active
+      ? 'Active app-managed Pokemon Showdown Engine metadata is ready for format-aware legality handoff.'
+      : 'Active app-managed Pokemon Showdown Engine metadata is not fully validated; using installed package fallback.',
+  }
+}
+
+const createActiveEngineBridge = (
+  activeEngine: ShowdownLegalityActiveEngineHandoff,
+): ShowdownEngineInstalledFormatRegistryBridge => ({
+  bridgeId: 'showdown-legality-active-engine-format-registry-bridge',
+  status: 'installed-registry-available',
+  message: 'Active app-managed Pokemon Showdown Engine readiness is available for legality format handoff.',
+  checkedAt: activeEngine.checkedAt ?? new Date().toISOString(),
+  packageSummary: {
+    packageName: 'pokemon-showdown',
+    status: 'available',
+    importStrategy: 'explicit-async-installed-package-import',
+    errorMessage: null,
+  },
+  officialFormatCount: activeEngine.officialFormatCount,
+  sampleOfficialFormats: [],
+  customOverlay: {
+    overlayFolderKey: 'battlelab-custom-overlays',
+    mergeStrategy: 'read-overlay-after-official-registry',
+    modifiesUpstreamSourceInPlace: false,
+    status: 'supported',
+    placeholderFormatCount: 1,
+    message: 'BattleLab custom formats remain overlays and do not mutate upstream Pokemon Showdown source.',
+  },
+  aggregateHandoff: {
+    aggregateReadModelId: 'showdown-legality-active-engine-aggregate-handoff',
+    aggregateStatus: 'ready-preview',
+    activationGateStatus: 'activation-ready',
+    previousActivePreserved: true,
+    metadataOnly: true,
+  },
+  runtimeUnavailableFallback: {
+    available: true,
+    status: 'runtime-unavailable-fallback',
+    message: 'If active Engine readiness is unavailable, BattleLab must use the explicit installed package fallback.',
+  },
+  safety: {
+    explicitAsyncOnly: true,
+    noImportTimeExecution: true,
+    noAppLoadExecution: true,
+    noPanelOpenExecution: true,
+    noArchiveDownload: true,
+    noArchiveExtraction: true,
+    noFileIo: true,
+    noDynamicImportFromDownloadedCode: true,
+    noCatalogUpdatePanelWiring: true,
+    noSimulationExecution: true,
+    installedPackageMetadataReadOnly: true,
+    customFormatsOverlayOnly: true,
+    pokemonShowdownAuthority: 'pokemon-showdown-legality-source-of-truth',
+    catalogRole: 'enrichment-only',
+  },
+  boundaryNotes: [
+    'Active Engine handoff is explicit async and does not run on module import.',
+    'Active Engine metadata decides readiness; Pokemon Showdown remains the legality source of truth.',
+  ],
+})
+
 const isOfficialFormatAvailable = (
   mapping: ShowdownLegalityFormatMapping,
   bridge: ShowdownEngineInstalledFormatRegistryBridge,
@@ -213,13 +350,42 @@ const createStatus = (
   return bridge.status === 'installed-registry-unavailable' ? 'runtime-unavailable' : 'unsupported-format'
 }
 
+const resolveActiveEngineHandoff = async (
+  options: ShowdownLegalityFormatHandoffOptions,
+): Promise<ShowdownLegalityActiveEngineHandoff> => {
+  if (options.preferActiveEngine === false || options.installedRegistryBridge) {
+    return createActiveEngineUnavailable(
+      'installed-package-fallback',
+      'Installed registry bridge was provided explicitly; active Engine metadata lookup was skipped.',
+    )
+  }
+
+  try {
+    const metadata =
+      'activeEngineMetadata' in options
+        ? options.activeEngineMetadata ?? null
+        : await (options.loadActiveEngineMetadata ?? readShowdownEngineMetadata)()
+
+    return createActiveEngineHandoff(metadata)
+  } catch (error) {
+    return createActiveEngineUnavailable(
+      'installed-package-fallback',
+      error instanceof Error
+        ? `Active Engine metadata could not be read; using installed package fallback. ${error.message}`
+        : 'Active Engine metadata could not be read; using installed package fallback.',
+    )
+  }
+}
+
 export async function createShowdownLegalityFormatHandoff(
   appFormat: BattleFormat,
   options: ShowdownLegalityFormatHandoffOptions = {},
 ): Promise<ShowdownLegalityFormatHandoff> {
   const mapping = showdownLegalityFormatMappings[appFormat]
+  const activeEngine = await resolveActiveEngineHandoff(options)
   const bridge =
     options.installedRegistryBridge ??
+    (activeEngine.active ? createActiveEngineBridge(activeEngine) : undefined) ??
     (await (options.loadInstalledRegistryBridge ?? createShowdownEngineInstalledFormatRegistryBridge)())
   const registry =
     options.formatRegistry ??
@@ -235,6 +401,7 @@ export async function createShowdownLegalityFormatHandoff(
     appFormat,
     status,
     mapping,
+    activeEngine,
     installedRegistry: createRegistryHandoff(bridge),
     officialFormatAvailable,
     customOverlay,
@@ -243,6 +410,7 @@ export async function createShowdownLegalityFormatHandoff(
     safety: createSafety(),
     boundaryNotes: [
       'Showdown legality format handoff is explicit async and does not import Pokemon Showdown on module import.',
+      'Active app-managed Engine metadata is preferred when it is current and validated; installed package lookup remains the explicit fallback.',
       'Pokemon Showdown format IDs are the future legality runtime target; PokeAPI/catalog data remains enrichment-only.',
       'BattleLab custom formats require overlay support and must not mutate upstream Pokemon Showdown source.',
       'Unsupported or unavailable format registry states must preserve runtime-unavailable UI fallback.',

@@ -721,6 +721,18 @@ function applyResult(current: CatalogPanelState, result: CatalogBulkIngestionRes
   const hasWarnings = warningCount > 0 || result.sectionSummaries.some((summary) => summary.generatedCount < summary.selectedCount)
   const status = getPanelStatusForResult(result, hasWarnings)
   const sections = applyResultToSections(current.sections, result, finishedAt)
+  const cacheHealth =
+    result.status === 'complete'
+      ? createCacheHealthSummary(
+          sections,
+          result.snapshot
+            ? {
+                fetchedAt: result.snapshot.fetchedAt,
+                sourceVersion: result.snapshot.sourceVersion,
+              }
+            : undefined,
+        )
+      : current.cacheHealth
 
   return {
     ...current,
@@ -735,15 +747,7 @@ function applyResult(current: CatalogPanelState, result: CatalogBulkIngestionRes
     errorCount,
     issues: result.issues,
     sections,
-    cacheHealth: createCacheHealthSummary(
-      sections,
-      result.status === 'complete' && result.snapshot
-        ? {
-            fetchedAt: result.snapshot.fetchedAt,
-            sourceVersion: result.snapshot.sourceVersion,
-          }
-        : undefined,
-    ),
+    cacheHealth,
   }
 }
 
