@@ -1384,6 +1384,42 @@
   line-height: 1;
 }
 
+.bl-combo-legality {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-3);
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.bl-combo-legality.is-legal-in-selected-format {
+  border-color: color-mix(in srgb, #4f8f7a 42%, var(--border));
+  background: color-mix(in srgb, #4f8f7a 10%, var(--surface));
+  color: #3b715f;
+}
+
+.bl-combo-legality.is-illegal-in-selected-format {
+  border-color: color-mix(in srgb, #b66b5e 48%, var(--border));
+  background: color-mix(in srgb, #b66b5e 11%, var(--surface));
+  color: #954639;
+}
+
+.bl-combo-legality.is-unknown-runtime-unavailable,
+.bl-combo-legality.is-catalog-only-preview {
+  border-color: color-mix(in srgb, #5e7ca8 42%, var(--border));
+  background: color-mix(in srgb, #5e7ca8 9%, var(--surface));
+  color: #47658f;
+}
+
 .bl-combo-option-tip {
   display: block;
 }

@@ -79,6 +79,8 @@ type PickerProjectionLoadState =
     }
   | { status: 'error'; optionSets: null; pokemonMoveIdsByShowdownId: null; error: string }
 
+type ShowdownPickerLegalityRow = ShowdownTeamLegalitySlotResult['readModel']['rows'][number]
+
 const statKeys: Array<keyof StatSpread> = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
 const MAXED_IVS: StatSpread = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 }
 const ZERO_EVS: StatSpread = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }
@@ -193,6 +195,33 @@ const EMPTY_OPTION: ComboOption = {
   label: 'None',
   searchText: 'none empty not set clear',
   group: 'Selected',
+}
+
+const getLegalityBadgeLabel = (status: ShowdownPickerLegalityRow['status']) => {
+  if (status === 'legal-in-selected-format') return 'Legal'
+  if (status === 'illegal-in-selected-format') return 'Illegal'
+  if (status === 'catalog-only-preview') return 'Catalog preview'
+  return 'Unknown'
+}
+
+const rowMatchesCatalogOption = (row: ShowdownPickerLegalityRow, option: CatalogPickerOption) =>
+  row.option.catalogKey === option.catalogKey ||
+  row.option.showdownId === option.showdownId ||
+  row.option.displayName === option.displayName
+
+const rowMatchesShowdownValue = (row: ShowdownPickerLegalityRow, value: string) =>
+  row.option.showdownId === value || row.option.catalogKey === value || row.option.displayName === value
+
+function ShowdownLegalityBadge({ row }: { row: ShowdownPickerLegalityRow }) {
+  return (
+    <span
+      className={`bl-combo-legality is-${row.status}`}
+      title={row.message}
+      aria-label={`${getLegalityBadgeLabel(row.status)}: ${row.message}`}
+    >
+      {getLegalityBadgeLabel(row.status)}
+    </span>
+  )
 }
 
 const spreadTotal = (spread: StatSpread) => statKeys.reduce((total, key) => total + spread[key], 0)
@@ -321,7 +350,7 @@ function LegalityPreviewRow({ field }: { field: PokemonEditorLegalityFieldReadMo
 function ShowdownLegalityRow({
   row,
 }: {
-  row: ShowdownTeamLegalitySlotResult['readModel']['rows'][number]
+  row: ShowdownPickerLegalityRow
 }) {
   return (
     <li className={`bl-legality-row is-${row.status}`}>
@@ -567,6 +596,7 @@ export function PokemonEditorPanel({
   const selectedAbilityValue = selectedAbilityOptionKey || draftPokemon?.ability || ''
   const selectedNatureValue = selectedNatureOptionKey || draftPokemon?.nature || ''
   const selectedTeraValue = selectedTeraOptionKey || draftPokemon?.teraType || ''
+  const showdownLegalityRows = useMemo(() => teamLegalitySlot?.readModel.rows ?? [], [teamLegalitySlot])
   const speciesShowdownId = useMemo(
     () => selectedPokemonOption?.showdownId ?? draftPokemon?.species.toLowerCase() ?? '',
     [draftPokemon?.species, selectedPokemonOption?.showdownId],
@@ -732,20 +762,28 @@ export function PokemonEditorPanel({
       withSavedCatalogValue(
         [
           EMPTY_OPTION,
-          ...abilityPickerOptions.map((option) => ({
-            value: option.catalogKey,
-            label: option.displayName,
-            searchText: getCatalogPickerSearchText(option),
-            group: getCatalogOptionGroup(option, 'Ability'),
-            disabled: isUnavailableOption(option),
-            disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
-            tooltip: optionTooltip(option, 'Ability'),
-          })),
+          ...abilityPickerOptions.map((option) => {
+            const legalityRow = showdownLegalityRows.find(
+              (row) => row.field === 'ability' && rowMatchesCatalogOption(row, option),
+            )
+
+            return {
+              value: option.catalogKey,
+              label: option.displayName,
+              searchText: getCatalogPickerSearchText(option),
+              group: getCatalogOptionGroup(option, 'Ability'),
+              disabled: isUnavailableOption(option),
+              disabledReason: isUnavailableOption(option) ? 'Catalog entry is not selectable yet.' : undefined,
+              meta: legalityRow ? <ShowdownLegalityBadge row={legalityRow} /> : undefined,
+              selectedMeta: legalityRow ? <ShowdownLegalityBadge row={legalityRow} /> : undefined,
+              tooltip: optionTooltip(option, 'Ability'),
+            }
+          }),
         ],
         selectedAbilityOptionKey,
         draftPokemon?.ability,
       ),
-    [abilityPickerOptions, draftPokemon?.ability, selectedAbilityOptionKey],
+    [abilityPickerOptions, draftPokemon?.ability, selectedAbilityOptionKey, showdownLegalityRows],
   )
   const natureOptions = useMemo(
     () =>
@@ -809,6 +847,9 @@ export function PokemonEditorPanel({
           .map((option) => {
             const category = getCatalogMoveCategory(option)
             const inLearnset = option.showdownId ? activeLearnsetMoveIdSet.has(option.showdownId) : false
+            const legalityRow = showdownLegalityRows.find(
+              (row) => row.field === 'move' && rowMatchesCatalogOption(row, option),
+            )
 
             return {
               value: option.showdownId ?? option.catalogKey,
@@ -823,6 +864,8 @@ export function PokemonEditorPanel({
                   {category ? <CategoryIcon category={category} /> : null}
                 </span>
               ),
+              meta: legalityRow ? <ShowdownLegalityBadge row={legalityRow} /> : undefined,
+              selectedMeta: legalityRow ? <ShowdownLegalityBadge row={legalityRow} /> : undefined,
               tooltip: catalogMoveTooltip(option),
             }
           }),
@@ -835,6 +878,9 @@ export function PokemonEditorPanel({
       noneOption,
       ...learnset.map((move) => {
         const catalogOption = catalogMovesById.get(move.showdownId)
+        const legalityRow = showdownLegalityRows.find(
+          (row) => row.field === 'move' && rowMatchesShowdownValue(row, move.showdownId),
+        )
 
         return {
           value: move.showdownId,
@@ -853,12 +899,13 @@ export function PokemonEditorPanel({
               <CategoryIcon category={move.category} />
             </span>
           ),
-          meta: <span className="bl-move-power">{move.power ?? '—'}</span>,
+          meta: legalityRow ? <ShowdownLegalityBadge row={legalityRow} /> : <span className="bl-move-power">{move.power ?? '—'}</span>,
+          selectedMeta: legalityRow ? <ShowdownLegalityBadge row={legalityRow} /> : undefined,
           tooltip: moveTooltip(move, catalogOption),
         }
       }),
     ]
-  }, [activeLearnsetMoveIds, movePickerOptions, speciesShowdownId])
+  }, [activeLearnsetMoveIds, movePickerOptions, showdownLegalityRows, speciesShowdownId])
 
   const selectedItemOption = selectedItemOptionKey
     ? itemPickerOptions.find((candidate) => candidate.catalogKey === selectedItemOptionKey)
@@ -920,7 +967,6 @@ export function PokemonEditorPanel({
         return selectedMoveRefs.some((move) => sameBuildRef(move, field.option))
       })
     : []
-  const showdownLegalityRows = teamLegalitySlot?.readModel.rows ?? []
   const hasShowdownLegalityRows = showdownLegalityRows.length > 0
 
   return (
