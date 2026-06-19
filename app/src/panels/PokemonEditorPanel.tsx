@@ -11,6 +11,7 @@ import {
   getPokemonPickerOptions,
   getTypePickerOptions,
   resolveCatalogAssetReference,
+  type ShowdownTeamLegalitySlotResult,
   type CatalogCachedPickerProjectionOptionSets,
   type CatalogPlannedExpansionPickerProjectionOptionSets,
 } from '../data'
@@ -63,6 +64,7 @@ export type PokemonEditorPanelProps = {
   slotNumber?: number
   pokemon?: PokemonBuild | null
   statEditorMode?: EditorMode
+  teamLegalitySlot?: ShowdownTeamLegalitySlotResult | null
   onClose?: () => void
   onSave?: (draft: PokemonEditorDraft) => void
 }
@@ -316,6 +318,23 @@ function LegalityPreviewRow({ field }: { field: PokemonEditorLegalityFieldReadMo
   )
 }
 
+function ShowdownLegalityRow({
+  row,
+}: {
+  row: ShowdownTeamLegalitySlotResult['readModel']['rows'][number]
+}) {
+  return (
+    <li className={`bl-legality-row is-${row.status}`}>
+      <div>
+        <strong>{row.field === 'ability' ? 'Ability' : `Move ${(row.slotIndex ?? 0) + 1}`}</strong>
+        <span>{row.option.displayName}</span>
+      </div>
+      <span className="bl-legality-status">{row.label}</span>
+      <p>{row.message}</p>
+    </li>
+  )
+}
+
 const sameBuildRef = (left?: BuildCatalogReference | null, right?: BuildCatalogReference | null) =>
   Boolean(
     left &&
@@ -437,6 +456,7 @@ export function PokemonEditorPanel({
   slotNumber,
   pokemon,
   statEditorMode = 'standard-evs',
+  teamLegalitySlot,
   onClose,
   onSave,
 }: PokemonEditorPanelProps) {
@@ -900,6 +920,8 @@ export function PokemonEditorPanel({
         return selectedMoveRefs.some((move) => sameBuildRef(move, field.option))
       })
     : []
+  const showdownLegalityRows = teamLegalitySlot?.readModel.rows ?? []
+  const hasShowdownLegalityRows = showdownLegalityRows.length > 0
 
   return (
     <aside
@@ -1077,13 +1099,29 @@ export function PokemonEditorPanel({
               <section className="bl-editor-section bl-legality-preview" aria-label="Legality preview">
                 <div className="bl-editor-section-heading">
                   <h3>Legality</h3>
-                  <span>Catalog preview</span>
+                  <span>{hasShowdownLegalityRows ? 'Pokemon Showdown' : 'Catalog preview'}</span>
                 </div>
-                <p className="bl-legality-note">
-                  Local catalog data can show preview signals for selected fields, but Pokemon Showdown remains the
-                  source of truth for legality and simulation.
-                </p>
-                {legalityPreviewRows.length > 0 ? (
+                {hasShowdownLegalityRows ? (
+                  <p className="bl-legality-note">
+                    These labels come from the latest automatic Pokemon Showdown team check for the selected team format.
+                    Catalog data remains enrichment-only and no simulation is running.
+                  </p>
+                ) : (
+                  <p className="bl-legality-note">
+                    Local catalog data can show preview signals for selected fields, but Pokemon Showdown remains the
+                    source of truth for legality and simulation.
+                  </p>
+                )}
+                {hasShowdownLegalityRows ? (
+                  <ul className="bl-legality-list">
+                    {showdownLegalityRows.map((row) => (
+                      <ShowdownLegalityRow
+                        row={row}
+                        key={`${row.field}-${row.slotIndex ?? 'ability'}-${row.option.catalogKey}`}
+                      />
+                    ))}
+                  </ul>
+                ) : legalityPreviewRows.length > 0 ? (
                   <ul className="bl-legality-list">
                     {legalityPreviewRows.map((field) => (
                       <LegalityPreviewRow

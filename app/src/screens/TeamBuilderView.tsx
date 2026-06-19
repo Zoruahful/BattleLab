@@ -14,7 +14,6 @@ export type TeamBuilderViewProps = {
   onSlotClear?: (slotIndex: number) => void
   onImportTeam?: (team: SubmittedTeam) => void
   onFormatChange?: (format: BattleFormat) => void
-  onCheckTeamLegality?: () => void
   legalityReadModel?: ShowdownTeamLegalityReadModel | null
   legalityStatus?: 'not-checked' | 'checking' | 'complete' | 'runtime-unavailable' | 'failed'
   legalityError?: string | null
@@ -48,7 +47,6 @@ export function TeamBuilderView({
   onSlotClear,
   onImportTeam,
   onFormatChange,
-  onCheckTeamLegality,
   legalityReadModel,
   legalityStatus = 'not-checked',
   legalityError,
@@ -72,8 +70,6 @@ export function TeamBuilderView({
   }))
 
   const exportText = exportShowdownTeam(team)
-  const checkingLegality = legalityStatus === 'checking'
-
   const openExport = () => {
     setCopied(false)
     setIoMode('export')
@@ -173,14 +169,6 @@ export function TeamBuilderView({
         <span className="bl-team-meta-spacer" aria-hidden="true" />
         <button className="secondary-action" type="button" onClick={openImport}>
           Import
-        </button>
-        <button
-          className="secondary-action"
-          type="button"
-          disabled={filledCount === 0 || checkingLegality}
-          onClick={onCheckTeamLegality}
-        >
-          {checkingLegality ? 'Checking legality' : 'Check team legality'}
         </button>
         <button
           className="secondary-action"
@@ -355,7 +343,7 @@ function TeamLegalityPanel({
       <section className="bl-team-legality-panel is-idle" aria-label="Pokemon Showdown team legality">
         <div>
           <h3>Pokemon Showdown legality</h3>
-          <p>Run a team-level check when you want Pokemon Showdown to validate selected moves and ability.</p>
+          <p>Legality updates automatically after team edits or format changes. No simulation is running.</p>
         </div>
         <span>Not checked</span>
       </section>

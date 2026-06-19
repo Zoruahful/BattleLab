@@ -311,6 +311,22 @@
   color: #3b715f;
 }
 
+.bl-legality-row.is-legal-in-selected-format .bl-legality-status {
+  border-color: color-mix(in srgb, #4f8f7a 40%, var(--border));
+  color: #3b715f;
+}
+
+.bl-legality-row.is-illegal-in-selected-format .bl-legality-status {
+  border-color: color-mix(in srgb, #b66b5e 46%, var(--border));
+  color: #954639;
+}
+
+.bl-legality-row.is-unknown-runtime-unavailable .bl-legality-status,
+.bl-legality-row.is-catalog-only-preview .bl-legality-status {
+  border-color: color-mix(in srgb, #5e7ca8 40%, var(--border));
+  color: #47658f;
+}
+
 .bl-editor-field {
   display: grid;
   gap: 5px;

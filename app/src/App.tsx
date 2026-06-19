@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   localBattleLabSettings,
   localSimulationSettings,
@@ -9,6 +9,7 @@ import {
   createShowdownTeamLegalityReadModel,
   submittedTeam as initialSubmittedTeam,
   type ShowdownTeamLegalityReadModel,
+  type ShowdownTeamLegalitySlotResult,
   type ShowdownTeamLegalityStatus,
 } from './data'
 import CatalogUpdatePanel from './panels/CatalogUpdatePanel'
@@ -111,6 +112,8 @@ function App() {
   const [teamLegalityReadModel, setTeamLegalityReadModel] =
     useState<ShowdownTeamLegalityReadModel | null>(null)
   const [teamLegalityError, setTeamLegalityError] = useState<string | null>(null)
+  const [teamLegalityRunKey, setTeamLegalityRunKey] = useState(0)
+  const teamLegalityRequestId = useRef(0)
 
   const { activeView, activePanel, editingSlot } = shellState
   const panelOpen = activePanel !== null
@@ -188,7 +191,7 @@ function App() {
       return
     }
 
-    updateActiveTeam(pendingLoadTeam)
+    updateActiveTeam(pendingLoadTeam, { checkLegality: true })
     setLoadConfirmOpen(false)
     setPendingLoadTeam(null)
   }
@@ -202,39 +205,60 @@ function App() {
     setLoadTeamError(null)
   }
 
-  const updateActiveTeam = (team: SubmittedTeam) => {
+  const updateActiveTeam = (team: SubmittedTeam, options?: { checkLegality?: boolean }) => {
     setActiveTeam(team)
-    setTeamLegalityStatus('not-checked')
+    setTeamLegalityStatus(options?.checkLegality ? 'checking' : 'not-checked')
     setTeamLegalityReadModel(null)
     setTeamLegalityError(null)
+
+    if (options?.checkLegality) {
+      setTeamLegalityRunKey((current) => current + 1)
+    }
   }
 
   const handleTeamFormatChange = (format: SubmittedTeam['format']) => {
-    updateActiveTeam({
-      ...activeTeam,
-      format,
-      updatedAt: new Date().toISOString(),
-    })
+    updateActiveTeam(
+      {
+        ...activeTeam,
+        format,
+        updatedAt: new Date().toISOString(),
+      },
+      { checkLegality: true },
+    )
   }
 
-  const handleCheckTeamLegality = async () => {
-    setTeamLegalityStatus('checking')
-    setTeamLegalityError(null)
+  useEffect(() => {
+    if (teamLegalityRunKey === 0) return
 
-    try {
-      const readModel = await createShowdownTeamLegalityReadModel(activeTeam, {
+    const requestId = teamLegalityRequestId.current + 1
+    teamLegalityRequestId.current = requestId
+
+    const timeoutId = window.setTimeout(() => {
+      setTeamLegalityStatus('checking')
+      setTeamLegalityError(null)
+
+      createShowdownTeamLegalityReadModel(activeTeam, {
         runtimeLoader: 'browser-data',
       })
-      setTeamLegalityReadModel(readModel)
-      setTeamLegalityStatus(readModel.status)
-    } catch (error) {
-      setTeamLegalityReadModel(null)
-      setTeamLegalityStatus('failed')
-      setTeamLegalityError(
-        error instanceof Error ? error.message : 'Pokemon Showdown team legality check failed.',
-      )
-    }
-  }
+        .then((readModel) => {
+          if (teamLegalityRequestId.current !== requestId) return
+
+          setTeamLegalityReadModel(readModel)
+          setTeamLegalityStatus(readModel.status)
+        })
+        .catch((error) => {
+          if (teamLegalityRequestId.current !== requestId) return
+
+          setTeamLegalityReadModel(null)
+          setTeamLegalityStatus('failed')
+          setTeamLegalityError(
+            error instanceof Error ? error.message : 'Pokemon Showdown team legality check failed.',
+          )
+        })
+    }, 450)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [activeTeam, teamLegalityRunKey])
 
   useEffect(() => {
     const root = document.documentElement
@@ -313,7 +337,6 @@ function App() {
                   activeTeam,
                   updateActiveTeam,
                   handleTeamFormatChange,
-                  handleCheckTeamLegality,
                   teamLegalityReadModel,
                   teamLegalityStatus,
                   teamLegalityError,
@@ -337,6 +360,9 @@ function App() {
               onClose={closePanel}
               onBattleLabSettingsChange={setBattleLabSettings}
               onTeamChange={updateActiveTeam}
+              teamLegalitySlot={
+                teamLegalityReadModel?.slotResults.find((slot) => slot.slot === (editingSlot ?? 0) + 1) ?? null
+              }
               onSimulationSettingsChange={setSimulationSettings}
             />
 
@@ -644,9 +670,8 @@ function renderMainView(
   onSelectReport: (entry: ReportHistoryEntry) => void,
   onBackToReports: () => void,
   team: SubmittedTeam,
-  onTeamChange: (team: SubmittedTeam) => void,
+  onTeamChange: (team: SubmittedTeam, options?: { checkLegality?: boolean }) => void,
   onTeamFormatChange: (format: SubmittedTeam['format']) => void,
-  onCheckTeamLegality: () => void,
   teamLegalityReadModel: ShowdownTeamLegalityReadModel | null,
   teamLegalityStatus: ShowdownTeamLegalityStatus,
   teamLegalityError: string | null,
@@ -656,11 +681,10 @@ function renderMainView(
       <TeamBuilderView
         team={team}
         onSlotSelect={(slotIndex) => openPanel('editor', slotIndex)}
-        onClearTeam={() => onTeamChange(clearSubmittedTeam(team))}
-        onSlotClear={(slotIndex) => onTeamChange(clearSubmittedTeamSlot(team, slotIndex))}
-        onImportTeam={onTeamChange}
+        onClearTeam={() => onTeamChange(clearSubmittedTeam(team), { checkLegality: true })}
+        onSlotClear={(slotIndex) => onTeamChange(clearSubmittedTeamSlot(team, slotIndex), { checkLegality: true })}
+        onImportTeam={(importedTeam) => onTeamChange(importedTeam, { checkLegality: true })}
         onFormatChange={onTeamFormatChange}
-        onCheckTeamLegality={onCheckTeamLegality}
         legalityReadModel={teamLegalityReadModel}
         legalityStatus={teamLegalityStatus}
         legalityError={teamLegalityError}
@@ -697,6 +721,7 @@ function ActivePanelHost({
   onClose,
   onBattleLabSettingsChange,
   onTeamChange,
+  teamLegalitySlot,
   onSimulationSettingsChange,
 }: {
   activePanel: ActivePanelId
@@ -706,7 +731,8 @@ function ActivePanelHost({
   simulationSettings: SimulationSettings | null
   onClose: () => void
   onBattleLabSettingsChange: (settings: BattleLabSettings) => void
-  onTeamChange: (team: SubmittedTeam) => void
+  onTeamChange: (team: SubmittedTeam, options?: { checkLegality?: boolean }) => void
+  teamLegalitySlot: ShowdownTeamLegalitySlotResult | null
   onSimulationSettingsChange: (settings: SimulationSettings) => void
 }) {
   if (activePanel === 'editor') {
@@ -714,7 +740,7 @@ function ActivePanelHost({
     const pokemon = team.slots.find((slot) => slot.slot === slotNumber)?.pokemon ?? null
 
     const handleSavePokemon = (draft: PokemonEditorDraft) => {
-      onTeamChange(upsertSubmittedTeamPokemon(team, slotNumber, draft.pokemon))
+      onTeamChange(upsertSubmittedTeamPokemon(team, slotNumber, draft.pokemon), { checkLegality: true })
       onClose()
     }
 
@@ -725,6 +751,7 @@ function ActivePanelHost({
         slotNumber={slotNumber}
         pokemon={pokemon}
         statEditorMode={battleLabSettings.statEditorMode}
+        teamLegalitySlot={teamLegalitySlot}
         onClose={onClose}
         onSave={handleSavePokemon}
       />
