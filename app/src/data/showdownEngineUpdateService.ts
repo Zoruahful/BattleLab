@@ -138,7 +138,12 @@ const showdownEngineMetadataStoreName = 'showdownEngineMetadata'
 const showdownEnginePayloadStoreName = 'showdownEnginePayloads'
 
 function getDesktopEngineBridge() {
-  return typeof window !== 'undefined' ? window.battleLabDesktop?.showdownEngine : undefined
+  const desktop = typeof window !== 'undefined' ? window.battleLabDesktop : undefined
+  if (desktop && !desktop.showdownEngine) {
+    throw new Error('BattleLab desktop Engine storage API is unavailable; refusing to fall back to IndexedDB in desktop mode.')
+  }
+
+  return desktop?.showdownEngine
 }
 
 export interface CatalogUpdateShowdownEngineMetadata {
@@ -700,6 +705,19 @@ function metadataMatchesRemote(
   )
 }
 
+function isEngineMetadataPromotionReady(metadata: CatalogUpdateShowdownEngineMetadata) {
+  return (
+    metadata.status === 'current' &&
+    metadata.sha256 !== null &&
+    metadata.checksumStatus === 'observed-sha256' &&
+    metadata.archivePayloadStored &&
+    metadata.requiredFilesStatus === 'validated-from-installed-package' &&
+    metadata.formatRegistryStatus === 'available' &&
+    metadata.officialFormatCount > 0 &&
+    metadata.learnsetDataStatus === 'available'
+  )
+}
+
 const bufferToHex = (buffer: ArrayBuffer): string =>
   Array.from(new Uint8Array(buffer))
     .map((byte) => byte.toString(16).padStart(2, '0'))
@@ -1024,7 +1042,7 @@ export async function runShowdownEngineUpdate(
       progressPercent: 80,
       downloadedBytes: archive.payload.byteLength,
       totalBytes: parseEngineContentLength(archive.contentLength),
-      message: 'Staging downloaded Engine archive metadata. Archive extraction is deferred for a safe archive reader checkpoint.',
+      message: 'Staging downloaded Engine archive metadata before validation. Archive extraction and downloaded-code loading remain disabled.',
     })
 
     const formatRegistry = await loadFormatRegistry(fetchedAt)
@@ -1068,6 +1086,40 @@ export async function runShowdownEngineUpdate(
           : 'Pokemon Showdown Engine archive downloaded and hashed, but registry or learnset readiness is incomplete.',
       status: requiredFilesStatus === 'validated-from-installed-package' ? 'current' : 'warning',
     })
+
+    if (!isEngineMetadataPromotionReady(metadata)) {
+      emitEngineProgress(options, {
+        status: 'failed',
+        progressPercent: 100,
+        downloadedBytes: archive.payload.byteLength,
+        totalBytes: parseEngineContentLength(archive.contentLength),
+        message:
+          'Staged Pokemon Showdown Engine metadata was rejected before promotion; previous active Engine metadata remains unchanged.',
+        metadata: previousActiveMetadata,
+      })
+
+      return {
+        updateId,
+        status: 'failed',
+        startedAt,
+        finishedAt: fetchedAt,
+        metadata: previousActiveMetadata,
+        previousActiveMetadata,
+        downloadedByteLength: archive.payload.byteLength,
+        sha256,
+        archivePayloadStored: false,
+        requiredFilesValidated: false,
+        formatRegistryReady: metadata.formatRegistryStatus === 'available',
+        learnsetDataReady: metadata.learnsetDataStatus === 'available',
+        previousActivePreserved: true,
+        warnings: [],
+        errors: [
+          metadata.message,
+          'Staged Engine metadata was rejected and was not promoted to active storage.',
+        ],
+      }
+    }
+
     const payload: CatalogUpdateShowdownEnginePayload = {
       id: 'active',
       sourceUrl: metadata.sourceUrl,
@@ -1080,11 +1132,19 @@ export async function runShowdownEngineUpdate(
       payloadVersion: showdownEnginePayloadVersion,
     }
 
+    emitEngineProgress(options, {
+      status: 'validating',
+      progressPercent: 96,
+      downloadedBytes: archive.payload.byteLength,
+      totalBytes: parseEngineContentLength(archive.contentLength),
+      message: 'Promotion gate passed; promoting validated Pokemon Showdown Engine metadata and archive payload.',
+      metadata,
+    })
+
     await writeActiveCacheEntry(metadata, payload)
 
-    const status = metadata.status === 'warning' ? 'warning' : 'complete'
     emitEngineProgress(options, {
-      status,
+      status: 'complete',
       progressPercent: 100,
       downloadedBytes: metadata.downloadedByteLength,
       totalBytes: parseEngineContentLength(metadata.contentLength),
@@ -1094,7 +1154,7 @@ export async function runShowdownEngineUpdate(
 
     return {
       updateId,
-      status,
+      status: 'complete',
       startedAt,
       finishedAt: fetchedAt,
       metadata,
@@ -1118,20 +1178,6 @@ export async function runShowdownEngineUpdate(
     const finishedAt = now()
     const cancelled = isAbortError(error)
     const message = getEngineErrorMessage(error)
-    const metadata = previousActiveMetadata
-      ? {
-          ...previousActiveMetadata,
-          lastCheckedAt: finishedAt,
-          status: cancelled ? ('cancelled' as const) : ('failed' as const),
-          message: cancelled
-            ? 'Pokemon Showdown Engine update was cancelled; previous active Engine metadata remains available.'
-            : 'Pokemon Showdown Engine update failed; previous active Engine metadata remains available.',
-        }
-      : null
-
-    if (metadata) {
-      await writeActiveMetadata(metadata).catch(() => undefined)
-    }
 
     emitEngineProgress(options, {
       status: cancelled ? 'cancelled' : 'failed',
@@ -1139,7 +1185,7 @@ export async function runShowdownEngineUpdate(
       downloadedBytes: 0,
       totalBytes: null,
       message,
-      metadata,
+      metadata: previousActiveMetadata,
     })
 
     return {
@@ -1147,7 +1193,7 @@ export async function runShowdownEngineUpdate(
       status: cancelled ? 'cancelled' : 'failed',
       startedAt,
       finishedAt,
-      metadata,
+      metadata: previousActiveMetadata,
       previousActiveMetadata,
       downloadedByteLength: 0,
       sha256: null,

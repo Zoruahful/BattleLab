@@ -104,11 +104,21 @@ function getDesktopBridge() {
 }
 
 function getDesktopCatalogBridge() {
-  return getDesktopBridge()?.catalog
+  const desktop = getDesktopBridge()
+  if (desktop && !desktop.catalog) {
+    throw new Error('BattleLab desktop catalog storage API is unavailable; refusing to fall back to IndexedDB in desktop mode.')
+  }
+
+  return desktop?.catalog
 }
 
 function getDesktopEngineBridge() {
-  return getDesktopBridge()?.showdownEngine
+  const desktop = getDesktopBridge()
+  if (desktop && !desktop.showdownEngine) {
+    throw new Error('BattleLab desktop Engine storage API is unavailable; refusing to fall back to IndexedDB in desktop mode.')
+  }
+
+  return desktop?.showdownEngine
 }
 
 function isIndexedDbAvailable() {

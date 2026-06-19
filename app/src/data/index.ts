@@ -19,6 +19,7 @@ export {
   catalogStorageBoundarySourceMetadata,
   createCatalogStorageBoundaryReadModel,
   createCatalogStorageSectionManifest,
+  currentDesktopCatalogStorageAdapter,
   currentIndexedDbCatalogStorageAdapter,
   futurePackagedCatalogStorageAdapter,
   readCatalogStorageBoundaryReadModel,

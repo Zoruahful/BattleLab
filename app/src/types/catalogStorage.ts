@@ -17,6 +17,7 @@ export type CatalogStorageContractVersion = "phase3-catalog-storage-v1";
 export type CatalogStorageSchemaVersion = "battlelab-catalog-storage-schema-v1";
 
 export type CatalogStorageAdapterKind =
+  | "electron-documents-file-storage"
   | "browser-indexeddb-current"
   | "future-packaged-app-local-store"
   | "future-readonly-bundle-store";
@@ -224,13 +225,14 @@ export interface CatalogStorageSafeFallback {
 export interface CatalogStorageAdapterBoundary {
   id: string;
   contractVersion: CatalogStorageContractVersion;
-  currentAdapter: Extract<CatalogStorageAdapterKind, "browser-indexeddb-current">;
-  futureAdapters: Exclude<CatalogStorageAdapterKind, "browser-indexeddb-current">[];
+  currentAdapter: Extract<CatalogStorageAdapterKind, "electron-documents-file-storage">;
+  fallbackAdapters: Extract<CatalogStorageAdapterKind, "browser-indexeddb-current">[];
+  futureAdapters: Exclude<CatalogStorageAdapterKind, "electron-documents-file-storage" | "browser-indexeddb-current">[];
   currentIndexedDbRemainsSupported: true;
   implementationFlags: {
-    durablePackagedStorageImplemented: false;
+    durablePackagedStorageImplemented: true;
     sqliteImplemented: false;
-    electronImplemented: false;
+    electronImplemented: true;
     bundleWritingImplemented: false;
     loaderExecutionImplemented: false;
   };
@@ -256,7 +258,11 @@ export interface CatalogStorageAdapterDescriptor {
   label: string;
   current: boolean;
   implemented: boolean;
-  storageMedium: "browser-indexeddb" | "future-packaged-local" | "future-readonly-bundle";
+  storageMedium:
+    | "desktop-documents-file-storage"
+    | "browser-indexeddb"
+    | "future-packaged-local"
+    | "future-readonly-bundle";
   capabilities: CatalogStorageAdapterCapability[];
   disallowedCapabilities: Array<
     | "electron"
@@ -318,10 +324,10 @@ export interface CatalogStorageBoundaryReadModel {
   };
   safety: {
     indexedDbCurrentAdapterPreserved: true;
-    packagedLocalAdapterImplemented: false;
+    packagedLocalAdapterImplemented: true;
     sqliteImplemented: false;
-    electronImplemented: false;
-    filesystemWritesImplemented: false;
+    electronImplemented: true;
+    filesystemWritesImplemented: true;
     bundleWritingImplemented: false;
     loaderExecutionImplemented: false;
     storesUserTeams: false;

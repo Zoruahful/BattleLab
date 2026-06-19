@@ -23,6 +23,7 @@ export type ShowdownEngineUpdateValidationCode =
   | 'format-registry-not-represented'
   | 'real-update-current-skip-invalid'
   | 'real-update-success-invalid'
+  | 'real-update-rejected-preservation-invalid'
   | 'real-update-failure-preservation-invalid'
   | 'real-update-cancelled-preservation-invalid'
   | 'downloaded-code-execution-boundary-invalid'
@@ -398,6 +399,8 @@ const validateRealUpdatePaths = async (issues: ShowdownEngineUpdateValidationIss
     )
   }
 
+  const writesBeforeFailed = writes.length
+  const cacheWritesBeforeFailed = cacheWrites.length
   const failed = await runShowdownEngineUpdate({
     updateId: 'showdown-engine-validation-failed',
     now,
@@ -425,6 +428,62 @@ const validateRealUpdatePaths = async (issues: ShowdownEngineUpdateValidationIss
     )
   }
 
+  if (writes.length !== writesBeforeFailed || cacheWrites.length !== cacheWritesBeforeFailed) {
+    issues.push(
+      createIssue(
+        'real-update-failure-preservation-invalid',
+        'error',
+        'realUpdate.failed.writes',
+        'Failed Engine update must not write active metadata or payload after failure.',
+      ),
+    )
+  }
+
+  const writesBeforeRejected = writes.length
+  const cacheWritesBeforeRejected = cacheWrites.length
+  const rejected = await runShowdownEngineUpdate({
+    updateId: 'showdown-engine-validation-rejected',
+    now,
+    fetchImpl: createMockFetch(),
+    readActiveMetadata: async () => createMockMetadata({ etag: '"previous-etag"', sha256: 'rejected-previous-sha' }),
+    writeActiveMetadata: async (metadata) => {
+      writes.push(metadata)
+    },
+    writeActiveCacheEntry: async (metadata) => {
+      cacheWrites.push(metadata)
+    },
+    loadFormatRegistry: async (checkedAt) => ({
+      ...createMockFormatRegistry(checkedAt),
+      status: 'unavailable',
+      officialFormatCount: 0,
+      formats: [],
+      message: 'Injected unavailable format registry fixture.',
+    }),
+    loadLearnsetData,
+    onProgress: (progress) => progressStatuses.push(progress.status),
+  })
+
+  if (
+    rejected.status !== 'failed' ||
+    rejected.metadata?.sha256 !== 'rejected-previous-sha' ||
+    rejected.archivePayloadStored ||
+    rejected.requiredFilesValidated ||
+    writes.length !== writesBeforeRejected ||
+    cacheWrites.length !== cacheWritesBeforeRejected ||
+    !rejected.errors.some((error) => error.includes('rejected'))
+  ) {
+    issues.push(
+      createIssue(
+        'real-update-rejected-preservation-invalid',
+        'error',
+        'realUpdate.rejected',
+        'Rejected staged Engine metadata must not promote active metadata or payload and must preserve the previous active Engine.',
+      ),
+    )
+  }
+
+  const writesBeforeCancelled = writes.length
+  const cacheWritesBeforeCancelled = cacheWrites.length
   const cancelled = await runShowdownEngineUpdate({
     updateId: 'showdown-engine-validation-cancelled',
     now,
@@ -454,8 +513,19 @@ const validateRealUpdatePaths = async (issues: ShowdownEngineUpdateValidationIss
     )
   }
 
+  if (writes.length !== writesBeforeCancelled || cacheWrites.length !== cacheWritesBeforeCancelled) {
+    issues.push(
+      createIssue(
+        'real-update-cancelled-preservation-invalid',
+        'error',
+        'realUpdate.cancelled.writes',
+        'Cancelled Engine update must not write active metadata or payload after cancellation.',
+      ),
+    )
+  }
+
   return {
-    statuses: [current.status, complete.status, failed.status, cancelled.status],
+    statuses: [current.status, complete.status, failed.status, rejected.status, cancelled.status],
     progressStatuses,
   }
 }

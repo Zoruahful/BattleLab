@@ -6,6 +6,7 @@ import type {
 import {
   catalogStorageBoundarySections,
   createCatalogStorageBoundaryReadModel,
+  currentDesktopCatalogStorageAdapter,
   currentIndexedDbCatalogStorageAdapter,
   futurePackagedCatalogStorageAdapter,
   readonlyBundleCatalogStorageAdapter,
@@ -58,9 +59,11 @@ function validateAdapter(
   }
 
   if (adapter.disallowedCapabilities.includes('filesystem-writes') === false) {
-    issues.push(
-      createIssue('adapter-boundary-invalid', 'error', `${path}.disallowedCapabilities`, 'Filesystem writes must remain disallowed.'),
-    )
+    if (adapter.kind !== 'electron-documents-file-storage') {
+      issues.push(
+        createIssue('adapter-boundary-invalid', 'error', `${path}.disallowedCapabilities`, 'Filesystem writes must remain disallowed outside the Electron Documents adapter.'),
+      )
+    }
   }
 
   if (adapter.disallowedCapabilities.includes('sqlite') === false) {
@@ -68,16 +71,15 @@ function validateAdapter(
   }
 
   if (adapter.disallowedCapabilities.includes('electron') === false) {
-    issues.push(createIssue('adapter-boundary-invalid', 'error', `${path}.disallowedCapabilities`, 'Electron must remain disallowed.'))
+    if (adapter.kind !== 'electron-documents-file-storage') {
+      issues.push(createIssue('adapter-boundary-invalid', 'error', `${path}.disallowedCapabilities`, 'Electron must remain disallowed outside the Electron Documents adapter.'))
+    }
   }
 }
 
 function validateSafety(model: CatalogStorageBoundaryReadModel, issues: CatalogStorageBoundaryValidationIssue[]) {
   const expectedClosedFlags: Array<keyof CatalogStorageBoundaryReadModel['safety']> = [
-    'packagedLocalAdapterImplemented',
     'sqliteImplemented',
-    'electronImplemented',
-    'filesystemWritesImplemented',
     'bundleWritingImplemented',
     'loaderExecutionImplemented',
     'storesUserTeams',
@@ -95,6 +97,28 @@ function validateSafety(model: CatalogStorageBoundaryReadModel, issues: CatalogS
   if (!model.safety.indexedDbCurrentAdapterPreserved) {
     issues.push(
       createIssue('safety-flag-open', 'error', 'safety.indexedDbCurrentAdapterPreserved', 'Current IndexedDB adapter must be preserved.'),
+    )
+  }
+
+  if (!model.safety.packagedLocalAdapterImplemented) {
+    issues.push(
+      createIssue(
+        'safety-flag-open',
+        'error',
+        'safety.packagedLocalAdapterImplemented',
+        'Desktop packaged-local storage must be implemented for Phase 3.',
+      ),
+    )
+  }
+
+  if (!model.safety.electronImplemented || !model.safety.filesystemWritesImplemented) {
+    issues.push(
+      createIssue(
+        'safety-flag-open',
+        'error',
+        'safety.desktopStorage',
+        'Electron Documents file storage must be represented as implemented.',
+      ),
     )
   }
 
@@ -299,13 +323,24 @@ export function validateCatalogStorageBoundary(): CatalogStorageBoundaryValidati
   const modelIssues = [healthyModel, malformedModel, unavailableModel].flatMap(validateBoundaryModel)
   const bridgeIssues: CatalogStorageBoundaryValidationIssue[] = []
 
-  if (!currentIndexedDbCatalogStorageAdapter.current || !currentIndexedDbCatalogStorageAdapter.implemented) {
+  if (!currentDesktopCatalogStorageAdapter.current || !currentDesktopCatalogStorageAdapter.implemented) {
+    bridgeIssues.push(
+      createIssue(
+        'adapter-boundary-invalid',
+        'error',
+        'currentDesktopCatalogStorageAdapter',
+        'The Electron Documents adapter must be the implemented current adapter.',
+      ),
+    )
+  }
+
+  if (currentIndexedDbCatalogStorageAdapter.current || !currentIndexedDbCatalogStorageAdapter.implemented) {
     bridgeIssues.push(
       createIssue(
         'adapter-boundary-invalid',
         'error',
         'currentIndexedDbCatalogStorageAdapter',
-        'The browser IndexedDB adapter must remain the implemented current adapter.',
+        'The browser IndexedDB adapter must remain implemented only as a non-current fallback.',
       ),
     )
   }

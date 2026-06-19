@@ -36,7 +36,7 @@ export const catalogStorageBoundarySections: CatalogUpdateDownloadSectionId[] = 
 
 const catalogStorageBoundaryGeneratedSections: BattleLabCatalogBundleSectionName[] = ['assets', 'searchIndex']
 
-const currentIndexedDbCapabilities: CatalogStorageAdapterDescriptor['capabilities'] = [
+const currentCatalogStorageCapabilities: CatalogStorageAdapterDescriptor['capabilities'] = [
   'read-generated-catalog',
   'write-generated-catalog-after-validation',
   'read-source-snapshots',
@@ -48,6 +48,14 @@ const currentIndexedDbCapabilities: CatalogStorageAdapterDescriptor['capabilitie
 ]
 
 const disallowedRuntimeCapabilities: CatalogStorageAdapterDescriptor['disallowedCapabilities'] = [
+  'sqlite',
+  'bundle-writing',
+  'loader-execution',
+  'user-team-storage',
+  'simulation-output-storage',
+]
+
+const disallowedBrowserAndFutureCapabilities: CatalogStorageAdapterDescriptor['disallowedCapabilities'] = [
   'electron',
   'sqlite',
   'filesystem-writes',
@@ -57,19 +65,36 @@ const disallowedRuntimeCapabilities: CatalogStorageAdapterDescriptor['disallowed
   'simulation-output-storage',
 ]
 
+export const currentDesktopCatalogStorageAdapter: CatalogStorageAdapterDescriptor = {
+  id: 'catalog-storage-electron-documents-current',
+  kind: 'electron-documents-file-storage',
+  schemaVersion: catalogStorageBoundarySchemaVersion,
+  label: 'Desktop Documents catalog storage',
+  current: true,
+  implemented: true,
+  storageMedium: 'desktop-documents-file-storage',
+  capabilities: currentCatalogStorageCapabilities,
+  disallowedCapabilities: disallowedRuntimeCapabilities,
+  notes: [
+    'This is the current Electron Catalog Update storage adapter.',
+    'Writes are scoped to Documents/BattleLab/data/catalog and occur only after source/generated catalog validation.',
+    'Failed, cancelled, or malformed replacement data must not erase the current generated catalog file.',
+  ],
+}
+
 export const currentIndexedDbCatalogStorageAdapter: CatalogStorageAdapterDescriptor = {
   id: 'catalog-storage-browser-indexeddb-current',
   kind: 'browser-indexeddb-current',
   schemaVersion: catalogStorageBoundarySchemaVersion,
-  label: 'Browser IndexedDB catalog cache',
-  current: true,
+  label: 'Browser IndexedDB catalog cache fallback',
+  current: false,
   implemented: true,
   storageMedium: 'browser-indexeddb',
-  capabilities: currentIndexedDbCapabilities,
-  disallowedCapabilities: disallowedRuntimeCapabilities,
+  capabilities: currentCatalogStorageCapabilities,
+  disallowedCapabilities: disallowedBrowserAndFutureCapabilities,
   notes: [
-    'This is the current Catalog Update storage adapter.',
-    'Writes remain browser IndexedDB writes and only occur after source/generated catalog validation.',
+    'This adapter is retained only for browser development fallback when the Electron desktop bridge is unavailable.',
+    'Desktop mode must not silently fall back to IndexedDB when the desktop API is present.',
     'Failed, cancelled, or malformed replacement data must not erase the current generated catalog cache.',
   ],
 }
@@ -82,11 +107,11 @@ export const futurePackagedCatalogStorageAdapter: CatalogStorageAdapterDescripto
   current: false,
   implemented: false,
   storageMedium: 'future-packaged-local',
-  capabilities: currentIndexedDbCapabilities,
-  disallowedCapabilities: disallowedRuntimeCapabilities,
+  capabilities: currentCatalogStorageCapabilities,
+  disallowedCapabilities: disallowedBrowserAndFutureCapabilities,
   notes: [
-    'Future packaged-app storage must implement this boundary without changing catalog ingestion callers.',
-    'No Electron, SQLite, filesystem write, or durable app-local storage implementation is included yet.',
+    'Future packaged installer refinements must keep the same storage boundary.',
+    'SQLite, backend storage, and hidden filesystem writes remain out of scope.',
   ],
 }
 
@@ -99,7 +124,7 @@ export const readonlyBundleCatalogStorageAdapter: CatalogStorageAdapterDescripto
   implemented: false,
   storageMedium: 'future-readonly-bundle',
   capabilities: ['read-generated-catalog', 'read-section-metadata', 'read-list-signatures', 'bundle-handoff-metadata'],
-  disallowedCapabilities: disallowedRuntimeCapabilities,
+  disallowedCapabilities: disallowedBrowserAndFutureCapabilities,
   notes: [
     '.bl bundle handoff remains read-only catalog enrichment metadata.',
     'User teams, settings, reports, saves, runtime output, and simulation results stay outside catalog storage.',
@@ -167,7 +192,7 @@ export function createCatalogStorageSectionManifest(
     generatedAt: metadata.lastUpdatedAt,
     hash: metadata.listSignature,
     notes: [
-      'Section metadata is owned by the current browser IndexedDB adapter.',
+      'Section metadata is owned by the current desktop Documents adapter in Electron mode.',
       'List signatures are used to skip current sections before detail downloads.',
     ],
   }
@@ -259,7 +284,7 @@ function createHealthReport(
   return {
     status,
     checkedAt,
-    adapterKind: 'browser-indexeddb-current',
+    adapterKind: 'electron-documents-file-storage',
     schemaVersion: catalogStorageBoundarySchemaVersion,
     generatedCatalogPresent: Boolean(generatedCatalog),
     sourceSnapshotsPresent: hasSourceSections,
@@ -301,7 +326,7 @@ function createSafeFallback(health: CatalogStorageCacheHealthReport): CatalogSto
     allowReadonlyBundleFallback: true,
     message:
       fallbackStatus === 'use-current-cache'
-        ? 'Use current IndexedDB generated catalog cache.'
+        ? 'Use current generated catalog file.'
         : 'Keep catalog storage isolated and fall back safely without touching user data.',
   }
 }
@@ -318,13 +343,13 @@ function createMigrationPlan(): CatalogStorageMigrationPlan {
     steps: [
       {
         id: 'validate-current-indexeddb-cache',
-        label: 'Validate current IndexedDB metadata, payloads, and generated catalog before handoff.',
+        label: 'Validate current desktop metadata, payloads, and generated catalog before handoff.',
         recordKinds: ['section-metadata', 'section-payload', 'generated-catalog'],
         required: true,
       },
       {
         id: 'prepare-packaged-local-adapter',
-        label: 'Prepare packaged app-local adapter behind the same read/write boundary.',
+        label: 'Keep Electron Documents storage behind the same read/write boundary.',
         recordKinds: ['generated-catalog', 'source-snapshot', 'section-metadata', 'section-payload'],
         required: true,
       },
@@ -336,7 +361,7 @@ function createMigrationPlan(): CatalogStorageMigrationPlan {
       },
     ],
     notes: [
-      'Migration is contract-only in this checkpoint.',
+      'Migration preserves visible Documents/BattleLab/data files.',
       'Malformed or stale cache must fall back safely and must not delete user-created data.',
     ],
   }
@@ -392,7 +417,7 @@ export function createCatalogStorageBoundaryReadModel({
     contractVersion: catalogStorageBoundaryContractVersion,
     schemaVersion: catalogStorageBoundarySchemaVersion,
     checkedAt,
-    currentAdapter: currentIndexedDbCatalogStorageAdapter,
+    currentAdapter: currentDesktopCatalogStorageAdapter,
     futurePackagedAdapter: futurePackagedCatalogStorageAdapter,
     readonlyBundleAdapter: readonlyBundleCatalogStorageAdapter,
     health,
@@ -409,10 +434,10 @@ export function createCatalogStorageBoundaryReadModel({
     },
     safety: {
       indexedDbCurrentAdapterPreserved: true,
-      packagedLocalAdapterImplemented: false,
+      packagedLocalAdapterImplemented: true,
       sqliteImplemented: false,
-      electronImplemented: false,
-      filesystemWritesImplemented: false,
+      electronImplemented: true,
+      filesystemWritesImplemented: true,
       bundleWritingImplemented: false,
       loaderExecutionImplemented: false,
       storesUserTeams: false,
@@ -424,8 +449,8 @@ export function createCatalogStorageBoundaryReadModel({
     },
     issues,
     notes: [
-      'Current storage remains browser IndexedDB-first.',
-      'The packaged-app adapter is a future boundary only.',
+      'Current Electron storage is Documents/BattleLab/data-first.',
+      'Browser IndexedDB remains a development fallback only when the desktop bridge is unavailable.',
       'Generated catalog replacement is safe only after source and generated catalog validation pass.',
       'PokeAPI/catalog data remains enrichment-only.',
       'Pokemon Showdown remains legality and simulation source of truth.',
